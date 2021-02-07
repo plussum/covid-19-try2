@@ -193,7 +193,7 @@ sub	load_csv {return load::load_csv(@_);}
 #	Reduce
 sub	reduce_cdp_target {return reduce::reduce_cdp_target(@_);}
 sub	reduce_cdp {return reduce::reduce_cdp(@_);}
-sub	copy_cdp { return reduce::copy_cdp(@_);}
+sub	dup_cdp {return reduce::dup_cdp(@_);}
 sub	dup_csv {return reduce::dup_csv(@_);}
 
 #	Marge
@@ -216,6 +216,7 @@ sub	new
 	my ($cdp) = @_;
 	
 	&init_cdp($cdp);
+	return ($cdp);
 }
 
 sub	init_cdp
@@ -250,6 +251,7 @@ sub	init_graph_definition_params
 
 		$gdp->{$k} = $DEFAULT_GRAPHDEF_PARAMS->{$k};
 	}
+	return ($gdp);
 }
 
 sub	init_graph_params
@@ -261,6 +263,7 @@ sub	init_graph_params
 
 		$gp->{$k} = $gdp->{$k} // $DEFAULT_GRAPHDEF_PARAMS->{$k};
 	}
+	return($gp);
 }
 
 #

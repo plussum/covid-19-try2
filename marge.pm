@@ -20,10 +20,22 @@ use csv2graph;
 
 my $DEBUG = 0;
 my $VERBOSE = 0;
+
+#
+#
+#
+sub	marge_csv
+{
+	my (@src_csv_list) = @_;
+
+	my $marge = {};
+	return &marge_csv_a($marge, @src_csv_list);
+}
+
 #
 #	Marge csvdef
 #
-sub	marge_csv
+sub	marge_csv_a
 {
 	my ($marge, @src_csv_list) = @_;
 
@@ -139,6 +151,7 @@ sub	marge_csv
 		}
 	} 
 	&dump_cdp($marge, {ok => 1, lines => 5}) if($DEBUG);
+	return $marge;
 }
 
 1;

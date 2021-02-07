@@ -22,10 +22,23 @@ my $DEBUG = 0;
 my $VERBOSE = 0;
 my $dumpf = 0;
 
+
 #
 #
 #
 sub	reduce_cdp_target
+{
+	my ($cdp, $target_colp) = @_;
+
+	my $dst_cdp = {};
+	return &reduce_cdp_target_a($dst_cdp, $cdp, $target_colp);
+}
+
+
+#
+#
+#
+sub	reduce_cdp_target_a
 {
 	my ($dst_cdp, $cdp, $target_colp) = @_;
 
@@ -49,6 +62,7 @@ sub	reduce_cdp_target
 	&reduce_cdp($dst_cdp, $cdp, \@target_keys);
 	&dump_cdp($dst_cdp, {ok => 1, lines => 20, items => 20}) if($DEBUG);
 	$dumpf = 0;
+	return $dst_cdp;
 }
 
 sub	reduce_cdp
@@ -57,6 +71,13 @@ sub	reduce_cdp
 
 	csv2graph::new($dst_cdp);
 
+	my $all_key = [];
+	if((!defined $target_keys) || $target_keys eq ""){
+		$target_keys = $all_key;
+		@$target_keys = keys %{$cdp->{csv_data}};
+		#dp::dp join(",", @$target_keys) . "\n";
+	}
+		
 	@{$dst_cdp->{load_order}} = @$target_keys;		
 
 	#my @arrays = ("date_list", "keys");
@@ -85,9 +106,15 @@ sub	reduce_cdp
 		my $src = $cdp->{$hwk};
 		$dst_cdp->{$hwk} = {};
 		my $dst = $dst_cdp->{$hwk};
+	
 		foreach my $key (@$target_keys){
 			#dp::dp "reduce - target_keys: $hwk:$key\n";# if($dumpf);
 			$dst->{$key} = [];
+			#dp::dp "$hwk: $key:\n";
+			if(! defined $src->{$key}){
+				dp::WARNING "$hwk $key is not allocated\n";
+				next;
+			}
 			@{$dst->{$key}} = @{$src->{$key}};
 		}
 	}
@@ -109,11 +136,15 @@ sub	reduce_cdp
 #
 #	Copy and Reduce CSV DATA with replace data set
 #
-sub	copy_cdp
+sub	dup_cdp
 {
-	my($cdp, $dst_cdp) = @_;
+	my($cdp) = @_;
 	
-	&reduce_cdp($dst_cdp, $cdp, $cdp->{load_order});
+	#csv2graph::dump_cdp($cdp, {ok => 1, lines => 5});
+	my $dst_cdp = {};
+	&reduce_cdp($dst_cdp, $cdp, ""); 
+
+	return $dst_cdp;
 }
 
 sub	dup_csv

@@ -248,6 +248,8 @@ sub	comvert2rlavr
 	#&dump_csv_data($work_csvp, {ok => 1, lines => 5, message => "comver2rlavr:ern"}) if(1);
 	$cdp->{csv_data} = "";
 	$cdp->{csv_data} = $work_csvp;
+
+	return $cdp;
 }
 
 #
@@ -272,6 +274,8 @@ sub	comvert2ern
 	#&dump_csv_data($ern_csvp, {ok => 1, lines => 5, message => "comver2ern:ern"}) if(1);
 	$cdp->{csv_data} = "";
 	$cdp->{csv_data} = $ern_csvp;
+
+	return $cdp;
 }
 
 #
@@ -316,7 +320,7 @@ sub	ern
 		@$dp = @ern;
 		#dp::dp join(",", @$dp[0..5]). "\n";
 	}
-
+	return $cdp;
 }	
 
 1;
