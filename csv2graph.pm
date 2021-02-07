@@ -34,7 +34,7 @@
 #
 ##	GRAPH_PARAMN
 #		html_file => "$config::HTML_PATH/apple_mobile.html",	# HTML file to generate
-#		html_title => $CSV_DEF->{title},						# Use for HTML Title
+#		html_title => $CSV_DEF->{src_info},						# Use for HTML Title
 #		png_path   => "$config::PNG_PATH",						# directory for generating graph items
 #		png_rel_path => "../PNG",								# Relative path of CSV, PNG
 #		GRAPH_PARAMS = {
@@ -129,9 +129,10 @@ our $cdp_hash_with_keys = [
 	"csv_data", 				# csv_data->{Japan#Tokyo}: [10123, 10124,,,,]
 	"key_items"					# key_items->{Japan#Tokyo}: ["Tokyo","Japan",33,39]
 ];
+
 our $cdp_values = [
 	"id",			# ID of the definition "ccse", "amt" ,, etc
-	"title", 		# Title(Description) of the definition
+	"src_info", 	# Description of the data source
 	"main_url", 	# main url to reffer
 	"src_url", 		# source url of data
 	"csv_file",		# CSV(or other) file to be downloaded
@@ -267,9 +268,9 @@ sub	init_graph_params
 #
 sub	gen_graph_by_list
 {
-	my($cdp, $gdp) = @_;
+	my($cdp, $gdp, $gp_list) = @_;
 
-	foreach my $gp (@{$gdp->{graph_params}}){
+	foreach my $gp (@$gp_list){
 		&csv2graph($cdp, $gdp, $gp);
 		#dp::dp join(",", $gp->{dsc}, $gp->{start_date}, $gp->{end_date},
 		#		$gp->{fname}, $gp->{plot_png}, $gp->{plot_csv}, $gp->{plot_cmd}) . "\n";
@@ -370,9 +371,10 @@ sub gen_html_by_gp_list
 #
 #	&gen_html($cdp, $GRAPH_PARAMS);
 #
+#
 sub	gen_html
 {
-	my ($cdp, $gdp, $gp) = @_;
+	my ($cdp, $gdp, $gp_list) = @_;
 
 	csvlib::disp_caller(1..3); # if($VERBOSE);
 	my $html_file = $gdp->{html_file};
@@ -381,7 +383,8 @@ sub	gen_html
 	my $data_source = $cdp->{data_source};
 	my $dst_dlm = $gdp->{dst_dlm} // "\t";
 
-	foreach my $gp (@{$gdp->{graph_params}}){
+	#foreach my $gp (@{$gdp->{graph_params}}){
+	foreach my $gp (@$gp_list){
 		last if($gp->{dsc} eq $gdp->{END_OF_DATA});
 		&csv2graph($cdp, $gdp, $gp);
 	}
@@ -392,7 +395,7 @@ sub	gen_html
 		png_path => $gdp->{png_path} // "",
 		png_rel_path => $gdp->{png_rel_path} // "",
 	};
-	&gen_html_by_gp_list($gdp->{graph_params}, $p);
+	&gen_html_by_gp_list($gp_list, $p);
 }
 
 
@@ -484,14 +487,14 @@ sub	csv2graph
 	my $tn = -1;
 	if(defined $target_col){
 		$tn  = util::array_size($target_col);
-		dp::dp "target_col[$target_col)]($tn)[" . csvlib::join_array(",", $target_col) . "]\n";
+		#dp::dp "target_col[$target_col)]($tn)[" . csvlib::join_array(",", $target_col) . "]\n";
 	}
 	else {
-		dp::dp "target_col[undef]\n";
+		#dp::dp "target_col[undef]\n";
 		$target_col = "";
 	}
 	if($tn < 0){
-		dp::WARNING "target_col is not array or hash ($target_col) all data select\n";
+		dp::dp "target_col is not array or hash ($target_col) all data will be selected\n";
 		csvlib::disp_caller(1..3);
 	}
 
@@ -607,7 +610,7 @@ sub	sort_csv
 
 	my %SORT_VAL = ();
 	my $src_csv = $cdp->{src_csv} // "";
-	dp::dp "sort_csv: " . scalar(@$target_keysp) . "\n";
+	#dp::dp "sort_csv: " . scalar(@$target_keysp) . "\n";
 	foreach my $key (@$target_keysp){
 		if(! $key){
 			dp::dp "WARING at sort_csv: empty key [$key]\n";
@@ -650,7 +653,14 @@ sub	graph
 {
 	my($csv_for_plot, $cdp, $gdp, $gp) = @_;
 
-	my $title = join(" ", $gp->{dsc}, $gp->{static}, "($LAST_DATE)");
+	my $start_date = $gp->{start_date} // "NONE";
+	my $end_date = $gp->{end_date} // "NONE";
+
+	my $src_info = $cdp->{src_info} // "";
+	if($src_info){
+		$src_info = "source:$src_info";
+	}
+	my $title = join(" ", $gp->{dsc}, $gp->{static}, "($end_date)") . "    $src_info";
 	#dp::dp "#### " . join(",", "[" . $p->{lank}[0] . "]", @lank) . "\n";
 
 	my $fname = $gdp->{png_path} . "/" . $gp->{fname};
@@ -665,8 +675,6 @@ sub	graph
 	my $term_x_size = $gdp->{term_x_size};
 	my $term_y_size = $gdp->{term_y_size};
 
-	my $start_date = $gp->{start_date} // "NONE";
-	my $end_date = $gp->{end_date} // "NONE";
 
 	my $start_ut = csvlib::ymds2tm($start_date);
 	my $end_ut = csvlib::ymds2tm($end_date);

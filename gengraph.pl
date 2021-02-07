@@ -116,9 +116,8 @@ my $MARGE_GRAPH_PARAMS = {
 };
 
 
-#my @TARGET_REAGION = (	"Italy", );
 my @TARGET_REAGION = (
-		"Canada", "Japan", "US,United States",
+		"Japan", "US,United States",
 		"United Kingdom", "France", #"Spain", "Italy", "Russia", 
 #			"Germany", "Poland", "Ukraine", "Netherlands", "Czechia,Czech Republic", "Romania",
 #			"Belgium", "Portugal", "Sweden",
@@ -182,6 +181,9 @@ if($all){
 my $gp_list = [];
 my $ccse_country = {};
 #	Load Johns Hoping Univercity CCSE
+#
+#	Province/State,Country/Region,Lat,Long,1/22/20
+#
 if($golist{ccse}){
 	my $CCSE_DEF = $defccse::CCSE_DEF;
 	my $CCSE_GRAPH = $defccse::CCSE_GRAPH;
@@ -196,22 +198,24 @@ if($golist{ccse}){
 
 	csv2graph::reduce_cdp_target($ccse_country, $CCSE_DEF, {"Province/State" => "NULL"});	# Select Country
 	#csv2graph::dump_cdp($ccse_country, {ok => 1, lines => 5, items => 10, search_key => "Canada"}); # if($DEBUG);
-	$ccse_country->{title} .= "-- reduced";
+
+	$ccse_country->{src_info} .= "-- reduced";
 	#csv2graph::dump_cdp($ccse_country, {ok => 1, lines => 5, items => 10, search_key => "Japan"}); # if($DEBUG);
 	my $gp = $CCSE_GRAPH->{graph_params};
+	my $prov = "Province/State";
+	my $cntry = "Country/Region";
 	foreach my $reagion (@TARGET_REAGION){
 		push (@$gp, {
-			dsc => "CCSE $reagion",
-			lank => [1,10],
-			static => "rlavr",
-			target_col => ["", $reagion],
+				dsc => "CCSE $reagion",
+				lank => [1,10],
+				static => "rlavr",
+				target_col => {$prov => "NULL"},
 			}
 		);
 	}
-	my $prov = "Province/State";
-	my $cntry = "Country/Region";
 	my $ccse_graph_01 = [
 		{dsc => "Japan ", lank => [1,10], static => "rlavr", target_col => {"$prov" => "", "$cntry" => "Japan"}},
+		{dsc => "Canada ", lank => [1,10], static => "rlavr", target_col => {"$prov" => "", "$cntry" => "Canada"}},
 	#	{dsc => "Japan top 10", lank => [1,10], static => "rlavr", target_col => {"$prov" => "", "$cntry" => "Japan"}},
 		{dsc => "World Wild ", lank => [1,10], static => "rlavr", target_col => {"$prov" => "", "$cntry" => ""}},
 		{dsc => "World Wild ", lank => [11,20], static => "rlavr", target_col => {"$prov" => "", "$cntry" => ""}},
@@ -219,10 +223,11 @@ if($golist{ccse}){
 	push(@$gp_list,
 		 csv2graph::csv2graph_list($ccse_country, $CCSE_GRAPH, $ccse_graph_01)); 
 				#$ccse_graph_01));	# gen Graph and params instead of html
-	#csv2graph::gen_html($ccse_country, $CCSE_GRAPH);		# Generate Graph/HTML
+	#csv2graph::gen_html($ccse_country, $CCSE_GRAPH, $ccse_graph_01);		# Generate Graph/HTML
 	csv2graph::comvert2ern($ccse_country);				# Calc ERN
 	#csv2graph::dump_cdp($ccse_country, {ok => 1, lines => 5});
 }
+
 #
 # Load Apple Mobility Trends
 #
@@ -245,8 +250,9 @@ if($golist{amt}){
 				{"transportation_type" => "", "region" => "", "country" => ""},	# All Province/State with Canada, ["*","Canada",]
 				{"transportation_type" => "avr", "region" => "="},# total gos ["","Canada"] null = "", = keep
 	);
+	#csv2graph::dump_cdp($AMT_DEF, {ok => 1, lines => 5});			# Dump for debug
 
-	#csv2graph::gen_html($amt_country, $AMT_GRAPH);					# Generate Graph/HTHML
+	#csv2graph::gen_html($amt_country, $AMT_GRAPH, $AMT_GRAPH->{graph_params});					# Generate Graph/HTHML
 	#push(@$gp_list,
 	#	 csv2graph::csv2graph_list($amt_country, $AMT_GRAPH, $amt_country));	# gen Graph and params instead of html
 
@@ -289,28 +295,30 @@ if($golist{"amt-ccse"}){
 	csv2graph::marge_csv($MARGE_CSV_DEF, $ccse_country, $amt_country);		# Marge CCSE(ERN) and Apple Mobility Trends
 	#csv2graph::dump_cdp($MARGE_CSV_DEF, {ok => 1, lines => 5});
 
-	my $gp = [];
+	my $g_params = [];
 	foreach my $reagion (@TARGET_REAGION){			# Generate Graph Parameters
 		my $rn = $reagion;
-		#$rn =~ s/,.*$//;
-		#my @rr = ();
-		#foreach my $r (split(/,/, $reagion)){
-		#	push(@rr, "$r", "~$r#");			# ~ regex
-		#}
-		#$reagion = join(",", @rr);
+		$rn =~ s/,.*$//;
+		my @rr = ();
+		foreach my $r (split(/,/, $reagion)){
+			push(@rr, "$r", "~$r#");			# ~ regex
+		}
+		$reagion = join(",", @rr);
 		
-		push (@$gp, {
-			dsc => "Mobiliy and ERN $rn",
-			lank => [1,10],
-			static => "",
-			target_col => [key => $reagion],
+		push (@$g_params, {
+				dsc => "Mobiliy and ERN $rn",
+				lank => [1,10],
+				static => "",
+				target_col => {key => $reagion},
 			}
 		);
 	} 
 	push(@$gp_list, 
-		csv2graph::csv2graph_list($MARGE_CSV_DEF, $MARGE_GRAPH_PARAMS, $gp, 2));
-	csv2graph::gen_html($MARGE_CSV_DEF, $MARGE_GRAPH_PARAMS);		# Gererate Graph
-	csv2graph::gen_graph_by_list($MARGE_CSV_DEF, $MARGE_GRAPH_PARAMS);
+		csv2graph::csv2graph_list($MARGE_CSV_DEF, $MARGE_GRAPH_PARAMS, $g_params, 2));
+	#$MARGE_GRAPH_PARAMS->{graph_params} = $g_params;
+	#dp::dp csvlib::join_array(",", $MARGE_GRAPH_PARAMS->{graph_params}) . "\n";
+	#csv2graph::gen_html($MARGE_CSV_DEF, $MARGE_GRAPH_PARAMS, $g_params);		# Gererate Graph
+	csv2graph::gen_graph_by_list($MARGE_CSV_DEF, $MARGE_GRAPH_PARAMS, $g_params);
 }
 
 #	Generate Graph
@@ -341,8 +349,12 @@ if($golist{"tokyo"}){
 
 	#csv2graph::dump_cdp($marge, {ok => 1, lines => 5});
 	my $tko_graph = [];
+	my $tko_gpara01 = [
+		{dsc => "Tokyo Positve/negative/rate", lank => [1,10], static => "", target_col => ["",""] },
+		{dsc => "Tokyo Positve/negative/rate", lank => [1,10], static => "rlavr", target_col => ["",""] },
+	];
 	push(@$tko_graph , 
-		csv2graph::csv2graph_list($marge, $TOKYO_GRAPH, $TOKYO_GRAPH->{graph_params}));
+		csv2graph::csv2graph_list($marge, $TOKYO_GRAPH, $tko_gpara01));
 	#csv2graph::gen_html($marge, $TOKYO_GRAPH);		# Generate Graph/HTHML
 
 #	hospitalized,1,2,3,
@@ -357,10 +369,14 @@ if($golist{"tokyo"}){
 	csv2graph::reduce_cdp_target($y22, $TOKYO_ST_DEF, ["severe_case"]);
 	csv2graph::marge_csv($marge2, $y21, $y22);		# Gererate Graph
 	#csv2graph::dump_cdp($marge2, {ok => 1, lines => 5});
-	#csv2graph::gen_html($marge, $TOKYO_GRAPH);		# Generate Graph/HTHML
+	#csv2graph::gen_html($marge, $TOKYO_GRAPH, $TOKYO_GRAPH->{graph_params});		# Generate Graph/HTHML
 	#csv2graph::dump_cdp($marge, {ok => 1, lines => 5});
+	my $tko_gpara02 = [
+		{dsc => "Tokyo Positive Status 01", lank => [1,10], static => "", target_col => ["",""] },
+		{dsc => "Tokyo Positive Status 02", lank => [1,10], static => "rlavr", target_col => ["",""] },
+	];
 	push(@$tko_graph , 
-		csv2graph::csv2graph_list($marge2, $TOKYO_ST_GRAPH, $TOKYO_ST_GRAPH->{graph_params}));
+		csv2graph::csv2graph_list($marge2, $TOKYO_ST_GRAPH, $tko_gpara02));
 
 	push(@$gp_list, @$tko_graph);
 	csv2graph::gen_html_by_gp_list($tko_graph, {						# Generate HTML file with graphs
@@ -404,8 +420,8 @@ if($golist{japan}){
 	];
 	push(@$gp_list , 
 		csv2graph::csv2graph_list($JAPAN_DEF, $JAPAN_GRAPH, $jp_graph)); 
-	@{$JAPAN_DEF->{graph_params}} = @$jp_graph;
-	csv2graph::gen_html($JAPAN_DEF, $JAPAN_GRAPH);		# Generate Graph/HTHML
+	#@{$JAPAN_DEF->{graph_params}} = @$jp_graph;
+	csv2graph::gen_html($JAPAN_DEF, $JAPAN_GRAPH, $jp_graph);		# Generate Graph/HTHML
 }
 
 #

@@ -31,8 +31,11 @@ sub	reduce_cdp_target
 
 	#dp::dp Dumper $target_colp;
 
+	$dumpf = 1;
 	my @target_keys = ();
+	#dp::dp "reduce_cdp_target: $target_colp " . csvlib::join_array(",", $target_colp) . "\n";
 	my $target = select::select_keys($cdp, $target_colp // "", \@target_keys);
+	#dp::dp "result of select(", $#target_keys, ") " . join(",", @target_keys) . "\n";
 	if($target < 0){
 		dp::ABORT "No data " . csvlib::join_array(",", @$target_colp) . "##" . join(",", @target_keys) . "\n";
 	}
@@ -60,25 +63,30 @@ sub	reduce_cdp
 	#my @hashs = ("order");
 	my @hash_with_keys = ("csv_data", "key_items");
 
+
 	csv2graph::new($dst_cdp);
 	%$dst_cdp = %$cdp;
+	# $cdp_values = [ "id", "title", "main_url", "src_url","csv_file", "src_dlm", "timefmt", "data_start", "down_load"]
 	foreach my $val (@$csv2graph::cdp_values){
 		$dst_cdp->{$val} = $cdp->{$val} // "";
 	}
+	# $cdp_arrays = [ "date_list", "keys", "load_order", "item_name_list", "defined_item_name_list",]
 	foreach my $array_item (@$csv2graph::cdp_arrays){
 		$dst_cdp->{$array_item} = [];
 		@{$dst_cdp->{$array_item}} = @{$cdp->{$array_item}};
 	}
+	# $cdp_hashs = ["order","item_name_hash", "defined_item_name_hash",]
 	foreach my $hash_item (@$csv2graph::cdp_hashs){
 		$dst_cdp->{$hash_item} = {};
 		%{$dst_cdp->{$hash_item}} = %{$cdp->{$hash_item}};
 	}
-	foreach my $hwk (@$csv2graph::hash_with_keys){
+	# $cdp_hash_with_keys = ["csv_data", "key_items"]
+	foreach my $hwk (@$csv2graph::cdp_hash_with_keys){
 		my $src = $cdp->{$hwk};
 		$dst_cdp->{$hwk} = {};
 		my $dst = $dst_cdp->{$hwk};
 		foreach my $key (@$target_keys){
-			#dp::dp "reduce - target_keys: $hwk:$key\n" if($dumpf);
+			#dp::dp "reduce - target_keys: $hwk:$key\n";# if($dumpf);
 			$dst->{$key} = [];
 			@{$dst->{$key}} = @{$src->{$key}};
 		}
@@ -94,7 +102,7 @@ sub	reduce_cdp
 			#dp::dp "csv[$key] " . join(",", @{$dst_csv->{$key}}[0..5]) . "\n";
 			#dp::dp "key[$key] " . join(",", @{$dst_key->{$key}}[0..5]) . "\n";
 		}
-		&dump_cdp($dst_cdp, {ok => 1, lines => 20, items => 20}); # if($DEBUG);
+		dump::dump_cdp($dst_cdp, {ok => 1, lines => 20, items => 20, search_key => "Canada"}); # if($DEBUG);
 	}
 }
 

@@ -27,7 +27,7 @@ sub	dump_cdp
 	my $mess = $p->{message} // "";
 
 
-	print "#" x 10 . "[$mess] CSV DUMP " . $cdp->{title} . " " . "#" x 10 ."\n";
+	print "#" x 10 . "[$mess] CSV DUMP " . $cdp->{src_info} . " " . "#" x 10 ."\n";
 	print "##### VALUE ######\n";
 	foreach my $k (@$csv2graph::cdp_values){
 		print "$k\t" . ($cdp->{$k} // "undef") . "\n";
@@ -38,7 +38,7 @@ sub	dump_cdp
 		if($p){
 			my $arsize = scalar(@$p) - 1;
 			$arsize = $items if($arsize > $items);
-		 	print "$k\t" . csv_lib::join_array(",", @{$p}[0..$arsize]). "\n";
+		 	print "$k\t" . csvlib::join_array(",", @{$p}[0..$arsize]). "\n";
 		}
 		else {
 			print "$k\tundef\n";

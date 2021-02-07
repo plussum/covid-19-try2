@@ -48,7 +48,7 @@ my $END_OF_DATA = $config::END_OF_DATA;
 my $TKY_DIR = "$config::WIN_PATH/tokyo/covid19"; # "/home/masataka/who/tokyo/covid19";
 our $TOKYO_DEF = {
 	id => "tokyo",
-	title => "Tokyo Positive Rate",
+	src_info => "Tokyo Positive Rate",
 	main_url => "-- tokyo data --- ",
 	src_file => "$TKY_DIR/data/positive_rate.json",
 	src_url => 	"--- src url ---",		# set
@@ -63,7 +63,7 @@ our $TOKYO_DEF = {
 	data_start => 1,
 };
 our $TOKYO_GRAPH = {
-	html_title => $TOKYO_DEF->{title},
+	html_title => $TOKYO_DEF->{src_info},
 	png_path   => "$PNG_PATH",
 	png_rel_path => $PNG_REL_PATH,
 	html_file => "$HTML_PATH/tokyoTest.html",
@@ -83,8 +83,6 @@ our $TOKYO_GRAPH = {
 	additional_plot => "",
 
 	graph_params => [
-		{dsc => "Tokyo Positve/negative/rate", lank => [1,10], static => "", target_col => ["",""] },
-		{dsc => "Tokyo Positve/negative/rate", lank => [1,10], static => "rlavr", target_col => ["",""] },
 	],
 };
 
@@ -106,7 +104,7 @@ our $TOKYO_GRAPH = {
 #
 our $TOKYO_ST_DEF = {
 	id => "tokyo",
-	title => "Tokyo Positive Status",
+	src_info => "Tokyo Positive Status",
 	main_url => "-- tokyo data --- ",
 	src_file => "$TKY_DIR/data/positive_status.json",
 	src_url => 	"--- src url ---",		# set
@@ -121,7 +119,7 @@ our $TOKYO_ST_DEF = {
 	data_start => 1,
 };
 our $TOKYO_ST_GRAPH = {
-	html_title => $TOKYO_DEF->{title},
+	html_title => $TOKYO_DEF->{src_info},
 	png_path   => "$PNG_PATH",
 	png_rel_path => $PNG_REL_PATH,
 	html_file => "$HTML_PATH/tokyoTest.html",
@@ -142,8 +140,6 @@ our $TOKYO_ST_GRAPH = {
 	additional_plot => "",
 
 	graph_params => [
-		{dsc => "Tokyo Positive Status", lank => [1,10], static => "", target_col => ["",""] },
-		{dsc => "Tokyo Positive Status", lank => [1,10], static => "rlavr", target_col => ["",""] },
 	],
 };
 sub download

@@ -31,7 +31,7 @@ my $END_OF_DATA = $config::END_OF_DATA;
 #
 our $AMT_DEF = {
 	id => "amt",
-	title => "Apple Mobility Trends",
+	src_info => "Apple Mobility Trends",
 	main_url =>  "https://covid19.apple.com/mobility",
 	csv_file =>  "$config::WIN_PATH/applemobile/applemobilitytrends.csv.txt",
 	src_url => "https://covid19.apple.com/mobility",		# set
@@ -55,7 +55,7 @@ our $WLK = "walking";
 our $AVR = "avr";
 
 our $AMT_GRAPH = {
-	html_title => $AMT_DEF->{title},
+	html_title => $AMT_DEF->{src_info},
 	png_path   => "$PNG_PATH",
 	png_rel_path => $PNG_REL_PATH,
 	html_file => "$HTML_PATH/apple_mobile.html",

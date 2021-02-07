@@ -33,7 +33,7 @@ sub	load_csv
 		$download->($cdp);
 	}
 
-	dp::dp "LOAD CSV  [$cdp->{title}][$cdp->{id}]\n";
+	dp::dp "LOAD CSV  [$cdp->{src_info}][$cdp->{id}]\n";
 	my $rc = 0;
 	my $direct = $cdp->{direct} // "";
 	if($direct =~ /json/i){
@@ -321,7 +321,7 @@ sub	load_transaction
 	binmode(FD, ":utf8");
 	my $line = <FD>;
 	$line =~ s/[\r\n]+$//;
-	my @items = &csv($line);
+	my @items = util::csv($line);
 
 	my $key_name = $cdp->{key_name} // "";
 	$key_name = "key" if(! $key_name);
@@ -337,7 +337,7 @@ sub	load_transaction
 
 	my $dt_end = -1;
 	while(<FD>){
-		my (@vals)  = &csv($_);
+		my (@vals)  = util::csv($_);
 
 		$vals[0] += 2000 if($vals[0] < 100);
 		my $ymd = sprintf("%04d-%02d-%02d", $vals[0], $vals[1], $vals[2]);		# 2020/01/03 Y/M/D

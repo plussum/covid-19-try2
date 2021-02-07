@@ -285,12 +285,12 @@ sub	date_range
 {
 	my($cdp, $gdp, $gp) = @_;
 
-	my $id = $cdp->{id} // ($cdp->{title} // "no-id");
+	my $id = $cdp->{id} // ($cdp->{src_info} // "no-id");
 	my $date_list = $cdp->{date_list};
 	#dp::dp "DATE: " . join(", ", $gp->{start_date}, $gp->{end_date}, "#", @$date_list[0..5]) . "\n";
 	my $dt_start = csvlib::search_listn($gp->{start_date}, @$date_list);
 	if($dt_start < 0){
-		dp::WARNING "[$id]: Date $gp->{start_date} is not in the data ($cdp->{title}) " . join(",", @$date_list[0..5]) ."\n";
+		dp::WARNING "[$id]: Date $gp->{start_date} is not in the data ($cdp->{src_info}) " . join(",", @$date_list[0..5]) ."\n";
 		csvlib::disp_caller(1..3);
 		$dt_start = 1;
 	}
@@ -298,7 +298,7 @@ sub	date_range
 	my $dt_end   = csvlib::search_listn($gp->{end_date},   @$date_list);
 	if($dt_end < 0){
 		my $dtc = scalar(@$date_list) - 1;
-		dp::WARNING "[$id]: Date $gp->{end_date} is not in the data ($cdp->{title}) $dtc" . join(",", @$date_list[($dtc-5)..$dtc]) ."\n";
+		dp::WARNING "[$id]: Date $gp->{end_date} is not in the data ($cdp->{src_info}) $dtc" . join(",", @$date_list[($dtc-5)..$dtc]) ."\n";
 		csvlib::disp_caller(1..3);
 		$dt_end = $dt_end + 1;
 	}

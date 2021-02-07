@@ -36,7 +36,7 @@ my $CCSE_ROOT = "$WIN_PATH/ccse/COVID-19";
 my $CCSE_BASE_DIR = "$CCSE_ROOT/csse_covid_19_data/csse_covid_19_time_series";
 our $CCSE_DEF = {
 	id => "ccse",
-	title => "Johns Hopkins CSSE",
+	src_info => "Johns Hopkins CSSE",
 	main_url =>  "https://covid19.apple.com/mobility",
 	csv_file =>  "$CCSE_BASE_DIR/time_series_covid19_confirmed_global.csv",
 	src_url => "https://github.com/beoutbreakprepared/nCoV2019",
@@ -44,6 +44,7 @@ our $CCSE_DEF = {
 	down_load => \&download,
 
 	src_dlm => ",",
+	key_dlm => "-",
 	keys => [1, 0],		# 5, 1, 2
 	data_start => 4,
 
@@ -52,7 +53,7 @@ our $CCSE_DEF = {
 };
 #dp::dp $CCSE_DEF->{csv_file} . "\n";
 our $CCSE_GRAPH = {
-	html_title => $CCSE_DEF->{title},
+	html_title => $CCSE_DEF->{src_info},
 	png_path   => "$PNG_PATH",
 	png_rel_path => $PNG_REL_PATH,
 	html_file => "$HTML_PATH/ccse2.html",

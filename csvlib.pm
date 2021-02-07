@@ -1,4 +1,4 @@
-
+#
 #	csv操作の基本的な関数群
 #
 #
@@ -16,35 +16,98 @@ use dp;
 
 my $DEBUG = 0;
 
+my $test_data = {
+	html_title => "html_title",
+	array_data => [1,2,3,4,5],
+	hash_data => {key1 => 1, key2 => 2},
+	array_array => [[10,11,12], [20,21,22], [30,31,32]],
+	hash_array => [{key10 => 10}, {key10 => 20}],
+	hash_hash => {{key10 => {key100 => 100}}, {key10 => {key200 => 200}}},
+};
+
+#print &join_array(",", $test_data) . "\n";
+
+
+
 #
 #
 #
+sub	recur
+{
+	my($dlm, $param, $item) = @_;
+
+	my @array = ();
+	my $ref = ref($item);
+	if($ref eq "HASH" ||  $ref eq "ARRAY"){
+		my $s = &join_array($dlm, $param, $item);
+		$s = ($ref eq "HASH") ? "{$s}" : "[$s]";
+		push(@array, $s);
+	}
+	#dp::dp $param->{deep} . " [$item:$ref]" . join($dlm, @array) . "\n";
+	return join($dlm, @array);
+}
+
 sub	join_array
 {
 	my ($dlm, @array) = @_;
 
 	#dp::dp "#### join_array\n";
 	my @join = ();
+	my $param = {joint_array_param => 1, deep => 8};
+	my $deep = "";
+
+	if(ref($array[0]) eq "HASH" and defined $array[0]->{joint_array_param}){
+		$param = $array[0];
+		$deep = $param->{deep} // 1;
+		$deep--;
+		return "" if($deep < 0);
+
+		shift(@array);
+	}
+
 	foreach my $item (@array){
 		my $ref = ref($item);
-		#dp::dp "[$item] $ref\n";
+		#dp::dp "[$item] $ref ($deep)\n";
 		if($ref eq "ARRAY"){
-			$item = "[" . join($dlm, @$item) . "]";
+			#$item = "[" . join($dlm, @$item) . "]";
+			my @w = ();
+			foreach my $v (@$item){
+				my $s = $v;
+				if(&ahv($v) > 0){
+					$s = &recur($dlm, $param, $v);
+				}
+				push(@w, $s);
+			}
+			$item = "[" . join(",", @w) . "]";
 		}
 		elsif($ref eq "HASH"){
-			my @hash = ();
+			my @w = ();#($item);
 			foreach my $k (keys %$item) {
-				push(@hash, "$k=>$item->{$k}");
-				#if($ref ($item->{$k}) eq "ARRAY"){
-				#	my $sub = &join_array($dlm, @{$item->{$k}});
-				#}
+				my $s = "";
+				my $v = $item->{$k};
+				if(&ahv($v) > 0){
+					$s = "$k=>" . &recur($dlm, $param, $v);
+				}
+				else {
+					$s = "$k=>$v";
+				}
+				push(@w, $s);
 			}
-			$item = "{" . join(",", @hash) . "}";
+			$item = "{" . join(",", @w) . "}";
 		}
 		push(@join, $item);
 	}
 	my $result = join($dlm, @join);
 	return ($result);
+}
+sub	ahv
+{
+	my($v) = @_;
+
+	my $ref = ref($v);
+	return 1 if($ref eq "ARRAY");
+	return 2 if($ref eq "HASH");
+	return 0;
 }
 
 #
