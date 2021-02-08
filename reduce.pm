@@ -78,7 +78,6 @@ sub	reduce_cdp
 		#dp::dp join(",", @$target_keys) . "\n";
 	}
 		
-	@{$dst_cdp->{load_order}} = @$target_keys;		
 
 	#my @arrays = ("date_list", "keys");
 	#my @hashs = ("order");
@@ -118,8 +117,17 @@ sub	reduce_cdp
 			@{$dst->{$key}} = @{$src->{$key}};
 		}
 	}
+
 	my $dst_key = $dst_cdp->{key_items};
 	my $dst_csv = $dst_cdp->{csv_data};
+	my $src_csv = $cdp->{csv_data};
+	my $dst_load_order = $dst_cdp->{load_order};
+	# @{$dst_cdp->{load_order}} = @$target_keys;		
+	@$dst_load_order = ();
+	foreach my $k (@{$cdp->{load_order}}){
+		push(@$dst_load_order, $k) if(defined $src_csv->{$k});
+	}
+
 	if($DEBUG){
 		my $kn = 0;
 		foreach my $key (keys %$dst_csv){

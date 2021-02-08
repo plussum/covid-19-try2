@@ -162,10 +162,10 @@ else {
 	dp::dp "usage:$0 " . join(" | ", "-all", @ids) ."\n";
 	exit;
 }
-if($golist{"amt-ccse"}){
-	$golist{amt} = 1;
-	$golist{ccse} = 1;
-}
+#if($golist{"amt-ccse"}){
+#	$golist{amt} = 1;
+#	$golist{ccse} = 1;
+#}
 if($all){
 	foreach my $cdp (@cdp_list){
 		my $id = $cdp->{id};
@@ -277,35 +277,83 @@ if($golist{amt}){
 			dsc => "United State mobility.", lank => [1,10], static => "rlavr", 
 			target_col => {country => "United States", transportation_type => "avr"},},
 	));
-	dp::dp "-" x 20 . "\n";
+	#dp::dp "-" x 20 . "\n";
 
-	calc::comvert2rlavr($amt_country);							# rlavr for marge with CCSE
 }
 
 #
 #	Generate Marged Graph of Apple Mobility Trends and CCSE-ERN
 #
 if($golist{"amt-ccse"}){
-	#csv2graph::dump_cdp($ccse_country, {ok => 1, lines => 5});
+	#
+	#	Apple Mobility Trends
+	#
+	my $AMT_DEF = $defamt::AMT_DEF;
+	my $AMT_GRAPH = $defamt::AMT_GRAPH;
+
+	csv2graph::new($defamt::AMT_DEF); 										# Init AMD_DEF
+	csv2graph::load_csv($AMT_DEF);									# Load to memory
+	#csv2graph::dump_cdp($AMT_DEF, {ok => 1, lines => 5});			# Dump for debug
+
+	$amt_country = csv2graph::reduce_cdp_target($AMT_DEF, {geo_type => $REG});
+	csv2graph::calc_items($amt_country, "avr", 
+				{"transportation_type" => "", "region" => "", "country" => ""},	# All Province/State with Canada, ["*","Canada",]
+				{"transportation_type" => "avr", "region" => "="},# total gos ["","Canada"] null = "", = keep
+	);
+	calc::comvert2rlavr($amt_country);							# rlavr for marge with CCSE
+
+	$amt_pref = csv2graph::reduce_cdp_target($AMT_DEF, {geo_type => $SUBR});
+	csv2graph::calc_items($amt_pref, "avr", 
+				{"transportation_type" => "", "region" => "", "country" => ""},	# All Province/State with Canada, ["*","Canada",]
+				{"transportation_type" => "avr", "region" => "="},# total gos ["","Canada"] null = "", = keep
+	);
+	calc::comvert2rlavr($amt_pref);							# rlavr for marge with CCSE
+
+	#
+	#	CCSE
+	#
+	my $CCSE_DEF = $defccse::CCSE_DEF;
+	my $CCSE_GRAPH = $defccse::CCSE_GRAPH;
+
+	csv2graph::new($defccse::CCSE_DEF); 							# Load Johns Hopkings University CCSE
+	csv2graph::load_csv($defccse::CCSE_DEF);
+	#csv2graph::dump_cdp($CCSE_DEF, {ok => 1, lines => 1, items => 10, search_key => "Canada"}); # if($DEBUG);
+	csv2graph::calc_items($CCSE_DEF, "sum", 
+				{"Province/State" => "", "Country/Region" => "Canada"},		# All Province/State with Canada, ["*","Canada",]
+				{"Province/State" => "null", "Country/Region" => "="}		# total gos ["","Canada"] null = "", = keep
+	);
+	$ccse_country = csv2graph::reduce_cdp_target($CCSE_DEF, {"Province/State" => "NULL"});	# Select Country
+	#csv2graph::dump_cdp($ccse_country, {ok => 1, lines => 5, items => 10, search_key => "Canada"}); # if($DEBUG);
+	
+	#
+	#	Marge amt and ccse, gen rlabr and erc
+	#
 	my $ccse_rlavr = csv2graph::dup_cdp($ccse_country);
-	$ccse_rlavr = csv2graph::comvert2rlavr($ccse_country);				# Calc ERN
-	my $ccse_amt_rlavr = csv2graph::marge_csv($ccse_rlavr, $amt_country);		# Marge CCSE(ERN) and Apple Mobility Trends
+
+	#	Rolling Average
+	$ccse_rlavr = csv2graph::comvert2rlavr($ccse_country);					# Calc Rooling Average
+	my $ccse_amt_rlavr = csv2graph::marge_csv($ccse_rlavr, $amt_country);	# Marge CCSE and Apple Mobility Trends
+	#	set infomation for graph
 	$ccse_amt_rlavr->{id} = "amt-ccse-rlavr";
 	$ccse_amt_rlavr->{src_info} = "(rlavr)Apple Mobility Trends and Johns Hokings Univ.";
 	$ccse_amt_rlavr->{main_url} = "please reffer amt and ccse";
 	$ccse_amt_rlavr->{csv_file} = "please reffer amt and ccse";
-	$ccse_amt_rlavr->{src_url} =  "please reffer amt and ccse";		# set
+	$ccse_amt_rlavr->{src_url} =  "please reffer amt and ccse";	
 
-	$ccse_country = csv2graph::comvert2ern($ccse_country);				# Calc ERN
-	my $ccse_amt_ern = csv2graph::marge_csv($ccse_country, $amt_country);		# Marge CCSE(ERN) and Apple Mobility Trends
+	#	ERN
+	$ccse_country = csv2graph::comvert2ern($ccse_country);					# Calc ERN
+	my $ccse_amt_ern = csv2graph::marge_csv($ccse_country, $amt_country);	# Marge CCSE(ERN) and Apple Mobility Trends
 	$ccse_amt_ern->{id} = "amt-ccse-ern";
 	$ccse_amt_ern->{src_info} = "(ern)Apple Mobility Trends and Johns Hokings Univ.";
 	$ccse_amt_ern->{main_url} = "please reffer amt and ccse";
 	$ccse_amt_ern->{csv_file} = "please reffer amt and ccse";
-	$ccse_amt_ern->{src_url} =  "please reffer amt and ccse";		# set
+	$ccse_amt_ern->{src_url} =  "please reffer amt and ccse";	
 
 	#csv2graph::dump_cdp($ccse_amt, {ok => 1, lines => 5});
 
+	#
+	#	Generate Graph Pamaters
+	#
 	my $g_params = [];
 	foreach my $reagion (@TARGET_REAGION){			# Generate Graph Parameters
 		my $rn = $reagion;
@@ -338,8 +386,9 @@ if($golist{"amt-ccse"}){
 		);
 
 	} 
-	push(@$gp_list, csv2graph::csv2graph_list_mix(@$g_params));
 
+	#	Set to graph list
+	push(@$gp_list, csv2graph::csv2graph_list_mix(@$g_params));
 	#csv2graph::gen_graph_by_list($ccse_amt, $MARGE_GRAPH_PARAMS, $g_params);
 }
 
