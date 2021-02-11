@@ -200,6 +200,7 @@ sub	load_csv_vertical
 		my $line = decode('utf-8', $_);
 		my ($date, @items) = split(/$src_dlm/, $line);
 	
+		#dp::dp "$date, [$src_dlm]\n";
 		$date_list->[$ln] = util::timefmt($timefmt, $date);
 		#dp::dp "date:$ln $date " . $date_list->[$ln] . " ($timefmt) $cdp->{title}\n";
 	

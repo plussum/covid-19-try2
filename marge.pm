@@ -45,6 +45,7 @@ sub	marge_csv_a
 	&csv2graph::new($marge);
 
 	foreach my $src_cdp (@src_csv_list){
+		dp::dp "$src_cdp: $src_cdp->{id}\n";
 		foreach my $key (@$csv2graph::cdp_values){
 			$marge->{$key} = $src_cdp->{$key} // "";
 			# last if($marge->{$key});
@@ -59,21 +60,22 @@ sub	marge_csv_a
 	foreach my $src_cdp (@src_csv_list){
 		my $dt = $src_cdp->{date_list}->[0];
 		if(! ($dt // "")){
-			dp::WARNING "No date in $src_cdp->{id}\n";
+			dp::WARNING "No date in $src_cdp->{id} [$src_cdp->{id}]\n";
 			csvlib::disp_caller(1..3);
 		}
 		$date_start = $dt if($dt gt $date_start );
-		#dp::dp "date_start[$dt] $date_start\n";
+		dp::dp "date_start[$dt] $date_start [$src_cdp->{id}\n";
 	}
 	my $date_end = "9999-99-99";
 	foreach my $src_cdp (@src_csv_list){
 		my $dates = $src_cdp->{dates};
 		my $dt = $src_cdp->{date_list}->[$dates];
 		if(defined $src_cdp->{NaN_start}){
-			$dt = $src_cdp->{NaN_start};
+			my $dn = $src_cdp->{NaN_start};
+			$dt = $src_cdp->{date_list}->[$dn];
 		}
 		$date_end = $dt if($dt le $date_end );
-		#dp::dp "date_end[$dt] $date_end\n";
+		dp::dp "date_end[$dt] $date_end [$src_cdp->{id}] $dates\n";
 	}
 	my $dates = csvlib::date2ut($date_end, "-") - csvlib::date2ut($date_start, "-");
 	$dates /= 60 * 60 * 24;
@@ -102,7 +104,7 @@ sub	marge_csv_a
 
 		my $dt_end = csvlib::search_listn($date_end, @$date_list);
 		if($dt_end < 0){
-			dp::WARNING "Date $date_end is not in the data\n";
+			dp::WARNING "Date $date_end is not in the data [$src_cdp->{id}]\n";
 			$dt_end = 0;
 		}
 		$infop->{date_end} = $dt_end;

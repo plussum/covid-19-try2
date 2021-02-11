@@ -35,13 +35,28 @@ sub	timefmt
 	my ($timefmt, $date) = @_;
 
 	#dp::dp "[$timefmt][$date]\n";
-	if($timefmt eq "%Y/%m/%d"){
-		$date =~ s#/#-#g;
+	my($y, $m, $d) = (); 
+	if($timefmt eq "%Y-%m-%d"){
+		($y, $m, $d) = split(/-/, $date);
+	}
+	elsif($timefmt eq "%Y/%m/%d"){
+		#$date =~ s#/#-#g;
+		($y, $m, $d) = split(/\//, $date);
 	}
 	elsif($timefmt eq "%m/%d/%y"){
-		my($m, $d, $y) = split(/\//, $date);
-		$date = sprintf("%04d-%02d-%02d", $y + 2000, $m, $d);
+		($m, $d, $y) = split(/\//, $date);
+		$y += 2000;
+		#$date = sprintf("%04d-%02d-%02d", $y + 2000, $m, $d);
 	}
+	if(!defined $y){
+		dp::ABORT "Unkonw format $timefmt\n";
+	}
+	my $dtt = join("", $y,$m,$d);
+	if($dtt =~ /[^0-9]/){
+		dp::ABORT "Error: timefmt[$timefmt] date[$date] [$dtt]\n";
+	}
+	$date = sprintf("%04d-%02d-%02d", $y, $m, $d);
+	#dp::dp $date . "\n";
 	return $date;
 }
 
@@ -67,9 +82,12 @@ sub	date_calc
 	$date = $date // "";
 	$date = $default if($date eq "");
 
-	#dp::dp "[[$date,$default,$max,$list]]\n";
-	if(! ($date =~ /[0-9][\-\/][0-9]/)){
-		#dp::dp "[[$date]]\n";
+	dp::dp "[[$date,$default,$max,$list]]\n";
+	if(!$date ){
+
+	}
+	elsif(!($date =~ /[0-9][\-\/][0-9]/)){	# 
+		dp::dp "[[$date]]\n";
 		if($date < 0){
 			$date = $max + $date;
 		}

@@ -140,6 +140,7 @@ our $cdp_values = [
 	"timefmt", 		# Time format (gnuplot) %Y-%m-%d, %Y/%m/%d, etc
 	"data_start",	# Data start colum, ex, 4 : Province,Region, Lat, Long, 2021-01-23, 
 	"down_load", 	# Download function
+	"dates",		# Number of Date
 ];
 
 #
@@ -459,6 +460,7 @@ sub	csv2graph
 	#
 	my $date_list = $cdp->{date_list};
 	my $dates = $cdp->{dates};
+	dp::dp "util: $cdp->{id} \n";
 	my $start_date = util::date_calc(($gp->{start_date} // ""), $date_list->[0], $cdp->{dates}, $date_list);
 	my $end_date   = util::date_calc(($gp->{end_date} // ""),   $date_list->[$dates], $cdp->{dates}, $date_list);
 	#dp::dp "START_DATE: $start_date [" . ($gp->{start_date} // "NULL"). "] END_DATE: $end_date [" . ($gp->{end_date}//"NULL") . "]\n";

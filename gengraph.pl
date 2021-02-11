@@ -489,8 +489,6 @@ if($golist{"amt-ccse"}){
 				target_col => {key => $reagion},
 			}
 		);
-		last;
-
 	} 
 
 	#	Set to graph list
@@ -700,8 +698,8 @@ if($golist{"tkow-ern"}) {
 	my $TKOW_GRAPH = $deftkow::TKOW_GRAPH;
 
 	csv2graph::new($TKOW_DEF); 						# Load Apple Mobility Trends
-	my $tkow_cdp = csv2graph::load_csv($TKOW_DEF);
-	my $tokow_cdp = csv2graph::comvert2rlavr($TKOW_DEF);					# Calc ERN
+	csv2graph::load_csv($TKOW_DEF);
+	my $tkow_cdp = csv2graph::comvert2rlavr($TKOW_DEF);					# Calc ERN
 
 	#
 	#	CCSE
@@ -711,7 +709,7 @@ if($golist{"tkow-ern"}) {
 
 	csv2graph::new($defccse::CCSE_DEF); 							# Load Johns Hopkings University CCSE
 	csv2graph::load_csv($defccse::CCSE_DEF);
-	#csv2graph::dump_cdp($CCSE_DEF, {ok => 1, lines => 1, items => 10, search_key => "Canada"}); # if($DEBUG);
+	csv2graph::dump_cdp($CCSE_DEF, {ok => 1, lines => 1, items => 10, search_key => "Canada"}); # if($DEBUG);
 	csv2graph::calc_items($CCSE_DEF, "sum", 
 				{"Province/State" => "", "Country/Region" => "Canada"},		# All Province/State with Canada, ["*","Canada",]
 				{"Province/State" => "null", "Country/Region" => "="}		# total gos ["","Canada"] null = "", = keep
@@ -725,12 +723,16 @@ if($golist{"tkow-ern"}) {
 	#
 	#	Marge
 	#
+	csv2graph::dump_cdp($ccse_country, {ok => 1, lines => 5, items => 10}); # if($DEBUG);
+	csv2graph::dump_cdp($tkow_cdp, {ok => 1, lines => 5, items => 10}); # if($DEBUG);
 	my $tkow_ccse_ern = csv2graph::marge_csv($ccse_country, $tkow_cdp);	# 
 	$tkow_ccse_ern->{id} = "tkow-ccse-ern";
 	$tkow_ccse_ern->{src_info} = "(ern)Tokyo Weather Trends and Johns Hokings Univ.";
 	$tkow_ccse_ern->{main_url} = "please reffer amt and ccse";
 	$tkow_ccse_ern->{csv_file} = "please reffer amt and ccse";
 	$tkow_ccse_ern->{src_url} =  "please reffer amt and ccse";	
+
+	csv2graph::dump_cdp($tkow_ccse_ern, {ok => 1, lines => 5, items => 10}); # if($DEBUG);
 
 	my $MARGE_GRAPH_PARAMS = {
 		html_title => "MARGE Tokyo Weather Trends and ERN",
@@ -739,8 +741,8 @@ if($golist{"tkow-ern"}) {
 		html_file => "$HTML_PATH/tko_ern.html",
 
 		y2label => 'ERN', y2min => 0, y2max => 3, y2_source => 0,		# soruce csv definition for y2
-		ylabel => '%', ymin => 0,
-		additional_plot => $additional_plot,
+		ylabel => '%/c', ymin => "", ymax => "",
+		#additional_plot => $additional_plot,
 	};
 
 	#
@@ -755,17 +757,19 @@ if($golist{"tkow-ern"}) {
 		foreach my $r (split(/,/, $reagion)){
 			push(@rr, "$r", "~$r#");			# ~ regex
 		}
-		$reagion = join(",", @rr);
+		my $regkey = join(",", @rr);
 		
-		push (@$g_params, {
+		foreach my $weather ("平均気温","平均湿度"){
+			push (@$g_params, {
 				cdp => $tkow_ccse_ern, 
 				gdp => $MARGE_GRAPH_PARAMS, 
-				dsc => "Mobiliy and ERN $rn",
+				dsc => "$reagion $weather and ERN $rn",
 				lank => [1,10],
 				static => "",
-				target_col => {key => $reagion},
-			}
-		);
+				target_col => {key => "$regkey,$weather"},
+				}
+			);
+		}
 	} 
 
 	#	Set to graph list
