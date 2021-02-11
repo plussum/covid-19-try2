@@ -53,6 +53,17 @@ sub	load_csv
 		&cumrative2daily($cdp);
 	}
 
+	#dp::dp "----- $cdp->{src_csv}\n";
+	if(! defined $cdp->{src_csv}){
+		$cdp->{src_csv} = {};
+	}
+	my $src_csv = $cdp->{src_csv}; 
+	my $csvp = $cdp->{csv_data};
+	foreach my $key (keys %{$cdp->{csv_data}}){
+		#dp::dp "$key => $csvp->{$key}  " . ($src_csv->{$key} // "undef") . "\n";
+		$src_csv->{$key} = 0;
+	}
+	#dp::dp "-----\n";
 	#@{$cdp->{item_name_list}} = @w[0..($data_start-1)];	# set item_name 
 
 	#

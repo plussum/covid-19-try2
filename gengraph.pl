@@ -98,10 +98,11 @@ my $MARGE_CSV_DEF = {
 };
 
 
-my $additional_plot = join(",", 
-	"100 axis x1y1 with lines title '100%' lw 1 lc 'blue' dt (3,7)",
-	"1 axis x1y2 with lines title 'ern=1' lw 1 lc 'red' dt (3,7)",
+my %additional_plot_item = (
+	amt => "100 axis x1y1 with lines title '100%' lw 1 lc 'blue' dt (3,7)",
+	ern => "1 axis x1y2 with lines title 'ern=1' lw 1 lc 'red' dt (3,7)",
 );
+my $additional_plot = join(",", values %additional_plot_item);
 
 
 my @TARGET_REAGION = (
@@ -153,7 +154,7 @@ else {
 		my $id = $cdp->{id};
 		push(@ids, $id);
 	}
-	dp::dp "usage:$0 " . join(" | ", "-all", @ids) ."\n";
+	dp::dp "usage:$0 " . join(" | ", "-all", @ids, keys %$cmd_list) ."\n";
 	exit;
 }
 #if($golist{"amt-ccse"}){
@@ -709,7 +710,7 @@ if($golist{"tkow-ern"}) {
 
 	csv2graph::new($defccse::CCSE_DEF); 							# Load Johns Hopkings University CCSE
 	csv2graph::load_csv($defccse::CCSE_DEF);
-	csv2graph::dump_cdp($CCSE_DEF, {ok => 1, lines => 1, items => 10, search_key => "Canada"}); # if($DEBUG);
+	#csv2graph::dump_cdp($CCSE_DEF, {ok => 1, lines => 1, items => 10, search_key => "Canada"}); # if($DEBUG);
 	csv2graph::calc_items($CCSE_DEF, "sum", 
 				{"Province/State" => "", "Country/Region" => "Canada"},		# All Province/State with Canada, ["*","Canada",]
 				{"Province/State" => "null", "Country/Region" => "="}		# total gos ["","Canada"] null = "", = keep
@@ -717,37 +718,67 @@ if($golist{"tkow-ern"}) {
 	$ccse_country = csv2graph::reduce_cdp_target($CCSE_DEF, {"Province/State" => "NULL"});	# Select Country
 	#csv2graph::dump_cdp($ccse_country, {ok => 1, lines => 5, items => 10, search_key => "Canada"}); # if($DEBUG);
 	
-	#	ERN
-	$ccse_country = csv2graph::comvert2ern($ccse_country);					# Calc ERN
+	#
+	#	Marge	ERN
+	#
+	my $ccse_cdp_ern = csv2graph::comvert2ern(csv2graph::dup_cdp($ccse_country));					# Calc ERN
+	#csv2graph::dump_cdp($ccse_cdp_ern, {ok => 1, lines => 5, items => 10, message => "ccse_cdp_ern"}); # if($DEBUG);
+	my $marge_cdp_ern = csv2graph::marge_csv($ccse_cdp_ern, $tkow_cdp);	# 
+	$marge_cdp_ern->{id} = "tkow-ccse-ern";
+	$marge_cdp_ern->{src_info} = "(ern)Tokyo Weather Trends and Johns Hokings Univ.";
+	$marge_cdp_ern->{main_url} = "please reffer amt and ccse";
+	$marge_cdp_ern->{csv_file} = "please reffer amt and ccse";
+	$marge_cdp_ern->{src_url} =  "please reffer amt and ccse";	
+	#csv2graph::dump_cdp($marge_cdp_ern, {ok => 1, lines => 5, items => 10, message => "marge_cdp_ern"}); # if($DEBUG);
 
 	#
-	#	Marge
+	#	Marge rlavr
 	#
-	csv2graph::dump_cdp($ccse_country, {ok => 1, lines => 5, items => 10}); # if($DEBUG);
-	csv2graph::dump_cdp($tkow_cdp, {ok => 1, lines => 5, items => 10}); # if($DEBUG);
-	my $tkow_ccse_ern = csv2graph::marge_csv($ccse_country, $tkow_cdp);	# 
-	$tkow_ccse_ern->{id} = "tkow-ccse-ern";
-	$tkow_ccse_ern->{src_info} = "(ern)Tokyo Weather Trends and Johns Hokings Univ.";
-	$tkow_ccse_ern->{main_url} = "please reffer amt and ccse";
-	$tkow_ccse_ern->{csv_file} = "please reffer amt and ccse";
-	$tkow_ccse_ern->{src_url} =  "please reffer amt and ccse";	
+	my $ccse_cdp_rlavr = csv2graph::comvert2rlavr(csv2graph::dup_cdp($ccse_country));					# Calc ERN
+	my $marge_cdp_rlavr = csv2graph::marge_csv($ccse_cdp_rlavr, $tkow_cdp);	# 
+	$marge_cdp_rlavr->{id} = "tkow-ccse-rlavr";
+	$marge_cdp_rlavr->{src_info} = "(rlavr)Tokyo Weather Trends and Johns Hokings Univ.";
+	$marge_cdp_rlavr->{main_url} = "please reffer amt and ccse";
+	$marge_cdp_rlavr->{csv_file} = "please reffer amt and ccse";
+	$marge_cdp_rlavr->{src_url} =  "please reffer amt and ccse";	
+	#csv2graph::dump_cdp($marge_cdp_rlavr, {ok => 1, lines => 5, items => 10, message => "marge_cdp_rlavr"}); # if($DEBUG);
 
-	csv2graph::dump_cdp($tkow_ccse_ern, {ok => 1, lines => 5, items => 10}); # if($DEBUG);
+	#
+	#	Apple Mobility Trends
+	#
+	my $AMT_DEF = $defamt::AMT_DEF;
+	my $AMT_GRAPH = $defamt::AMT_GRAPH;
 
+	csv2graph::new($defamt::AMT_DEF); 										# Init AMD_DEF
+	csv2graph::load_csv($AMT_DEF);									# Load to memory
+	#csv2graph::dump_cdp($AMT_DEF, {ok => 1, lines => 5});			# Dump for debug
+
+	my $amt_country = csv2graph::reduce_cdp_target($AMT_DEF, {geo_type => $REG});
+	csv2graph::calc_items($amt_country, "avr", 
+				{"transportation_type" => "", "region" => "", "country" => ""},	# All Province/State with Canada, ["*","Canada",]
+				{"transportation_type" => "avr", "region" => "="},# total gos ["","Canada"] null = "", = keep
+	);
+	calc::comvert2rlavr($amt_country);							# rlavr for marge with CCSE
+
+	my $ccse_amt_ern = csv2graph::marge_csv($ccse_cdp_ern, $amt_country);	# Marge CCSE(ERN) and Apple Mobility Trends
+	$ccse_amt_ern->{id} = "amt-ccse-ern";
+	$ccse_amt_ern->{src_info} = "(ern)Apple Mobility Trends and Johns Hokings Univ.";
+	$ccse_amt_ern->{main_url} = "please reffer amt and ccse";
+	$ccse_amt_ern->{csv_file} = "please reffer amt and ccse";
+	$ccse_amt_ern->{src_url} =  "please reffer amt and ccse";	
+
+	#
+	#	Generate Graph Pamaters
+	#
 	my $MARGE_GRAPH_PARAMS = {
 		html_title => "MARGE Tokyo Weather Trends and ERN",
 		png_path   => $PNG_PATH,
 		png_rel_path => $PNG_REL_PATH,
 		html_file => "$HTML_PATH/tko_ern.html",
 
-		y2label => 'ERN', y2min => 0, y2max => 3, y2_source => 0,		# soruce csv definition for y2
-		ylabel => '%/c', ymin => "", ymax => "",
 		#additional_plot => $additional_plot,
 	};
 
-	#
-	#	Generate Graph Pamaters
-	#
 	my $g_params = [];
 	my @target = "Japan";
 	foreach my $reagion (@target){			# Generate Graph Parameters
@@ -758,18 +789,49 @@ if($golist{"tkow-ern"}) {
 			push(@rr, "$r", "~$r#");			# ~ regex
 		}
 		my $regkey = join(",", @rr);
+
+		push (@$g_params, {
+			cdp => $ccse_amt_ern, 
+			gdp => $MARGE_GRAPH_PARAMS, 
+			dsc => "$reagion and ccse ERN $rn",
+			lank => [1,10],
+			static => "",
+			target_col => {key => "$regkey"},
+			y2label => 'ERN', y2min => 0, y2max => 3, y2_source => 0,		# soruce csv definition for y2
+			ylabel => "Apple mobility Trends", ymin => 0, ymax => "",
+			additional_plot => $additional_plot,
+			}
+		);
 		
 		foreach my $weather ("平均気温","平均湿度"){
 			push (@$g_params, {
-				cdp => $tkow_ccse_ern, 
+				cdp => $marge_cdp_ern, 
 				gdp => $MARGE_GRAPH_PARAMS, 
-				dsc => "$reagion $weather and ERN $rn",
+				dsc => "$reagion $weather and ccse new cases $rn",
 				lank => [1,10],
 				static => "",
 				target_col => {key => "$regkey,$weather"},
+				y2label => 'ERN', y2min => 0, y2max => 3, y2_source => 0,		# soruce csv definition for y2
+				ylabel => $weather, ymin => "", ymax => "",
+				additional_plot => $additional_plot_item{ern},
 				}
 			);
 		}
+		foreach my $weather ("平均気温","平均湿度"){
+			push (@$g_params, {
+				cdp => $marge_cdp_rlavr, 
+				gdp => $MARGE_GRAPH_PARAMS, 
+				dsc => "$reagion $weather and newcases rlavr $rn",
+				lank => [1,10],
+				static => "",
+				target_col => {key => "$regkey,$weather"},
+				y2label => 'new cases(rlavr)', y2min => "", y2max => "", y2_source => 0,		# soruce csv definition for y2
+				ylabel => $weather, ymin => "", ymax => "",
+				}
+			);
+		}
+
+
 	} 
 
 	#	Set to graph list
@@ -781,7 +843,7 @@ if($golist{"tkow-ern"}) {
 #	Generate HTML FILE
 #
 csv2graph::gen_html_by_gp_list($gp_list, {						# Generate HTML file with graphs
-		html_tilte => "Apple Mobile Trends",
+		html_tilte => "COVID-19 related data visualizer ",
 		src_url => "src_url",
 		html_file => "$HTML_PATH/csv2graph_index.html",
 		png_path => $PNG_PATH // "png_path",

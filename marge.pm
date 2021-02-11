@@ -64,7 +64,7 @@ sub	marge_csv_a
 			csvlib::disp_caller(1..3);
 		}
 		$date_start = $dt if($dt gt $date_start );
-		dp::dp "date_start[$dt] $date_start [$src_cdp->{id}\n";
+		#dp::dp "date_start[$dt] $date_start [$src_cdp->{id}\n";
 	}
 	my $date_end = "9999-99-99";
 	foreach my $src_cdp (@src_csv_list){

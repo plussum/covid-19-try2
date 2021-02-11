@@ -85,6 +85,7 @@ sub	calc_items
 	my $csv_data = $cdp->{csv_data};
 	my $key_items = $cdp->{key_items};
 	my $key_dlm = $cdp->{key_dlm};
+	my $src_csvp = $cdp->{src_csv};
 
 	#my $target_colp = $instruction->{target_col};
 	#my $result_colp = $instruction->{result_col};
@@ -125,7 +126,8 @@ sub	calc_items
 		my $src_kp = $key_items->{$key};			# ["Qbek", "Canada"]
 		my $src_dp = $csv_data->{$key};	
 		my @dst_keys = @$src_kp;
-
+		my $src_csv = $src_csvp->{$key} // 0;
+	
 		#
 		# key  			 1,2 (region, transportation_type)
 		#				         v      v
@@ -179,6 +181,8 @@ sub	calc_items
 			for(my $i = 0; $i < scalar(@$src_dp); $i++){	# initial csv_data
 				$dst_dp->[$i] = 0;					
 			}
+			$src_csvp->{$record_key} = $src_csv;
+			#dp::dp "$record_key : $src_csv\n";
 		}
 		my $dst_dp = $csv_data->{$record_key};				# total -> dst
 		for(my $i = 0; $i < scalar(@$src_dp); $i++){
@@ -186,7 +190,7 @@ sub	calc_items
 			$v = 0 if($v eq "");
 			$dst_dp->[$i] += $v;
 		}
-		dp::dp "####[$record_key] " . join(",", @$dst_dp[0..5]) . "\n" if($verbose);
+		#dp::dp "####[$record_key] " . "\n" ; #. join(",", @$dst_dp[0..5]) . "\n" ;#if($verbose);
 	}
 	
 	#
@@ -259,21 +263,38 @@ sub	comvert2ern
 {
 	my($cdp, $p) = @_;
 
+	my $key_dlm = $cdp->{key_dlm} // "#";
 	my $gp  = {
 		lp => $p->{lp} // $config::RT_LP,
 		ip => $p->{ip} // $config::RT_IP,
 	};
 	my $gdp = {};
-	my %ern_csv = ();
-	my $ern_csvp = \%ern_csv;
+	my $ern_csvp = {};
 
-	reduce::dup_csv($cdp, $ern_csvp, "");
+	%$ern_csvp  = %{$cdp->{csv_data}};
+	#reduce::dup_csv($cdp, $ern_csvp, "");
 	#&dump_csv_data($ern_csvp, {ok => 1, lines => 5, message => "comver2ern:dup"}) if(1);
 
 	&ern($cdp, $ern_csvp, $gdp, $gp);
-	#&dump_csv_data($ern_csvp, {ok => 1, lines => 5, message => "comver2ern:ern"}) if(1);
+
 	$cdp->{csv_data} = "";
 	$cdp->{csv_data} = $ern_csvp;
+
+	if(0){			# add "ern" to keys : Japan -> Japan-ern
+		my $csvp = $cdp->{csv_data};
+		my $keyp = $cdp->{key_items};
+		my @key_list = (keys %$ern_csvp);
+		foreach my $key (@key_list){
+			my $dkey = join($key_dlm,  $key, "ern");
+			$csvp->{$dkey} = $csvp->{$key};
+			delete($csvp->{$key});
+
+			$keyp->{$dkey} = $keyp->{$key};
+			delete($keyp->{$key});
+			#dp::dp "$k=>$ern_csvp->{$k}\n";
+		}
+	}
+	#dump::dump_csv_data($ern_csvp, {ok => 1, lines => 5, message => "comver2ern:ern"}) if(1);
 
 	return $cdp;
 }
@@ -296,7 +317,8 @@ sub	ern
 	my $date_number = $cdp->{dates};
 	my $rate_term = $date_number - $ip - $lp;
 	my $date_term = $rate_term - 1;
-	foreach my $key (keys %$work_csvp){
+	my @keylist = (keys %$work_csvp);
+	foreach my $key (@keylist){
 		my $dp = $work_csvp->{$key};
 		my @ern = ();
 		my $dt = 0;
@@ -318,8 +340,14 @@ sub	ern
 		for(; $dt <= $date_number; $dt++){
 			$ern[$dt] = "NaN";
 		}
+
+		#delete($work_csvp->{$key});
+		#my $dkey = join($key_dlm,  $key, "ern");
+		#$work_csvp->{$dkey} = [];
+		#@{$work_csvp->{$dkey}} = @ern;
 		@$dp = @ern;
-		#dp::dp join(",", @$dp[0..5]). "\n";
+		#$dp = $work_csvp->{$dkey};
+		#dp::dp "$dkey: " . join(",", @$dp[0..5]). "\n";
 	}
 	return $cdp;
 }	

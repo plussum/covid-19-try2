@@ -123,11 +123,12 @@ our $cdp_hashs = [
 	"order",					# sorted order 
 	"item_name_hash",			# {"Province" => 0,"Region" => 1,"Lat" => 2,"Long" => 3]
 	"defined_item_name_hash",	# Set from @defined_item_name_list
+	"src_csv",
 ];
 
 our $cdp_hash_with_keys = [
 	"csv_data", 				# csv_data->{Japan#Tokyo}: [10123, 10124,,,,]
-	"key_items"					# key_items->{Japan#Tokyo}: ["Tokyo","Japan",33,39]
+	"key_items",				# key_items->{Japan#Tokyo}: ["Tokyo","Japan",33,39],
 ];
 
 our $cdp_values = [
@@ -460,7 +461,7 @@ sub	csv2graph
 	#
 	my $date_list = $cdp->{date_list};
 	my $dates = $cdp->{dates};
-	dp::dp "util: $cdp->{id} \n";
+	#dp::dp "util: $cdp->{id} \n";
 	my $start_date = util::date_calc(($gp->{start_date} // ""), $date_list->[0], $cdp->{dates}, $date_list);
 	my $end_date   = util::date_calc(($gp->{end_date} // ""),   $date_list->[$dates], $cdp->{dates}, $date_list);
 	#dp::dp "START_DATE: $start_date [" . ($gp->{start_date} // "NULL"). "] END_DATE: $end_date [" . ($gp->{end_date}//"NULL") . "]\n";
@@ -615,6 +616,7 @@ sub	sort_csv
 
 	my %SORT_VAL = ();
 	my $src_csv = $cdp->{src_csv} // "";
+	my $src_csv_count = scalar(keys %$src_csv);
 	#dp::dp "sort_csv: " . scalar(@$target_keysp) . "\n";
 	foreach my $key (@$target_keysp){
 		if(! $key){
@@ -631,7 +633,9 @@ sub	sort_csv
 		}
 		$SORT_VAL{$key} = $total;
 		#dp::dp "$key: [$total]\n";
-		if($src_csv && (! defined $src_csv->{$key})){
+		#if($src_csv && (! defined $src_csv->{$key})){
+		if(! defined $src_csv->{$key}){
+			$src_csv->{$key} = 0;
 			dp::dp "WARING at sort_csv: No src_csv definition for [$key]\n";
 		}
 	}
@@ -643,14 +647,15 @@ sub	sort_csv
 		#dp::dp "------------" . scalar(@$sorted_keysp) . "/" . keys(%SORT_VAL) . "\n";
 	}
 	else {
-		dp::dp "--- src_csv -- $gp->{dsc} " . ref($src_csv) . "\n";
+		#dp::dp "--- src_csv -- $gp->{dsc} " . ref($src_csv) . "\n";
 		foreach my $k (keys %SORT_VAL){
 			next if(defined $src_csv->{$k});
+
 			dp::dp "$k is not defined to src_csv\n";
 			exit;
 		}
 		@$sorted_keysp = (sort {$src_csv->{$a} <=> $src_csv->{$b} or $SORT_VAL{$b} <=> $SORT_VAL{$a}} keys %SORT_VAL);
-		dp::dp "------------" . scalar(@$sorted_keysp) . "/" . keys(%SORT_VAL) . "\n";
+		#dp::dp "------------" . scalar(@$sorted_keysp) . "/" . keys(%SORT_VAL) . "\n";
 	}
 }
 
@@ -765,7 +770,7 @@ _EOD_
 	#dp::dp "### $csvf\n";
 
 	my $src_csv = $cdp->{src_csv} // "";
-	my $y2_source = $gdp->{y2_source} // "";
+	my $y2_source = $gp->{y2_source} // ($gdp->{y2_source} // "");
 	#dp::dp "soruce_csv[$src_csv] $y2_source\n";
 	$src_csv = "" if($y2_source eq "");
 
@@ -775,7 +780,7 @@ _EOD_
 		my $key = $label[$i];
 		$key =~ s/^[0-9]+://;
 		$key =~ s/[']/_/g;	# avoid error at plot
-		dp::dp "### $i: $key $src_csv, $y2_source\n";
+		#dp::dp "### $i: $key $src_csv, $y2_source\n";
 		$pn++;
 
 		my $axis = "";
@@ -784,7 +789,7 @@ _EOD_
 			#dp::dp "csv_source: $key [" . $src_csv->{$key} . "]\n";
 			#dp::dp "csv_source: $key [" . $src_csv . "]\n";
 			$axis =	"axis x1y1";
-			dp::dp "$src_csv->{$key},$y2_source:\n";
+			#dp::dp "$src_csv->{$key},$y2_source:\n";
 			if($src_csv->{$key} == $y2_source) {
 				$axis = "axis x1y2" ;
 				$dot = "dt (7,3)";

@@ -1,0 +1,16 @@
+#!/bin/sh
+
+cd /mnt/f/_share/cov/plussum.github.io
+scp *.html plus-sum@lab:www/lab/cov19/
+scp -r CSV plus-sum@lab:www/lab/cov19/
+scp -r PNG2 plus-sum@lab:www/lab/cov19/
+scp -r HTML2 plus-sum@lab:www/lab/cov19
+
+#echo "HTML"
+#rsync -av --delete HTML/ plus-sum@lab:www/lab/cov19/HTML
+#echo "CSV"
+#rsync -av --delete CSV/ plus-sum@lab:www/lab/cov19/CSV
+#echo "PNG"
+#rsync -av --delete --no-compress PNG/ plus-sum@lab:www/lab/cov19/PNG
+echo "###### SYNC DONE"
+

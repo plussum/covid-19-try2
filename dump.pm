@@ -38,23 +38,23 @@ sub	dump_cdp
 		if($p){
 			my $arsize = scalar(@$p) - 1;
 			$arsize = $items if($arsize > $items);
-		 	print "$k\t" . csvlib::join_array(",", @{$p}[0..$arsize]). "\n";
+		 	print "$k\t[" . csvlib::join_array(",", @{$p}[0..$arsize]). "]\n";
 		}
 		else {
 			print "$k\tundef\n";
 		}
 	}
 	print "##### HASH ######\n";
-	foreach my $k (@$csv2graph::dp_hashs){
+	foreach my $k (@$csv2graph::cdp_hashs){
 		my $p = $cdp->{$k} // "";
 		if($p){
 			my @ar = %$p;
 			my $arsize = ($#ar > ($items * 2)) ? ($items * 2) : $#ar;
 			my @w = ();
 			for(my $i = 0; $i <= $arsize; $i += 2){
-				push(@w, $ar[$i] . "=>" , $ar[$i+1]);
+				push(@w, $ar[$i] . "=>" . $ar[$i+1]);
 			}
-		 	print "$k\t" . join(",", @w);
+		 	print "$k\t{" . join(",", @w) . "}\n";
 		}
 		else {
 			print "$k\tundef\n";

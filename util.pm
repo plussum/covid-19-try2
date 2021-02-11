@@ -82,12 +82,12 @@ sub	date_calc
 	$date = $date // "";
 	$date = $default if($date eq "");
 
-	dp::dp "[[$date,$default,$max,$list]]\n";
+	#dp::dp "[[$date,$default,$max,$list]]\n";
 	if(!$date ){
 
 	}
 	elsif(!($date =~ /[0-9][\-\/][0-9]/)){	# 
-		dp::dp "[[$date]]\n";
+		#dp::dp "[[$date]]\n";
 		if($date < 0){
 			$date = $max + $date;
 		}
