@@ -388,7 +388,7 @@ sub	gen_html
 
 	#foreach my $gp (@{$gdp->{graph_params}}){
 	foreach my $gp (@$gp_list){
-		last if($gp->{dsc} eq $gdp->{END_OF_DATA});
+		last if($gp->{dsc} eq ($gdp->{END_OF_DATA}//$config::END_OF_DATA));
 		&csv2graph($cdp, $gdp, $gp);
 	}
 	my $p = {
@@ -624,10 +624,11 @@ sub	sort_csv
 		my $total = 0;
 		for(my $dt = $dt_start; $dt <= $dt_end; $dt++){
 			my $v = $csv->[$dt] // 0;
-			$v = 0 if(! $v);
+			$v = 0 if((!$v) || $v eq "NaN");
 			$total += $v ;
 		}
 		$SORT_VAL{$key} = $total;
+		#dp::dp "$key: [$total]\n";
 		if($src_csv && (! defined $src_csv->{$key})){
 			dp::dp "WARING at sort_csv: No src_csv definition for [$key]\n";
 		}
@@ -636,16 +637,18 @@ sub	sort_csv
 		#dp::dp "--- no src_csv -- $gp->{dsc}\n";
 		#csvlib::disp_caller(1..5);
 		@$sorted_keysp = (sort {$SORT_VAL{$b} <=> $SORT_VAL{$a}} keys %SORT_VAL);
-		#dp::dp "------------\n";
+		#dp::dp "------------" . scalar(@$sorted_keysp) . "\n";
+		#dp::dp "------------" . scalar(@$sorted_keysp) . "/" . keys(%SORT_VAL) . "\n";
 	}
 	else {
-		#dp::dp "--- src_csv -- $gp->{dsc} " . ref($src_csv) . "\n";
-		#foreach my $k (keys %SORT_VAL){
-		#	next if(defined $src_csv->{$k});
-		#	dp::dp "$k is not defined to src_csv\n";
-		#}
-		#dp::dp "------------\n";
+		dp::dp "--- src_csv -- $gp->{dsc} " . ref($src_csv) . "\n";
+		foreach my $k (keys %SORT_VAL){
+			next if(defined $src_csv->{$k});
+			dp::dp "$k is not defined to src_csv\n";
+			exit;
+		}
 		@$sorted_keysp = (sort {$src_csv->{$a} <=> $src_csv->{$b} or $SORT_VAL{$b} <=> $SORT_VAL{$a}} keys %SORT_VAL);
+		dp::dp "------------" . scalar(@$sorted_keysp) . "/" . keys(%SORT_VAL) . "\n";
 	}
 }
 
@@ -661,7 +664,7 @@ sub	graph
 
 	my $src_info = $cdp->{src_info} // "";
 	if($src_info){
-		$src_info = "source:$src_info";
+		$src_info = "[$src_info]";
 	}
 	my $title = join(" ", $gp->{dsc}, $gp->{static}, "($end_date)") . "    $src_info";
 	#dp::dp "#### " . join(",", "[" . $p->{lank}[0] . "]", @lank) . "\n";
@@ -755,7 +758,8 @@ _EOD_
 	close(CSV);
 	$l =~ s/[\r\n]+$//;
 	my @label = split(/$dlm/, $l);
-	#dp::dp "### $csvf: $l\n";
+	dp::dp "CSV: $csvf\n";
+	dp::dp "PLOT $plotf\n";
 	#dp::dp "### $csvf\n";
 
 	my $src_csv = $cdp->{src_csv} // "";
@@ -769,7 +773,7 @@ _EOD_
 		my $key = $label[$i];
 		$key =~ s/^[0-9]+://;
 		$key =~ s/[']/_/g;	# avoid error at plot
-		#dp::dp "### $i: $key\n";
+		dp::dp "### $i: $key $src_csv, $y2_source\n";
 		$pn++;
 
 		my $axis = "";
@@ -778,7 +782,7 @@ _EOD_
 			#dp::dp "csv_source: $key [" . $src_csv->{$key} . "]\n";
 			#dp::dp "csv_source: $key [" . $src_csv . "]\n";
 			$axis =	"axis x1y1";
-			#dp::dp "$src_csv->{$key},$y2_source:\n";
+			dp::dp "$src_csv->{$key},$y2_source:\n";
 			if($src_csv->{$key} == $y2_source) {
 				$axis = "axis x1y2" ;
 				$dot = "dt (7,3)";

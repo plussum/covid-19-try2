@@ -61,7 +61,7 @@ sub	load_csv
 	my $dates = $cdp->{dates};
 	my $date_list = $cdp->{date_list};
 	dp::dp "loaded($cdp->{id}) $dates records $date_list->[0] - $date_list->[$dates] ($rc)\n";
-	&dump_cdp($cdp, {ok => 1, lines => 5}) if($rc || $VERBOSE > 1);
+	dump::dump_cdp($cdp, {ok => 1, lines => 5}) if($rc || $VERBOSE > 1);
 	
 	return 0;
 }
@@ -175,6 +175,8 @@ sub	load_csv_vertical
 	$line =~ s/[\r\n]+$//;
 	$line = decode('utf-8', $line);
 
+	dp::dp "$line\n";
+
 	my @key_list = split(/$src_dlm/, $line);
 	if($#key_list <= 1){
 		dp::WARNING "may be wrong delimitter [$src_dlm]\n";
@@ -198,7 +200,7 @@ sub	load_csv_vertical
 		my $line = decode('utf-8', $_);
 		my ($date, @items) = split(/$src_dlm/, $line);
 	
-		$date_list->[$ln] = &timefmt($timefmt, $date);
+		$date_list->[$ln] = util::timefmt($timefmt, $date);
 		#dp::dp "date:$ln $date " . $date_list->[$ln] . " ($timefmt) $cdp->{title}\n";
 	
 		for(my $i = 0; $i <= $#items; $i++){
@@ -212,7 +214,7 @@ sub	load_csv_vertical
 	$cdp->{dates} = $ln - 1;
 	$FIRST_DATE = $date_list->[0];
 	$LAST_DATE = $date_list->[$ln-1];
-	return 0;
+	return 1;
 }
 
 #

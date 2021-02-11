@@ -314,6 +314,7 @@ sub	ern
 				$ern[$dt] =  0;
 			}
 		}
+		$cdp->{NaN_start} = $dt;
 		for(; $dt <= $date_number; $dt++){
 			$ern[$dt] = "NaN";
 		}

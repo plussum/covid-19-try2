@@ -91,10 +91,10 @@ sub dump_key_items
 	my $ln = 0;
 	foreach my $k (keys %$key_items){
 		if($search_key &&  $k =~ /$search_key/){
-			print "key_items[$ln] $k: " . join(",", @{$key_items->{$k}}, " [$search_key]") . "\n";
+			print "[$ln] $k: " . join(",", @{$key_items->{$k}}, " [$search_key]") . "\n";
 		}
 		elsif($lines eq "" || $ln <= $lines){
-			print "key_items[$ln] $k: " . join(",", @{$key_items->{$k}}) . "\n";
+			print "[$ln] $k: " . join(",", @{$key_items->{$k}}) . "\n";
 		}
 		$ln++;
 	}

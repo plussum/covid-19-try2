@@ -207,7 +207,8 @@ sub	select_keys
 	if(scalar(@$target_keys) <= 0){
 		my $dkey = "item_name_list"; # "load_order";
 		dp::WARNING (
-			"No data Target[".ref($target_colp)."]:(".csvlib::join_array(",", $target_colp).") Result:(".join(",", @$target_keys).")\n",
+			#"No data Target[".ref($target_colp)."]:(".csvlib::join_array(",", $target_colp).") Result:(".join(",", @$target_keys).")\n",
+			"No data Target[".$target_colp."]:(".csvlib::join_array(",", $target_colp).") Result:(".join(",", @$target_keys).")\n",
 			"Poosibly miss use of [ ], {} at target_colp " . ref($target_colp) . "\n",
 			"$dkey:(" . join(",", @{$cdp->{$dkey}}) . ")\n",
 		);
