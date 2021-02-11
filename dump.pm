@@ -37,8 +37,8 @@ sub	dump_cdp
 		my $p = $cdp->{$k} // "";
 		if($p){
 			my $arsize = scalar(@$p) - 1;
-			$arsize = $items if($arsize > $items);
-		 	print "$k\t[" . csvlib::join_array(",", @{$p}[0..$arsize]). "]\n";
+			my $as = ($arsize > $items) ? $items :$arsize;
+		 	print "$k($arsize)\t[" . csvlib::join_array(",", @{$p}[0..$as]). "]\n";
 		}
 		else {
 			print "$k\tundef\n";
@@ -48,13 +48,14 @@ sub	dump_cdp
 	foreach my $k (@$csv2graph::cdp_hashs){
 		my $p = $cdp->{$k} // "";
 		if($p){
-			my @ar = %$p;
-			my $arsize = ($#ar > ($items * 2)) ? ($items * 2) : $#ar;
-			my @w = ();
-			for(my $i = 0; $i <= $arsize; $i += 2){
-				push(@w, $ar[$i] . "=>" . $ar[$i+1]);
-			}
-		 	print "$k\t{" . join(",", @w) . "}\n";
+			print "$k\t" . &print_hash($p, $items) . "\n";
+			#my @ar = %$p;
+			#my $arsize = ($#ar > ($items * 2)) ? ($items * 2) : $#ar;
+			#my @w = ();
+			#for(my $i = 0; $i <= $arsize; $i += 2){
+			#	push(@w, $ar[$i] . "=>" . $ar[$i+1]);
+			#}
+		 	#print "$k\t{" . join(",", @w) . "}\n";
 		}
 		else {
 			print "$k\tundef\n";
@@ -74,6 +75,24 @@ sub	dump_cdp
 	print "#" x 40 . "\n\n";
 }
 
+sub	print_hash
+{
+	my($hash, $size) = @_;
+
+	$size = $size // 5;
+	my $items = scalar(keys %$hash);
+	my $arsize = ($size > $items) ? $items : $size;
+	my @w = ();
+	my $i = 0;
+	foreach my $k (keys %$hash){
+		last if($i++ >= $size);
+
+		push(@w, "$k=>" . $hash->{$k});
+	}
+	return "{" . join(",", @w) . "}";
+}
+	
+
 sub dump_key_items
 {
 	my($key_items, $p, $cdp) = @_;
@@ -81,20 +100,38 @@ sub dump_key_items
 	my $lines = $p->{lines} // 5;
 	my $items = $p->{items} // 5;
 	my $mess = $p->{message} // "";
-
-
-	my $src_csv = $cdp->{src_csv} // "";
 	my $search_key = $p->{search_key} // "";
+	my $src_csv = $cdp->{src_csv} // "";
+
 	$lines = 0 if($search_key && ! defined $p->{lines});
 
 	print "------ [$mess] Dump keyitems data ($key_items) search_key[$search_key] --------\n";
 	my $ln = 0;
+
+	print "\t". join(",", @{$cdp->{item_name_list}}) . "\n";	
 	foreach my $k (keys %$key_items){
+		my $scv = " ";
+		if($src_csv) {
+			$scv = $src_csv->{$k} // "-" ;
+		}
+		my @w = @{$key_items->{$k}};
+		if($#w < 0){
+			dp::WARNING "$k: " . $#w . "\n";
+		}
+		for(my $i = 0; $i < $#w; $i++){ 
+			if(! defined $w[$i]){
+				dp::WARNING "$k:$i  " . $#w . "\n";
+			}
+		}
+				
 		if($search_key &&  $k =~ /$search_key/){
-			print "[$ln] $k: " . join(",", @{$key_items->{$k}}, " [$search_key]") . "\n";
+			#print "[$ln] $k" ."[$scv]: " . join(",", @{$key_items->{$k}}, " [$search_key]") . "\n";
+			print "[$ln] $k" ."[$scv]: " . join(",", @w, " [$search_key]") . "\n";
 		}
 		elsif($lines eq "" || $ln <= $lines){
-			print "[$ln] $k: " . join(",", @{$key_items->{$k}}) . "\n";
+			print "[$ln] $k" . "[$scv]: $key_items->{$k}:" ;
+			#print join(",", @{$key_items->{$k}}) . "\n";
+			print join(",", @w) . "\n";
 		}
 		$ln++;
 	}

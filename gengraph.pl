@@ -525,22 +525,49 @@ if($golist{"amt-jp-pref"}) {
 	#	Japan Prefecture Data
 	#
 	my $JAPAN_DEF = $defjapan::JAPAN_DEF;
+	$JAPAN_DEF->{keys} = ["prefectureNameE"],		# PrefectureNameJ, and Column name
 	my $JAPAN_GRAPH = $defjapan::JAPAN_GRAPH;
 	csv2graph::new($JAPAN_DEF); 						# Load Apple Mobility Trends
 	csv2graph::load_csv($JAPAN_DEF);
 	my $jp_positive_case = csv2graph::reduce_cdp_target($JAPAN_DEF, {key => "testedPositive"});
 	csv2graph::comvert2ern($jp_positive_case);					# Calc ERN
+	csv2graph::dump_cdp($jp_positive_case, {ok => 1, lines => 5});			# Dump for debug
 
+	my $g_params = [];
+#
+#	Confirm the Japan Data with graph
+#
+#	push (@$g_params, {
+#			cdp => $jp_positive_case, 
+#			gdp => $JAPAN_GRAPH, 
+#			dsc => "Positive cases Japan ",
+#			lank => [1,10],
+#			static => "",
+#			#target_col => {key => $reagion},
+#		},
+#		{
+#			cdp => $jp_positive_case, 
+#			gdp => $JAPAN_GRAPH, 
+#			dsc => "Positive cases Japan 滋賀",
+#			lank => [1,10],
+#			static => "",
+#			target_col => {prefectureNameE => "=Shiga"},
+#		}
+#	);
+#	push(@$gp_list, csv2graph::csv2graph_list_mix(@$g_params));
+	#csv2graph::gen_html($JAPAN_DEF, $JAPAN_GRAPH, $jp_graph);		# Generate Graph/HTHML
+if(1){
 	#
 	#	Marge
 	#
 	my $japan_amt_ern = csv2graph::marge_csv($jp_positive_case, $amt_pref);	# Marge CCSE(ERN) and Apple Mobility Trends
+	#dp::dp Dumper $japan_amt_ern->{item_name_list};
 	$japan_amt_ern->{id} = "amt-Japan-ern";
 	$japan_amt_ern->{src_info} = "(ern)Apple Mobility Trends and Toyo Keizai.";
 	$japan_amt_ern->{main_url} = "please reffer amt and ccse";
 	$japan_amt_ern->{csv_file} = "please reffer amt and ccse";
 	$japan_amt_ern->{src_url} =  "please reffer amt and ccse";	
-	csv2graph::dump_cdp($japan_amt_ern, {ok => 1, lines => 5});			# Dump for debug
+	csv2graph::dump_cdp($japan_amt_ern, {ok => 1, lines => 5, items => 10, search_key => "Tokyo"});			# Dump for debug
 
 	my $MARGE_GRAPH_PARAMS = {
 		html_title => "MARGE Apple Mobility Trends and ERN",
@@ -553,10 +580,11 @@ if($golist{"amt-jp-pref"}) {
 		additional_plot => $additional_plot,
 	};
 
-	my $g_params = [];
 	my @pref = ("~東京,~Tokyo", "~神奈川,~Kanagawa", "~埼玉,~Saitama",
 			 "~千葉,~Chiba", "~大阪,~Osaka","~京都,~Kyoto");			# Generate Graph Parameters
-	foreach my $reagion ("~東京,~Tokyo"){			# Generate Graph Parameters
+	@pref = ("~Tokyo", "~^Kanagawa", "~^Saitama",
+			 "~千葉,~Chiba", "~大阪,~Osaka","~京都,~Kyoto");			# Generate Graph Parameters
+	foreach my $reagion (@pref){			# Generate Graph Parameters
 		#my $rn = $reagion;
 		#$rn =~ s/,.*$//;
 		#my @rr = ();
@@ -570,11 +598,12 @@ if($golist{"amt-jp-pref"}) {
 				dsc => "Mobiliy and ern ",
 				lank => [1,10],
 				static => "",
-				target_col => {key => $reagion},
+				target_col => {marge_key => $reagion},
 			}
 		);
 	}
 	push(@$gp_list, csv2graph::csv2graph_list_mix(@$g_params));
+}
 	#csv2graph::gen_html($JAPAN_DEF, $JAPAN_GRAPH, $jp_graph);		# Generate Graph/HTHML
 }
 

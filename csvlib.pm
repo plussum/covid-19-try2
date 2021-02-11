@@ -47,6 +47,18 @@ sub	recur
 	return join($dlm, @array);
 }
 
+sub	join_arrayn
+{
+	my ($dlm, @array) = @_;
+
+	my @w = ();
+	for(my $i = 0; $i <= $#array; $i++){
+		my $v = $array[$i];
+		push(@w, "$i($v)");
+	}
+	return join($dlm, @w);
+}
+
 sub	join_array
 {
 	my ($dlm, @array) = @_;
@@ -65,12 +77,14 @@ sub	join_array
 		shift(@array);
 	}
 
+	my $n = 0;
 	foreach my $item (@array){
 		my $ref = ref($item);
 		#dp::dp "[$item] $ref ($deep)\n";
 		if($ref eq "ARRAY"){
 			#$item = "[" . join($dlm, @$item) . "]";
 			my @w = ();
+			my $i = 0;
 			foreach my $v (@$item){
 				my $s = $v;
 				if(&ahv($v) > 0){
@@ -78,10 +92,12 @@ sub	join_array
 				}
 				push(@w, $s);
 			}
-			$item = "[" . join(",", @w) . "]";
+			$item = "$n" . "[" . join(",", @w) . "]";
+			$i++;
 		}
 		elsif($ref eq "HASH"){
 			my @w = ();#($item);
+			my $i = 0;
 			foreach my $k (keys %$item) {
 				my $s = "";
 				my $v = $item->{$k};
@@ -93,9 +109,11 @@ sub	join_array
 				}
 				push(@w, $s);
 			}
-			$item = "{" . join(",", @w) . "}";
+			$item = "$n" . "{" . join(",", @w) . "}";
+			$i++;
 		}
 		push(@join, $item);
+		$n++;
 	}
 	my $result = join($dlm, @join);
 	return ($result);

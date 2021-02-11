@@ -117,6 +117,7 @@ our $cdp_arrays = [
 	"load_order",	# Load order of the key (Japan#Tokyo, Japan#)
 	"item_name_list",			# set by load csv ["Province","Region","Lat","Long"]
 	"defined_item_name_list",	# set by user (definition)
+	"marge_item_pos",			# Marged key positon
 ];
 
 our $cdp_hashs = [

@@ -362,6 +362,13 @@ sub	load_transaction
 
 		my @gen_key = ();			# Generate key
 		foreach my $n (@keys){
+			if($n =~ /\D/){
+				my $nn = $cdp->{item_name_hash}->{$n} // -1;
+				if($nn < 0){
+					dp::WARNING "key: no defined key[$n] " . join(",", @keys) . "\n";
+				}
+				$n = $nn;
+			}
 			my $itm = $vals[$n];
 			push(@gen_key, $itm);
 		}

@@ -179,13 +179,13 @@ sub	select_keys
 			my $key_in_data = $key_items->{$key};
 			my $res = &check_keys($key_in_data, \@target_col_array, \@non_target_col_array, $key, $verbose);
 			#dp::dp "[$key:$condition:$res]\n" ;#if($verbose  > 1);
-			#dp::dp "### " . join(", ", (($res >= $condition) ? "#" : "-"), $key, $res, $condition, @$key_in_data) . "\n" if($verbose > 1) ;
+			dp::dp "### " . join(", ", (($res >= $condition) ? "O" : "-"), $key, $res, $condition, @$key_in_data) . "\n" if($verbose > 1) ;
 			next if ($res < 0);
 
 			if($res >= $condition){
 				push(@$target_keys, $key);
 				if($verbose){
-					dp::dp "### " . join(", ", (($res >= $condition) ? "#" : "-"), $key, $res, $condition, @$key_in_data) . "\n";
+					dp::dp "### " . join(", ", (($res >= $condition) ? "O" : "-"), $key, $res, $condition, @$key_in_data) . "\n";
 				}
 			}
 		}
@@ -246,7 +246,7 @@ sub	check_keys
 	my $condition = 0;
 	my $cols = scalar(@$target_col_array) - 1;
 
-	dp::dp csvlib::join_array(",", @$target_col_array) . "\n" if($verbose);
+	dp::dp csvlib::join_array(",", @$target_col_array) . "\n" if($verbose == 1);
 	for(my $kn = 0; $kn <= $cols; $kn++){
 		my $skey = $target_col_array->[$kn];
 		my $nskey = $non_target_col_array->[$kn];
@@ -269,8 +269,18 @@ sub	check_keys
 			}
 		}
 
-		dp::dp "data $kn $key_in_data->[$kn] =~ (" .join(",", @{$target_col_array->[$kn]}) . ") ["
-				 . join(",", @$key_in_data) . "]\n" if($verbose);
+		for(my $i = 0; $i < scalar(@$key_in_data); $i++){
+			if(!defined $key_in_data->[$i]){
+				dp::ABORT "$kn\n";
+			}
+		}
+		dp::dp "key_in_data $kn [" . csvlib::join_arrayn(",", @$key_in_data) . "]\n" if($verbose);
+		dp::dp "key_in_data [" . $key_in_data->[$kn] . "]["  . csvlib::join_arrayn(",", @$skey) . "]\n" if($verbose);
+		dp::ABORT "key_in_data $kn [" . csvlib::join_arrayn(",", @$key_in_data) . "]\n" if(!defined $key_in_data->[$kn]);
+		dp::ABORT "target_col_array $kn\n" if(!defined $target_col_array->[$kn]);
+		dp::dp "data $kn $key_in_data->[$kn] =~ (" . join(",", @{$target_col_array->[$kn]}) . ") ["
+				 . join(",", @$key_in_data) . "]\n" if($verbose == 1);
+		
 		if(csvlib::search_listn($key_in_data->[$kn], @$skey) >= 0){
 			$condition++ 									# Hit to target
 		}

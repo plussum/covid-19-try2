@@ -329,12 +329,16 @@ sub	ern
 				$pat += $dp->[$d];
 			}
 			# print "$country $dt: $ppre / $pat\n";
-			if($pat > 0){
+			if($pat > 1){	# 0 -> 1
 				$ern[$dt] =  int(1000 * $ppre / $pat) / 1000;
 			}
 			else {
 				$ern[$dt] =  0;
 			}
+			if($ern[$dt] > 100){
+				dp::WARNING "ern: $ern[$dt]: $ppre, $pat\n";
+			}
+			# print "$country $dt: $ppre / $pat\n";
 		}
 		$cdp->{NaN_start} = $dt;
 		for(; $dt <= $date_number; $dt++){
