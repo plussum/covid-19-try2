@@ -55,6 +55,7 @@ our $JAPAN_DEF =
 	key_dlm => "#",
 	keys => [3],		# PrefectureNameJ, and Column name
 	data_start => 5,
+	alias => { ern => "effectiveReproductionNumber"},
 };
 our $JAPAN_GRAPH = {
 	html_title => $JAPAN_DEF->{src_info},

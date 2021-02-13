@@ -336,7 +336,7 @@ sub	ern
 				$ern[$dt] =  0;
 			}
 			if($ern[$dt] > 100){
-				dp::WARNING "ern: $ern[$dt]: $ppre, $pat\n";
+				dp::WARNING "ern bigger than 100 : ern:$ern[$dt] = ppre($ppre) / pat($pat)\n";
 			}
 			# print "$country $dt: $ppre / $pat\n";
 		}

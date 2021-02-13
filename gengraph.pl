@@ -198,14 +198,14 @@ if($golist{ccse}){
 				dsc => "CCSE $reagion",
 				lank => [1,10],
 				static => "",
-				target_col => {$prov => "NULL", $cntry => $reagion},	# Country only
+				target_col => {$prov => "NULL", $cntry => "$reagion"},	# Country only
 			}
 		);
 		push (@$gp, {
 				dsc => "CCSE $reagion",
 				lank => [1,10],
 				static => "rlavr",
-				target_col => {$prov => "NULL", $cntry => $reagion},	# Country only
+				target_col => {$prov => "NULL", $cntry => "$reagion"},	# Country only
 			}
 		);
 	}
@@ -444,7 +444,7 @@ if($golist{"amt-ccse"}){
 	$ccse_amt_ern->{csv_file} = "please reffer amt and ccse";
 	$ccse_amt_ern->{src_url} =  "please reffer amt and ccse";	
 
-	#csv2graph::dump_cdp($ccse_amt, {ok => 1, lines => 5});
+	csv2graph::dump_cdp($ccse_amt_ern, {ok => 1, lines => 5, items => 20});
 
 	my $MARGE_GRAPH_PARAMS = {
 		html_title => "MARGE Apple Mobility Trends and ERN",
@@ -476,7 +476,7 @@ if($golist{"amt-ccse"}){
 				dsc => "Mobiliy and ERN $rn",
 				lank => [1,10],
 				static => "",
-				target_col => {key => $reagion},
+				target_col => {marge_key => $reagion},
 			}
 		);
 		push (@$g_params, {
@@ -487,7 +487,7 @@ if($golist{"amt-ccse"}){
 				static => "",
 				y2min => "",
 				y2max => "",
-				target_col => {key => $reagion},
+				target_col => {marge_key => $reagion},
 			}
 		);
 	} 
@@ -580,10 +580,10 @@ if(1){
 		additional_plot => $additional_plot,
 	};
 
-	my @pref = ("~東京,~Tokyo", "~神奈川,~Kanagawa", "~埼玉,~Saitama",
-			 "~千葉,~Chiba", "~大阪,~Osaka","~京都,~Kyoto");			# Generate Graph Parameters
-	@pref = ("~Tokyo", "~^Kanagawa", "~^Saitama",
-			 "~千葉,~Chiba", "~大阪,~Osaka","~京都,~Kyoto");			# Generate Graph Parameters
+	#my @pref = ("~東京,~Tokyo", "~神奈川,~Kanagawa", "~埼玉,~Saitama",
+	#		 "~千葉,~Chiba", "~大阪,~Osaka","~京都,~Kyoto");			# Generate Graph Parameters
+	my @pref = ("Tokyo", "Kanagawa", "Saitama",
+			 "Chiba", "Osaka","Kyoto");			# Generate Graph Parameters
 	foreach my $reagion (@pref){			# Generate Graph Parameters
 		#my $rn = $reagion;
 		#$rn =~ s/,.*$//;
@@ -595,10 +595,10 @@ if(1){
 		push (@$g_params, {
 				cdp => $japan_amt_ern, 
 				gdp => $MARGE_GRAPH_PARAMS, 
-				dsc => "Mobiliy and ern ",
+				dsc => "Mobiliy and ern $reagion",
 				lank => [1,10],
 				static => "",
-				target_col => {marge_key => $reagion},
+				target_col => {marge_key => "~$reagion"},
 			}
 		);
 	}
@@ -688,6 +688,7 @@ if($golist{japan}){
 		{dsc => "Japan discharged", lank => [1,10], static => "rlavr", target_col => {key => "discharged"} },
 		{dsc => "Japan deaths", lank => [1,10], static => "rlavr", target_col => {key => "deaths"} },
 		{dsc => "Japan ERN", lank => [1,10], static => "", target_col => {key => "effectiveReproductionNumber"}, 
+		#{dsc => "Japan ERN", lank => [1,10], static => "", target_col => {key => "ern"}, 
 				ymin => "",ymax => ""},
 	];
 	push(@$gp_list , 
@@ -825,7 +826,7 @@ if($golist{"tkow-ern"}) {
 			dsc => "$reagion and ccse ERN $rn",
 			lank => [1,10],
 			static => "",
-			target_col => {key => "$regkey"},
+			target_col => {marge_key => "$regkey"},
 			y2label => 'ERN', y2min => 0, y2max => 3, y2_source => 0,		# soruce csv definition for y2
 			ylabel => "Apple mobility Trends", ymin => 0, ymax => "",
 			additional_plot => $additional_plot,
@@ -839,7 +840,7 @@ if($golist{"tkow-ern"}) {
 				dsc => "$reagion $weather and ccse new cases $rn",
 				lank => [1,10],
 				static => "",
-				target_col => {key => "$regkey,$weather"},
+				target_col => {marge_key => "$regkey,$weather"},
 				y2label => 'ERN', y2min => 0, y2max => 3, y2_source => 0,		# soruce csv definition for y2
 				ylabel => $weather, ymin => "", ymax => "",
 				additional_plot => $additional_plot_item{ern},

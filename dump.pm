@@ -48,7 +48,8 @@ sub	dump_cdp
 	foreach my $k (@$csv2graph::cdp_hashs){
 		my $p = $cdp->{$k} // "";
 		if($p){
-			print "$k\t" . &print_hash($p, $items) . "\n";
+			my $sc = scalar(keys %$p);
+			print "$k($sc)\t" . &print_hash($p, $items) . "\n";
 			#my @ar = %$p;
 			#my $arsize = ($#ar > ($items * 2)) ? ($items * 2) : $#ar;
 			#my @w = ();

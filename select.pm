@@ -50,6 +50,9 @@ sub	gen_key_order
 
 	my $item_name_hash = $cdp->{item_name_hash};
 	foreach my $k (@$key_order){
+		if($k eq "ern"){
+			dp::dp "$k\n";
+		}
 		my $itn = $k;
 		if($k =~ /\D/){
 			$itn = $item_name_hash->{$k} // "UNDEF";
@@ -134,6 +137,7 @@ sub	select_keys
 	my($cdp, $target_colp, $target_keys, $verbose) = @_;
 
 	$verbose = $verbose // "";
+	$verbose = 0 if($verbose eq "");
 	my @target_col_array = ();
 	my @non_target_col_array = ();
 	my $condition = 0;
@@ -236,7 +240,8 @@ sub	select_keys
 sub	check_keys
 {
 	my($key_in_data, $target_col_array, $non_target_col_array, $key, $verbose) = @_;
-	$verbose = $verbose // "";
+	$verbose = $verbose // 0;
+	$verbose = 0 if($verbose eq "");
 
 	if(!defined $key_in_data){
 		dp::WARNING "###!!!! key in data not defined [$key]\n";

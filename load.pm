@@ -66,6 +66,12 @@ sub	load_csv
 	#dp::dp "-----\n";
 	#@{$cdp->{item_name_list}} = @w[0..($data_start-1)];	# set item_name 
 
+
+	#
+	#	set alias
+	#
+	csv2graph::set_alias($cdp, $cdp->{alias});
+
 	#
 	#	DEBUG: Dump data 
 	#
@@ -76,6 +82,7 @@ sub	load_csv
 	
 	return 0;
 }
+
 
 #
 #	load holizontal csv file

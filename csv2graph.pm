@@ -123,7 +123,7 @@ our $cdp_arrays = [
 our $cdp_hashs = [
 	"order",					# sorted order 
 	"item_name_hash",			# {"Province" => 0,"Region" => 1,"Lat" => 2,"Long" => 3]
-	"defined_item_name_hash",	# Set from @defined_item_name_list
+	"alias",					# Set from @defined_item_name_list
 	"src_csv",
 ];
 
@@ -267,6 +267,27 @@ sub	init_graph_params
 		$gp->{$k} = $gdp->{$k} // $DEFAULT_GRAPHDEF_PARAMS->{$k};
 	}
 	return($gp);
+}
+
+#
+#	Set Alias
+#
+sub	set_alias
+{
+	my ($cdp, $alias) = @_;
+
+	foreach my $k (keys %$alias){
+		my $v = $alias->{$k};
+		if($v =~ /\D/){
+			if(! defined $cdp->{item_name_hash}){
+				dp::WARNING "alias: $v is not defined in item_name_list, $k, $v\n";
+				next;
+			}
+			$v = $cdp->{item_name_hash};
+		}
+		$cdp->{item_name_hash}->{$k} = $v;
+		$cdp->{alias}->{$k} = $v;		# no plan for using, but ...
+	}
 }
 
 #

@@ -50,6 +50,7 @@ our $CCSE_DEF = {
 
 	direct => "holizontal",		# vertical or holizontal(Default)
 	timefmt => '%m/%d/%y',		# comverbt to %Y-%m-%d
+	alias => {"subr" => "Province/State", "region" => "Country/Region"},
 };
 #dp::dp $CCSE_DEF->{csv_file} . "\n";
 our $CCSE_GRAPH = {

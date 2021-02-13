@@ -143,18 +143,25 @@ sub	marge_csv_a
 
 		push(@$m_in_list, @{$src_cdp->{item_name_list}});
 		dp::dp "ITEM_NAME_LIST: " . join(",", @$m_in_list, $m_in_list, scalar(@$m_in_list)) . "\n";
+
+		my $src_hash = $src_cdp->{item_name_hash};
+		foreach my $k (keys %$src_hash){			# operate item_name_hash for alias, 
+			$m_in_hash->{$k} = $src_hash->{$k} + $arp;
+		}
 	}
 	push(@{$marge->{marge_item_pos}}, scalar(@{$marge->{item_name_list}}) - 1);
 	dp::dp join(",",  @{$marge->{marge_item_pos}}) . "\n";
 
 	my $item_name = "marge_key";
 	push(@$m_in_list, $item_name);
+	$m_in_hash->{$item_name} = scalar(@$m_in_list) - 1;
+
 	dp::dp "ITEM_NAME_LIST: " . csvlib::join_arrayn(",", @$m_in_list) . join(",", $m_in_list, scalar(@$m_in_list)) . "\n";
 	dp::dp "ITEM_NAME_LIST: " . join(",", @{$marge->{item_name_list}}, $marge->{item_name_list}) . "\n";
-	$n = 0;
-	foreach my $k (@$m_in_list){		# SET HASH
-		$m_in_hash->{$k} = $n++;
-	}
+	#$n = 0;
+	#foreach my $k (@$m_in_list){		# SET HASH
+	#	$m_in_hash->{$k} = $n++;
+	#}
 
 	#
 	#	Marge csv data and key data
