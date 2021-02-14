@@ -134,6 +134,17 @@ if($#ARGV >= 0){
 			$all = 1;
 			last;
 		}
+		if(/^-clear/){
+			dp::dp "Remove .png and other plot data: $PNG_PATH\n";
+			system("ls $PNG_PATH | head");
+			#dp::dp "Remove OK? (YES/no)";
+			#my $ok = <STDIN>;
+			my $ok = "YES";
+			if(!($ok =~ /no/i)){
+				system("rm $PNG_PATH/*");
+			}
+			exit;
+		}
 		if($cmd_list->{$_}){
 			$golist{$_} = 1;
 			next;
@@ -427,6 +438,7 @@ if($golist{"amt-ccse"}){
 
 	#	Rolling Average
 	$ccse_rlavr = csv2graph::comvert2rlavr($ccse_country);					# Calc Rooling Average
+	csv2graph::dump_cdp($ccse_rlavr, {ok => 1, lines => 5, items => 20, message => "ccse_rlavr"});
 	my $ccse_amt_rlavr = csv2graph::marge_csv($ccse_rlavr, $amt_country);	# Marge CCSE and Apple Mobility Trends
 	#	set infomation for graph
 	$ccse_amt_rlavr->{id} = "amt-ccse-rlavr";
@@ -434,9 +446,11 @@ if($golist{"amt-ccse"}){
 	$ccse_amt_rlavr->{main_url} = "please reffer amt and ccse";
 	$ccse_amt_rlavr->{csv_file} = "please reffer amt and ccse";
 	$ccse_amt_rlavr->{src_url} =  "please reffer amt and ccse";	
+	csv2graph::dump_cdp($ccse_amt_rlavr, {ok => 1, lines => 5, items => 20, message => "ccse_amt_ern"});
 
 	#	ERN
 	$ccse_country = csv2graph::comvert2ern($ccse_country);					# Calc ERN
+	csv2graph::dump_cdp($ccse_country, {ok => 1, lines => 5, items => 20, message => "ccse_countly"});
 	my $ccse_amt_ern = csv2graph::marge_csv($ccse_country, $amt_country);	# Marge CCSE(ERN) and Apple Mobility Trends
 	$ccse_amt_ern->{id} = "amt-ccse-ern";
 	$ccse_amt_ern->{src_info} = "(ern)Apple Mobility Trends and Johns Hokings Univ.";
@@ -444,7 +458,7 @@ if($golist{"amt-ccse"}){
 	$ccse_amt_ern->{csv_file} = "please reffer amt and ccse";
 	$ccse_amt_ern->{src_url} =  "please reffer amt and ccse";	
 
-	csv2graph::dump_cdp($ccse_amt_ern, {ok => 1, lines => 5, items => 20});
+	csv2graph::dump_cdp($ccse_amt_ern, {ok => 1, lines => 5, items => 20, message => "ccse_amt_ern"});
 
 	my $MARGE_GRAPH_PARAMS = {
 		html_title => "MARGE Apple Mobility Trends and ERN",
@@ -709,10 +723,10 @@ if($golist{tkow}){
 	my $tkow_graph = [
 		{dsc => "気温 ", lank => [1,10], static => "", target_col => {key => "~気温"}},
 		{dsc => "気温 ", lank => [1,10], static => "rlavr", target_col => {key => "~気温"}},
-		{dsc => "平均気温 ", lank => [1,10], static => "", target_col => {key => "平均気温"}},
-		{dsc => "平均気温 ", lank => [1,10], static => "rlavr", target_col => {key => "平均気温"}},
-		{dsc => "平均湿度 ", lank => [1,10], static => "", target_col => {key => "平均湿度"}},
-		{dsc => "平均湿度 ", lank => [1,10], static => "rlavr", target_col => {key => "平均湿度"}},
+		{dsc => "平均気温 ", lank => [1,10], static => "", target_col => {key => "~平均気温"}},
+		{dsc => "平均気温 ", lank => [1,10], static => "rlavr", target_col => {key => "~平均気温"}},
+		{dsc => "平均湿度 ", lank => [1,10], static => "", target_col => {key => "~平均湿度"}},
+		{dsc => "平均湿度 ", lank => [1,10], static => "rlavr", target_col => {key => "~平均湿度"}},
 	];
 	push(@$gp_list , 
 		csv2graph::csv2graph_list($TKOW_DEF, $TKOW_GRAPH, $tkow_graph)); 
@@ -840,7 +854,7 @@ if($golist{"tkow-ern"}) {
 				dsc => "$reagion $weather and ccse new cases $rn",
 				lank => [1,10],
 				static => "",
-				target_col => {marge_key => "$regkey,$weather"},
+				target_col => {marge_key => "$regkey,~$weather"},
 				y2label => 'ERN', y2min => 0, y2max => 3, y2_source => 0,		# soruce csv definition for y2
 				ylabel => $weather, ymin => "", ymax => "",
 				additional_plot => $additional_plot_item{ern},
@@ -853,8 +867,8 @@ if($golist{"tkow-ern"}) {
 				gdp => $MARGE_GRAPH_PARAMS, 
 				dsc => "$reagion $weather and newcases rlavr $rn",
 				lank => [1,10],
-				static => "",
-				target_col => {key => "$regkey,$weather"},
+				static => "rlavr",
+				target_col => {marge_key => "$regkey,~$weather"},
 				y2label => 'new cases(rlavr)', y2min => "", y2max => "", y2_source => 0,		# soruce csv definition for y2
 				ylabel => $weather, ymin => "", ymax => "",
 				}

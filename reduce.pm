@@ -157,7 +157,10 @@ sub	dup_cdp
 
 sub	dup_csv
 {
-	my ($cdp, $work_csv, $target_keys) = @_;
+	#my ($cdp, $work_csv, $target_keys) = @_;
+	my ($cdp, $target_keys) = @_;
+
+	my $work_csv = {};
 
 	my $csv_data = $cdp->{csv_data};
 	#dp::dp "dup_csv: cdp[$cdp] csv_data : $csv_data\n";
@@ -179,6 +182,7 @@ sub	dup_csv
 		#dp::dp "$key: $csv_data->{$key}\n";
 		push(@{$work_csv->{$key}}, @{$csv_data->{$key}});
 	}
+	return $work_csv;
 }
 
 1;

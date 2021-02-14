@@ -83,16 +83,15 @@ sub	date_calc
 	$date = $default if($date eq "");
 
 	#dp::dp "[[$date,$default,$max,$list]]\n";
-	if(!$date ){
-
-	}
-	elsif(!($date =~ /[0-9][\-\/][0-9]/)){	# 
+	#if(!$date ){ }
+	#elsif(!($date =~ /[0-9][\-\/][0-9]/)){	# 
+	if($date =~ /^[\-\+]?\d+$/){ 
 		#dp::dp "[[$date]]\n";
 		if($date < 0){
 			$date = $max + $date;
 		}
 		if($date < 0 || $date > $max){
-			dp::dp "Error at date $date\n";
+			dp::WARNING "Error at date $date (date is not between  0 to $max)\n";
 			$date = 0;
 		}
 		#dp::dp "[[$date]]\n";

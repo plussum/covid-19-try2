@@ -243,15 +243,15 @@ sub	comvert2rlavr
 
 	my $gdp = {};
 	my $gp = {};
-	my %work_csv = ();
-	my $work_csvp = \%work_csv;
 
-	reduce::dup_csv($cdp, $work_csvp, "");
+	my $work_csvp = reduce::dup_csv($cdp, "");
 	#&dump_csv_data($work_csvp, {ok => 1, lines => 5, message => "comver2rlavr:dup"}) if(1);
 	&rolling_average($cdp, $work_csvp, $gdp, $gp);
 	#&dump_csv_data($work_csvp, {ok => 1, lines => 5, message => "comver2rlavr:ern"}) if(1);
 	$cdp->{csv_data} = "";
 	$cdp->{csv_data} = $work_csvp;
+	
+	dp::dp "comvert2rlavr[csv_data]:" . dump::print_hash($cdp->{csv_data}) . "\n";
 
 	return $cdp;
 }
@@ -269,10 +269,10 @@ sub	comvert2ern
 		ip => $p->{ip} // $config::RT_IP,
 	};
 	my $gdp = {};
-	my $ern_csvp = {};
+	#my $ern_csvp = {};
 
-	%$ern_csvp  = %{$cdp->{csv_data}};
-	#reduce::dup_csv($cdp, $ern_csvp, "");
+	my $ern_csvp = reduce::dup_csv($cdp, "");
+	#%$ern_csvp  = %{$cdp->{csv_data}};
 	#&dump_csv_data($ern_csvp, {ok => 1, lines => 5, message => "comver2ern:dup"}) if(1);
 
 	&ern($cdp, $ern_csvp, $gdp, $gp);

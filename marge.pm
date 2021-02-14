@@ -200,10 +200,10 @@ sub	marge_csv_a
 		my $src_item_number = scalar(@{$src_cdp->{item_name_list}}) -1;
 		dp::dp "MARGE_INFO:" . join(",", $csvn, $marge_item_pos, $item_number, $src_cdp->{id}, @{$src_cdp->{marge_item_pos}}) . "\n";
 		foreach my $k (keys %$csv_data){
-			$m_src_csv->{$k} = $csvn;					# set source csv number
+			$m_src_csv->{$k} = $csvn;						# set source csv number
 			
 			#dp::dp "[$csvn] $k\n";
-			for(my $i = 0; $i < $item_number; $i++){	# Intial key items by ""
+			for(my $i = 0; $i < $item_number; $i++){		# Intial key items by ""
 				$m_key_items->{$k}->[$i] = "";		
 			}
 			for(my $i = 0; $i <= $src_item_number; $i++){	# copy key items

@@ -337,11 +337,12 @@ sub gen_html_by_gp_list
 
 	print HTML "<h3>Data Source：$data_source</h3>\n";
 
-	dp::dp  "Number of Graph Parameters: " .scalar(@$graph_params) . "\n";
+	#dp::dp  "Number of Graph Parameters: " .scalar(@$graph_params) . "\n";
 	foreach my $gp (@$graph_params){
 		print HTML "<span class=\"c\">$now</span><br>\n";
 		print HTML '<img src="' . $png_rel_path . "/" . $gp->{plot_png} . '">' . "\n";
 		print HTML "<br>\n";
+		#dp::dp "$gp->{plot_png} \n";
 	
 		#
 		#	Lbale name on HTML for search
@@ -489,6 +490,7 @@ sub	csv2graph
 	#dp::dp "START_DATE: $start_date [" . ($gp->{start_date} // "NULL"). "] END_DATE: $end_date [" . ($gp->{end_date}//"NULL") . "]\n";
 	$gp->{start_date} = $start_date;
 	$gp->{end_date} = $end_date;
+	#dp::dp "START_DATE: $start_date [" . ($gp->{start_date} // "NULL"). "] END_DATE: $end_date [" . ($gp->{end_date}//"NULL") . "]\n";
 	select::date_range($cdp, $gdp, $gp); 						# Data range (set dt_start, dt_end (position of array)
 
 	#
@@ -533,14 +535,15 @@ sub	csv2graph
 		return -1;
 	}
 
-	my %work_csv = ();									# copy csv data to work csv
-	reduce::dup_csv($cdp, \%work_csv, \@target_keys);
+	#my %work_csv = ();									# copy csv data to work csv
+	#reduce::dup_csv($cdp, \%work_csv, \@target_keys);
+	my $work_csv = reduce::dup_csv($cdp, \@target_keys);
 	
 	if($gp->{static} eq "rlavr"){ 						# Rolling Average
-		calc::rolling_average($cdp, \%work_csv, $gdp, $gp);
+		calc::rolling_average($cdp, $work_csv, $gdp, $gp);
 	}
 	elsif($gp->{static} eq "ern"){ 						# Rolling Average
-		calc::ern($cdp, \%work_csv, $gdp, $gp);
+		calc::ern($cdp, $work_csv, $gdp, $gp);
 	}
 
 	#
@@ -553,7 +556,7 @@ sub	csv2graph
 
 	my @sorted_keys = ();								# sort
 	if($lank_select){
-		&sort_csv($cdp, \%work_csv, $gp, \@target_keys, \@sorted_keys);
+		&sort_csv($cdp, $work_csv, $gp, \@target_keys, \@sorted_keys);
 	}
 	else {
 		my $load_order = $cdp->{load_order};
@@ -575,7 +578,7 @@ sub	csv2graph
 		next if($lank_select && ($order->{$key} < $lank[0] || $order->{$key} > $lank[1]));
 		push(@output_keys, $key);
 	}
-	my $csv_for_plot = &gen_csv_file($cdp, $gdp, $gp, \%work_csv, \@output_keys);		# Generate CSV File
+	my $csv_for_plot = &gen_csv_file($cdp, $gdp, $gp, $work_csv, \@output_keys);		# Generate CSV File
 	#dp::dp "$csv_for_plot\n";
 
 	&graph($csv_for_plot, $cdp, $gdp, $gp);					# Generate Graph
@@ -688,20 +691,26 @@ sub	graph
 {
 	my($csv_for_plot, $cdp, $gdp, $gp) = @_;
 
-	my $start_date = $gp->{start_date} // "NONE";
-	my $end_date = $gp->{end_date} // "NONE";
+	my $start_date = $gp->{start_date} // "-NONE-";
+	my $end_date = $gp->{end_date} // "-NONE-";
+
+	#dp::dp "START_DATE: $start_date END_DATE: $end_date\n";
 
 	my $src_info = $cdp->{src_info} // "";
 	if($src_info){
 		$src_info = "[$src_info]";
 	}
 	my $title = join(" ", $gp->{dsc}, $gp->{static}, "($end_date)") . "    $src_info";
+	#dp::dp "[$title] $gp->{plot_png}\n";
 	#dp::dp "#### " . join(",", "[" . $p->{lank}[0] . "]", @lank) . "\n";
 
 	my $fname = $gdp->{png_path} . "/" . $gp->{fname};
-	my $csvf = $fname . "-plot.csv.txt";
-	my $pngf = $fname . ".png";
-	my $plotf = $fname. "-plot.txt";
+	my $pngf = $gdp->{png_path} . "/" . $gp->{plot_png};# // "$fname.png");
+	my $csvf = $gdp->{png_path} . "/" . $gp->{plot_csv} ;#// "$fname-plot.csv.txt");
+	my $plotf = $gdp->{png_path} . "/" . $gp->{plot_cmd} ;#// "$fname-plot.txt");
+	#my $csvf = $fname . "-plot.csv.txt";
+	#my $pngf = $fname . ".png";
+	#my $plotf = $fname. "-plot.txt";
 
 	my $dlm = $gdp->{dst_dlm};
 
@@ -781,6 +790,7 @@ _EOD_
 	my @p= ();
 	my $pn = 0;
 
+	#dp::dp "$csvf\n";
 	open(CSV, $csvf) || die "cannot open $csvf";
 	binmode(CSV, ":utf8");
 	my $l = <CSV>;

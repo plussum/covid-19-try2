@@ -69,8 +69,11 @@ sub	dump_cdp
 	my $load_order = $cdp->{load_order};
 	
 	$p->{src_csv} = $cdp->{src_csv};
-	&dump_csv_data($csv_data, $p, $cdp);
+	$p->{nohead} = 1;
+	print "##### key_items ######\n";
 	&dump_key_items($key_items, $p, $cdp);
+	print "##### csv_data ######\n";
+	&dump_csv_data($csv_data, $p, $cdp);
 	#dp::dp "LOAD ORDER " . join(",", @$load_order) . "\n";
 
 	print "#" x 40 . "\n\n";
@@ -101,12 +104,15 @@ sub dump_key_items
 	my $lines = $p->{lines} // 5;
 	my $items = $p->{items} // 5;
 	my $mess = $p->{message} // "";
+	my $nohead = $p->{nohead} // "";
 	my $search_key = $p->{search_key} // "";
 	my $src_csv = $cdp->{src_csv} // "";
 
 	$lines = 0 if($search_key && ! defined $p->{lines});
 
-	print "------ [$mess] Dump keyitems data ($key_items) search_key[$search_key] --------\n";
+	if(! $nohead){
+		print "------ [$mess] Dump keyitems data ($key_items) search_key[$search_key] --------\n";
+	}
 	my $ln = 0;
 
 	print "\t". join(",", @{$cdp->{item_name_list}}) . "\n";	
@@ -130,12 +136,13 @@ sub dump_key_items
 			print "[$ln] $k" ."[$scv]: " . join(",", @w, " [$search_key]") . "\n";
 		}
 		elsif($lines eq "" || $ln <= $lines){
-			print "[$ln] $k" . "[$scv]: $key_items->{$k}:" ;
-			#print join(",", @{$key_items->{$k}}) . "\n";
-			print join(",", @w) . "\n";
+			#print "[$ln] $k" . "[$scv]: $key_items->{$k}:" ;
+			print "[$ln] $k" . "[$scv]: " . join(",", @w) . "\n";
+			# join(",", @{$key_items->{$k}}) . "\n";
 		}
 		$ln++;
 	}
+	#print "-" x 30 . "\n";
 }
 
 sub	dump_csv_data
@@ -147,12 +154,16 @@ sub	dump_csv_data
 	my $src_csv = $cdp->{src_csv} // "";
 	my $mess = $p->{message} // "";
 	my $search_key = $p->{search_key} // "";
+	my $nohead = $p->{nohead} // "";
 	$lines = 0 if($search_key && ! defined $p->{lines});
 
 	$mess = " [$mess]" if($mess);
-	print "------$mess Dump csv data ($csv_data) [$search_key]--------\n";
+	if(! $nohead){
+		print "------$mess Dump csv data ($csv_data) [$search_key]--------\n";
+	}
+
 	#csvlib::disp_caller(1..3);
-	print "-" x 30 . "\n";
+	#print "-" x 30 . "\n";
 	my $ln = 0;
 	foreach my $k (keys %$csv_data){
 		my @w = @{$csv_data->{$k}};
@@ -178,7 +189,7 @@ sub	dump_csv_data
 		}
 		$ln++;
 	}
-	dp::dp "-" x 30 . "\n";
+	#print "-" x 30 . "\n";
 }
 
 1;

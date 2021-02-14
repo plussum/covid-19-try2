@@ -1,4 +1,6 @@
 #
+#	気象庁　過去の気象データ・ダウンロード
+#	https://www.data.jma.go.jp/gmd/risk/obsdl/index.php
 #
 #
 package deftkow;
@@ -49,6 +51,10 @@ our $TKOW_DEF =
 	key_dlm => "#",
 	keys => [0],		# PrefectureNameJ, and Column name
 	data_start => 1,
+	item_name_line => 3,
+	data_start_line => 7,
+	alias => {"平均気温" => 1, "最高気温" => 4, "最低気温" => 7, "平均湿度" => 10},
+	load_col => [0,3,6,9],		# columns for load B -> 0, C->1 (skip col 0:date)
 };
 
 our $TKOW_GRAPH = {
@@ -71,10 +77,10 @@ our $TKOW_GRAPH = {
 	graph_params => [
 		{dsc => "気温 ", lank => [1,10], static => "", target_col => {key => "~気温"}},
 		{dsc => "気温 ", lank => [1,10], static => "rlavr", target_col => {key => "~気温"}},
-		{dsc => "平均気温 ", lank => [1,10], static => "", target_col => {key => "平均気温"}},
-		{dsc => "平均気温 ", lank => [1,10], static => "rlavr", target_col => {key => "平均気温"}},
-		{dsc => "平均湿度 ", lank => [1,10], static => "", target_col => {key => "平均湿度"}},
-		{dsc => "平均湿度 ", lank => [1,10], static => "rlavr", target_col => {key => "平均湿度"}},
+		{dsc => "平均気温 ", lank => [1,10], static => "", target_col => {key => "~平均気温"}},
+		{dsc => "平均気温 ", lank => [1,10], static => "rlavr", target_col => {key => "~平均気温"}},
+		{dsc => "平均湿度 ", lank => [1,10], static => "", target_col => {key => "~平均湿度"}},
+		{dsc => "平均湿度 ", lank => [1,10], static => "rlavr", target_col => {key => "~平均湿度"}},
 	],
 };
 
