@@ -28,8 +28,9 @@ my $END_OF_DATA = $config::END_OF_DATA;
 #	https://github.com/kaz-ogiwara/covid19
 #
 # year,month,date,prefectureNameJ,prefectureNameE,testedPositive,peopleTested,hospitalized,serious,discharged,deaths,effectiveReproductionNumber
-# 2020,2,8,東京,Tokyo,3,,,,,,
+# 	2020,2,8,東京,Tokyo,3,,,,,,
 #
+# 	year,month,date,prefectureNameJ,prefectureNameE,
 #	y,m,d,東京,Tokyo,testedPositive,1,2,3,4,
 #	y,m,d,東京,Tokyo,peopleTested,1,2,3,4,
 #

@@ -177,6 +177,9 @@ if($all){
 		my $id = $cdp->{id};
 		$golist{$id} = 1 ;
 	}
+	foreach my $id (keys %$cmd_list){
+		$golist{$id} = 1 ;
+	}
 }
 
 #

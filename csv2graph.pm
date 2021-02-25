@@ -679,7 +679,8 @@ sub	sort_csv
 			dp::dp "$k is not defined to src_csv\n";
 			exit;
 		}
-		@$sorted_keysp = (sort {$src_csv->{$a} <=> $src_csv->{$b} or $SORT_VAL{$b} <=> $SORT_VAL{$a}} keys %SORT_VAL);
+		@$sorted_keysp = (sort {($src_csv->{$a}//0) <=> ($src_csv->{$b}//0) 
+						or $SORT_VAL{$b} <=> $SORT_VAL{$a}} keys %SORT_VAL);
 		#dp::dp "------------" . scalar(@$sorted_keysp) . "/" . keys(%SORT_VAL) . "\n";
 	}
 }
@@ -724,8 +725,11 @@ sub	graph
 	my $end_ut = csvlib::ymds2tm($end_date);
 	my $dates = ($end_ut - $start_ut) / (60 * 60 * 24);
 	my $xtics = 60 * 60 * 24 * 7;
-	if($dates < 93){
+	if($dates < 62){
 		$xtics = 1 * 60 * 60 * 24;
+	}
+	elsif($dates < 93){
+		$xtics = 2 * 60 * 60 * 24;
 	}
 	elsif($dates < 120){
 		$xtics = 2 * 60 * 60 * 24;
@@ -812,7 +816,7 @@ _EOD_
 		my $key = $label[$i];
 		$key =~ s/^[0-9]+://;
 		$key =~ s/[']/_/g;	# avoid error at plot
-		#dp::dp "### $i: $key $src_csv, $y2_source\n";
+		dp::dp "### $i: $key $src_csv, $y2_source\n";
 		$pn++;
 
 		my $axis = "";
@@ -821,12 +825,12 @@ _EOD_
 			#dp::dp "csv_source: $key [" . $src_csv->{$key} . "]\n";
 			#dp::dp "csv_source: $key [" . $src_csv . "]\n";
 			$axis =	"axis x1y1";
-			#dp::dp "$src_csv->{$key},$y2_source:\n";
 			if($src_csv->{$key} == $y2_source) {
 				$axis = "axis x1y2" ;
 				$dot = "dt (7,3)";
 				$graph = $gp->{y2_graph} // ($gdp->{y2_graph} // ($cdp->{y2_graph} // $DEFAULT_GRAPH));
 			}
+			dp::dp "$key $src_csv->{$key},$y2_source: [$axis]\n";
 		}
 		#dp::dp "axis:[$axis]\n";
 		#my $pl = sprintf("'%s' using 1:%d $axis with lines title '%d:%s' linewidth %d $dot", 
@@ -851,6 +855,7 @@ _EOD_
 
 	my $plot = join(",", @p);
 	$PARAMS =~ s/#PLOT_PARAM#/$plot/g;
+	dp::dp $plot . "\n";
 
 	my $date_list = $cdp->{date_list};
 	my $dt_start = $gp->{dt_start};
@@ -861,7 +866,14 @@ _EOD_
 		my $RELATIVE_DATE = 7;
 		my @aw = ();
 
-		for(my $dn = $gp->{dt_end} - $RELATIVE_DATE; $dn > $gp->{dt_start}; $dn -= $RELATIVE_DATE){
+		my $den = $gp->{dt_end};
+		my $last_date = csvlib::ymds2tm($date_list->[$den]) / (24 * 60 * 60);	# Draw arrow on sunday
+		my $s_date = ($last_date - 2) % 7;
+		$s_date = 7 if($s_date == 0);
+		#dp::dp "DATE: " . $DATES[$date] . "  " . "$date -> $s_date -> " . ($date - $s_date) . "\n";
+
+		#for(my $dn = $gp->{dt_end} - $RELATIVE_DATE; $dn > $gp->{dt_start}; $dn -= $RELATIVE_DATE){
+		for(my $dn = $gp->{dt_end} - $s_date; $dn > $gp->{dt_start}; $dn -= $RELATIVE_DATE){
 			my $mark_date = $date_list->[$dn];
 			
 			#dp::dp "ARROW: $dn, [$mark_date]\n";
