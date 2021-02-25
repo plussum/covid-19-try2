@@ -75,6 +75,7 @@ our $TOKYO_GRAPH = {
 	timefmt => '%Y-%m-%d', format_x => '%m/%d',
 	term_x_size => 1000, term_y_size => 350,
 
+	#ykey => "testedPositive", y2key => "ern",
 	y2label => 'Number', y2min => "", y2max => "", y2_source => 0,		# soruce csv definition for y2
 	ylabel => '%', ymin => 0,
 

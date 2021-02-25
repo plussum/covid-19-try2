@@ -215,8 +215,9 @@ sub	calc_items
 #
 sub	rolling_average
 {
-	my($cdp, $work_csvp, $gdp, $gp) = @_;
+	my($cdp, $work_csvp, $gdp, $gp, $param) = @_;
 
+	$param = $param // "";
 	my $avr_date = $cdp->{avr_date};
 	foreach my $key (keys %$work_csvp){
 		my $dp = $work_csvp->{$key};

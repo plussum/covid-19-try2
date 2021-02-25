@@ -56,6 +56,7 @@ my $CSV_PATH  = $config::WIN_PATH;
 my $DEFAULT_AVR_DATE = 7;
 my $END_OF_DATA = "###EOD###";
 
+my $mainkey = $config::MAIN_KEY;
 
 #
 #	for APPLE Mobility Trends
@@ -546,7 +547,7 @@ if($golist{"amt-jp-pref"}) {
 	my $JAPAN_GRAPH = $defjapan::JAPAN_GRAPH;
 	csv2graph::new($JAPAN_DEF); 						# Load Apple Mobility Trends
 	csv2graph::load_csv($JAPAN_DEF);
-	my $jp_positive_case = csv2graph::reduce_cdp_target($JAPAN_DEF, {key => "testedPositive"});
+	my $jp_positive_case = csv2graph::reduce_cdp_target($JAPAN_DEF, {$mainkey => "testedPositive"});
 	csv2graph::comvert2ern($jp_positive_case);					# Calc ERN
 	csv2graph::dump_cdp($jp_positive_case, {ok => 1, lines => 5});			# Dump for debug
 
@@ -641,17 +642,19 @@ if($golist{"tokyo"}){
 	csv2graph::load_csv($TOKYO_DEF);
 	#my $y1 = {};
 	#my $y2 = {};
-	my $y1 = csv2graph::reduce_cdp_target($TOKYO_DEF, ["positive_count,negative_count"]);
-	my $y2 = csv2graph::reduce_cdp_target($TOKYO_DEF, ["positive_rate"]);
-	my $marge = csv2graph::marge_csv($y1, $y2);		# Gererate Graph
+	#my $y1 = csv2graph::reduce_cdp_target($TOKYO_DEF, ["positive_count,negative_count"]);
+	#my $y2 = csv2graph::reduce_cdp_target($TOKYO_DEF, ["positive_rate"]);
+	#my $marge = csv2graph::marge_csv($y1, $y2);		# Gererate Graph
 
 	my $tko_graph = [];
 	my $tko_gpara01 = [
-		{dsc => "Tokyo Positve/negative/rate", lank => [1,10], static => "", target_col => ["",""] },
-		{dsc => "Tokyo Positve/negative/rate", lank => [1,10], static => "rlavr", target_col => ["",""] },
+		{dsc => "Tokyo Positve/negative/rate", lank => [1,10], static => "", target_col => ["",""], y2key => "positive_rate" },
+		{dsc => "Tokyo Positve/negative/rate", lank => [1,10], static => "rlavr", target_col => ["",""], y2key => "positive_rate"},
 	];
+	#push(@$tko_graph , 
+	#	csv2graph::csv2graph_list($marge, $TOKYO_GRAPH, $tko_gpara01));
 	push(@$tko_graph , 
-		csv2graph::csv2graph_list($marge, $TOKYO_GRAPH, $tko_gpara01));
+		csv2graph::csv2graph_list($TOKYO_DEF, $TOKYO_GRAPH, $tko_gpara01));
 
 	#	hospitalized,1,2,3,
 	#	severe_case,1,2,3,
@@ -662,11 +665,15 @@ if($golist{"tokyo"}){
 	my $marge2 = csv2graph::marge_csv($y21, $y22);		# Gererate Graph
 
 	my $tko_gpara02 = [
-		{dsc => "Tokyo Positive Status 01", lank => [1,10], static => "", target_col => ["",""] },
-		{dsc => "Tokyo Positive Status 02", lank => [1,10], static => "rlavr", target_col => ["",""] },
+		{dsc => "Tokyo Positive Status 01", lank => [1,10], static => "", target_col => ["",""], y2key => ""}, 
+		{dsc => "Tokyo Positive Status 02", lank => [1,10], static => "rlavr", target_col => ["",""], y2key => ""},
+		{dsc => "Tokyo Positive Status 01 y2", lank => [1,10], static => "", target_col => ["",""], y2key => "severe_case" },
+		{dsc => "Tokyo Positive Status 02 y2", lank => [1,10], static => "rlavr", target_col => ["",""], y2key => "severe_case"},
 	];
 	push(@$tko_graph , 
-		csv2graph::csv2graph_list($marge2, $TOKYO_ST_GRAPH, $tko_gpara02));
+		#csv2graph::csv2graph_list($marge2, $TOKYO_ST_GRAPH, $tko_gpara02));
+		csv2graph::csv2graph_list($TOKYO_ST_DEF, $TOKYO_ST_GRAPH, $tko_gpara02));
+
 
 	push(@$gp_list, @$tko_graph);
 	csv2graph::gen_html_by_gp_list($tko_graph, {						# Generate HTML file with graphs
@@ -698,14 +705,14 @@ if($golist{japan}){
 	csv2graph::new($JAPAN_DEF); 						# Load Apple Mobility Trends
 	csv2graph::load_csv($JAPAN_DEF);
 	my $jp_graph = [
-		{dsc => "Japan TestPositive ", lank => [1,10], static => "rlavr", target_col => {key => "testedPositive"} },
-		{dsc => "Japan PeopleTested", lank => [1,10], static => "rlavr", target_col => {key => "peopleTested"} },
-		{dsc => "Japan hospitalized", lank => [1,10], static => "rlavr", target_col => {key => "hospitalized"} },
-		{dsc => "Japan serious", lank => [1,10], static => "rlavr", target_col => {key => "serious"} },
-		{dsc => "Japan discharged", lank => [1,10], static => "rlavr", target_col => {key => "discharged"} },
-		{dsc => "Japan deaths", lank => [1,10], static => "rlavr", target_col => {key => "deaths"} },
-		{dsc => "Japan ERN", lank => [1,10], static => "", target_col => {key => "effectiveReproductionNumber"}, 
-		#{dsc => "Japan ERN", lank => [1,10], static => "", target_col => {key => "ern"}, 
+		{dsc => "Japan TestPositive ", lank => [1,10], static => "rlavr", target_col => {$mainkey => "testedPositive"} },
+		{dsc => "Japan PeopleTested", lank => [1,10], static => "rlavr", target_col => {$mainkey => "peopleTested"} },
+		{dsc => "Japan hospitalized", lank => [1,10], static => "rlavr", target_col => {$mainkey => "hospitalized"} },
+		{dsc => "Japan serious", lank => [1,10], static => "rlavr", target_col => {$mainkey => "serious"} },
+		{dsc => "Japan discharged", lank => [1,10], static => "rlavr", target_col => {$mainkey => "discharged"} },
+		{dsc => "Japan deaths", lank => [1,10], static => "rlavr", target_col => {$mainkey => "deaths"} },
+		{dsc => "Japan ERN", lank => [1,10], static => "", target_col => {$mainkey => "effectiveReproductionNumber"}, 
+		#{dsc => "Japan ERN", lank => [1,10], static => "", target_col => {$mainkey => "ern"}, 
 				ymin => "",ymax => ""},
 	];
 	push(@$gp_list , 
@@ -724,12 +731,12 @@ if($golist{tkow}){
 	csv2graph::load_csv($TKOW_DEF);
 
 	my $tkow_graph = [
-		{dsc => "気温 ", lank => [1,10], static => "", target_col => {key => "~気温"}},
-		{dsc => "気温 ", lank => [1,10], static => "rlavr", target_col => {key => "~気温"}},
-		{dsc => "平均気温 ", lank => [1,10], static => "", target_col => {key => "~平均気温"}},
-		{dsc => "平均気温 ", lank => [1,10], static => "rlavr", target_col => {key => "~平均気温"}},
-		{dsc => "平均湿度 ", lank => [1,10], static => "", target_col => {key => "~平均湿度"}},
-		{dsc => "平均湿度 ", lank => [1,10], static => "rlavr", target_col => {key => "~平均湿度"}},
+		{dsc => "気温 ", lank => [1,10], static => "", target_col => {$mainkey => "~気温"}},
+		{dsc => "気温 ", lank => [1,10], static => "rlavr", target_col => {$mainkey => "~気温"}},
+		{dsc => "平均気温 ", lank => [1,10], static => "", target_col => {$mainkey => "~平均気温"}},
+		{dsc => "平均気温 ", lank => [1,10], static => "rlavr", target_col => {$mainkey => "~平均気温"}},
+		{dsc => "平均湿度 ", lank => [1,10], static => "", target_col => {$mainkey => "~平均湿度"}},
+		{dsc => "平均湿度 ", lank => [1,10], static => "rlavr", target_col => {$mainkey => "~平均湿度"}},
 	];
 	push(@$gp_list , 
 		csv2graph::csv2graph_list($TKOW_DEF, $TKOW_GRAPH, $tkow_graph)); 

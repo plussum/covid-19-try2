@@ -25,6 +25,8 @@ our $CSV_REL_PATH  = "../CSV";		# HTML からの相対パス
 our $DEFAULT_AVR_DATE = 7;
 our $END_OF_DATA = "###EOD###";
 
+our $MAIN_KEY = "mainkey";
+
 our $WHO_INDEX = "who_index.html";
 our $RT_IP = 5;
 our $RT_LP = 8;

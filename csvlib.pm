@@ -54,7 +54,7 @@ sub	join_arrayn
 	my @w = ();
 	for(my $i = 0; $i <= $#array; $i++){
 		my $v = $array[$i];
-		push(@w, "$i($v)");
+		push(@w, "#$i($v)");
 	}
 	return join($dlm, @w);
 }
@@ -92,7 +92,7 @@ sub	join_array
 				}
 				push(@w, $s);
 			}
-			$item = "$n" . "[" . join(",", @w) . "]";
+			$item = "#$n" . "[" . join(",", @w) . "]";
 			$i++;
 		}
 		elsif($ref eq "HASH"){
@@ -109,8 +109,11 @@ sub	join_array
 				}
 				push(@w, $s);
 			}
-			$item = "$n" . "{" . join(",", @w) . "}";
+			$item = "#$n" . "{" . join(",", @w) . "}";
 			$i++;
+		}
+		else {
+			$item = "#$n:$item";
 		}
 		push(@join, $item);
 		$n++;

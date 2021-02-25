@@ -112,37 +112,37 @@ my $LAST_DATE  = "";
 # Tokyo,Japan,33.39,44.12,32,20123, 20124,,,,
 #
 our $cdp_arrays = [
-	"date_list", 	# Date list (formated %Y-%m-%d)
-	"keys", 		# items to gen key [1, 0] -> Japan#Tokyo, Japan#
-	"load_order",	# Load order of the key (Japan#Tokyo, Japan#)
-	"item_name_list",			# set by load csv ["Province","Region","Lat","Long"]
-	"defined_item_name_list",	# set by user (definition)
-	"marge_item_pos",			# Marged key positon
+	"date_list", 						# Date list (formated %Y-%m-%d)
+	"keys", 							# items to gen key [1, 0] -> Japan#Tokyo, Japan#
+	"load_order",						# Load order of the key (Japan#Tokyo, Japan#)
+	"item_name_list",					# set by load csv ["Province","Region","Lat","Long"]
+	"defined_item_name_list",			# set by user (definition)
+	"marge_item_pos",					# Marged key positon
 ];
 
 our $cdp_hashs = [
-	"order",					# sorted order 
-	"item_name_hash",			# {"Province" => 0,"Region" => 1,"Lat" => 2,"Long" => 3]
-	"alias",					# Set from @defined_item_name_list
+	"order",							# sorted order 
+	"item_name_hash",					# {"Province" => 0,"Region" => 1,"Lat" => 2,"Long" => 3]
+	"alias",							# Set from @defined_item_name_list
 	"src_csv",
 ];
 
 our $cdp_hash_with_keys = [
-	"csv_data", 				# csv_data->{Japan#Tokyo}: [10123, 10124,,,,]
-	"key_items",				# key_items->{Japan#Tokyo}: ["Tokyo","Japan",33,39],
+	"csv_data", 						# csv_data->{Japan#Tokyo}: [10123, 10124,,,,]
+	"key_items",						# key_items->{Japan#Tokyo}: ["Tokyo","Japan",33,39],
 ];
 
 our $cdp_values = [
-	"id",			# ID of the definition "ccse", "amt" ,, etc
-	"src_info", 	# Description of the data source
-	"main_url", 	# main url to reffer
-	"src_url", 		# source url of data
-	"csv_file",		# CSV(or other) file to be downloaded
-	"src_dlm", 		# Delimtter of the data "," or "\t"
-	"timefmt", 		# Time format (gnuplot) %Y-%m-%d, %Y/%m/%d, etc
-	"data_start",	# Data start colum, ex, 4 : Province,Region, Lat, Long, 2021-01-23, 
-	"down_load", 	# Download function
-	"dates",		# Number of Date
+	"id",								# ID of the definition "ccse", "amt" ,, etc
+	"src_info", 						# Description of the data source
+	"main_url", 						# main url to reffer
+	"src_url", 							# source url of data
+	"csv_file",							# CSV(or other) file to be downloaded
+	"src_dlm", 							# Delimtter of the data "," or "\t"
+	"timefmt", 							# Time format (gnuplot) %Y-%m-%d, %Y/%m/%d, etc
+	"data_start",						# Data start colum, ex, 4 : Province,Region, Lat, Long, 2021-01-23, 
+	"down_load", 						# Download function
+	"dates",							# Number of Date
 ];
 
 #
@@ -245,6 +245,81 @@ sub	init_cdp
 	#$cdp->{key_dlm} = $cdp->{key_dlm} // $DEFAULT_KEY_DLM;
 }
 
+
+#
+#	add an item (key) to csv definition
+#	$cdp->{csv_data}->{$k}->[1,2,3,4];
+#	$cdp->{key_items}->[$k];
+#	$cdp->{item_name_list} = [key1, key2, key3]
+#	$cdp->{item_name_hash}->{$key} = 0,1,2,3,4,5
+#
+#
+#	defjapan.pm
+# 					key,					year,month,date,prefectureNameJ,prefectureNameE
+#	(record#0)		Tokyo#testedPositive	2021,1,1,東京,Tokyo,testedPositive 		->{csv_data}
+#	(record#1)		Tokyo#deaths			2021,1,1,東京,Tokyo,deathes  			->{csv_data}
+#	(record#2)		Osaka#testedPositive	2021,1,1,大阪,Osaka,testedPositive		->{csv_data}
+#	(record#3)		Osaka#deaths			2021,1,1,大阪,Osaka,deathes 			->{csv_data}
+#
+#	date and data of records
+#	{date_list}->[2021-01-01, 2021-01-02, 2021-01-03, 2021-01-04, 2021-01-05]	<- {dates} number of dates
+# 	{csv_data}->{Tokyo#testedPositive}->[1,2,3,4,5]
+#	{csv_data}->{Tokyo#deaths}->[1,2,3,4,5]
+#  	{csv_data}->{Osaka#testedPositive}->[1,2,3,4,5]
+# 	{csv_data}->{Osaka#deaths}->[1,2,3,4,5]
+#
+#	keys of records
+# 	item_name_list: 0						1,   2,    3,   4,              5,
+# 	item_name_hash:	key{0},					year{1},month{2},date{3},prefectureNameJ{4},prefectureNameE{5}
+#	{key_items}->{Tokyo#testedPositive}->	[2021,1,1,東京,Tokyo,testedPositive]
+#	{key_items}->{Tokyo#deaths}->			[2021,1,1,東京,Tokyo,deathes]
+#	{key_items}->{Osaka#testedPositive}->	[2021,1,1,大阪,Osaka,testedPositive]
+#	{key_items}->{Osaka#deaths}->			[2021,1,1,大阪,Osaka,deathes]
+#
+#
+
+#
+#	add an key item to csv definition
+#
+sub	cdp_add_key_items
+{
+	my ($cdp, $key_names) = @_;
+	my $item_name_list = $cdp->{item_name_list};
+
+	if(ref($key_names) ne "ARRAY"){
+		my $kn = $key_names;
+		$key_names = [$kn];
+	}
+	my $item_order = scalar(@$item_name_list);
+	push(@$item_name_list, @$key_names);		# set item_name 
+	foreach my $kn (@$key_names){
+		$cdp->{item_name_hash}->{$kn} = $item_order++;
+	}
+	return 1;
+}
+
+#
+#	add an item (key) to csv definition
+#
+sub	cdp_add_record
+{
+	my ($cdp, $k, $itemp, $dp) = @_;
+
+	$itemp = $itemp // [];
+	$dp = $dp // [];
+	my $csv_data = $cdp->{csv_data};
+	my $key_items = $cdp->{key_items};
+	my $load_order = $cdp->{load_order};
+
+	#dp::dp "load_order: $load_order\n";
+	$csv_data->{$k} = [@$dp];		# set csv data array
+	$key_items->{$k} = [@$itemp];
+	push(@$load_order, $k);
+}
+
+#
+#
+#
 sub	init_graph_definition_params
 {
 	my($gdp) = @_;
@@ -806,9 +881,11 @@ _EOD_
 	#dp::dp "### $csvf\n";
 
 	my $src_csv = $cdp->{src_csv} // "";
-	my $y2_source = $gp->{y2_source} // ($gdp->{y2_source} // "");
+	#my $y2_source = $gp->{y2_source} // ($gdp->{y2_source} // "");
+	my $y2key = $gp->{y2key} // "";
 	#dp::dp "soruce_csv[$src_csv] $y2_source\n";
-	$src_csv = "" if($y2_source eq "");
+	#$src_csv = "" if($y2_source eq "");
+	
 
 	for(my $i = 1; $i <= $#label; $i++){
 		my $graph = $gp->{graph} // ($gdp->{graph} // ($cdp->{graph} // $DEFAULT_GRAPH));
@@ -816,21 +893,23 @@ _EOD_
 		my $key = $label[$i];
 		$key =~ s/^[0-9]+://;
 		$key =~ s/[']/_/g;	# avoid error at plot
-		dp::dp "### $i: $key $src_csv, $y2_source\n";
+		#dp::dp "### $i: $key $src_csv, $y2key\n";
 		$pn++;
 
 		my $axis = "";
 		my $dot = "";
-		if($y2_source ne "" && $src_csv ne ""){		#####
+		#if($y2_source ne "" && $src_csv ne ""){		#####
+		if($y2key ne ""){		#####
 			#dp::dp "csv_source: $key [" . $src_csv->{$key} . "]\n";
 			#dp::dp "csv_source: $key [" . $src_csv . "]\n";
 			$axis =	"axis x1y1";
-			if($src_csv->{$key} == $y2_source) {
+			#if($src_csv->{$key} == $y2_source) {
+			if($y2key && $key =~ /$y2key/) {
 				$axis = "axis x1y2" ;
 				$dot = "dt (7,3)";
 				$graph = $gp->{y2_graph} // ($gdp->{y2_graph} // ($cdp->{y2_graph} // $DEFAULT_GRAPH));
 			}
-			dp::dp "$key $src_csv->{$key},$y2_source: [$axis]\n";
+			dp::dp "$key $src_csv->{$key},$y2key: [$axis]\n";
 		}
 		#dp::dp "axis:[$axis]\n";
 		#my $pl = sprintf("'%s' using 1:%d $axis with lines title '%d:%s' linewidth %d $dot", 
@@ -855,7 +934,7 @@ _EOD_
 
 	my $plot = join(",", @p);
 	$PARAMS =~ s/#PLOT_PARAM#/$plot/g;
-	dp::dp $plot . "\n";
+	dp::dp $plot . "\n" if($VERBOSE);
 
 	my $date_list = $cdp->{date_list};
 	my $dt_start = $gp->{dt_start};

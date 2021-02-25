@@ -151,8 +151,10 @@ sub	select_keys
 	}
 	else {
 		@target_list = &gen_target_col($cdp, $target_colp);
-		dp::dp csvlib::join_array(",", $target_colp) . "\n" if($verbose);
-		dp::dp csvlib::join_array(",", @target_list) . "\n" if($verbose);
+		dp::dp "target_colp: " . csvlib::join_array(",", $target_colp) . "\n" if($verbose);
+		#dp::dp Dumper $target_colp;
+		dp::dp "target_list: " . csvlib::join_array(",", @target_list) . "\n" if($verbose);
+		#dp::dp "target_list: [" . join(",", @target_list) . "]\n" if($verbose);
 		foreach my $sk (@target_list){
 			#dp::dp "Target col $sk\n";
 			if($sk){
@@ -183,7 +185,8 @@ sub	select_keys
 			my $key_in_data = $key_items->{$key};
 			my $res = &check_keys($key_in_data, \@target_col_array, \@non_target_col_array, $key, $verbose);
 			#dp::dp "[$key:$condition:$res]\n" ;#if($verbose  > 1);
-			dp::dp "### " . join(", ", (($res >= $condition) ? "O" : "-"), $key, $res, $condition, @$key_in_data) . "\n" if($verbose > 1) ;
+			dp::dp "### " . join(", ", (($res >= $condition) ? "O" : "-"), $key, $res, $condition, "[".join(",", @$key_in_data)."]") . "\n" if($verbose > 1) ;
+					### -, key:最高気温(), res:0, condition:1, key_in_data:[mainkey]
 			next if ($res < 0);
 
 			if($res >= $condition){
@@ -212,7 +215,7 @@ sub	select_keys
 		my $dkey = "item_name_list"; # "load_order";
 		dp::WARNING (
 			#"No data Target[".ref($target_colp)."]:(".csvlib::join_array(",", $target_colp).") Result:(".join(",", @$target_keys).")\n",
-			"No data Target[".$target_colp."]:(".csvlib::join_array(",", $target_colp).") Result:(".join(",", @$target_keys).")\n",
+			"No data: Target[".$target_colp."]:(".csvlib::join_array(",", $target_colp).") Result:(".join(",", @$target_keys).")\n",
 			"Poosibly miss use of [ ], {} at target_colp " . ref($target_colp) . "\n",
 			"$dkey:(" . join(",", @{$cdp->{$dkey}}) . ")\n",
 		);
@@ -279,8 +282,8 @@ sub	check_keys
 				dp::ABORT "$kn\n";
 			}
 		}
-		dp::dp "key_in_data $kn [" . csvlib::join_arrayn(",", @$key_in_data) . "]\n" if($verbose);
-		dp::dp "key_in_data [" . $key_in_data->[$kn] . "]["  . csvlib::join_arrayn(",", @$skey) . "]\n" if($verbose);
+		dp::dp "key_in_data $kn: [" . csvlib::join_arrayn(",", @$key_in_data) . "]\n" if($verbose);
+		dp::dp "key_in_data [" . $key_in_data->[$kn] . "] : ["  . csvlib::join_arrayn(",", @$skey) . "]\n" if($verbose);
 		dp::ABORT "key_in_data $kn [" . csvlib::join_arrayn(",", @$key_in_data) . "]\n" if(!defined $key_in_data->[$kn]);
 		dp::ABORT "target_col_array $kn\n" if(!defined $target_col_array->[$kn]);
 		dp::dp "data $kn $key_in_data->[$kn] =~ (" . join(",", @{$target_col_array->[$kn]}) . ") ["
