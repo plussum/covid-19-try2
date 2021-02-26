@@ -247,7 +247,7 @@ sub	check_keys
 	$verbose = $verbose // 0;
 	$verbose = 0 if($verbose eq "");
 
-	if(!defined $key_in_data){
+	if(!(defined $key_in_data) || scalar(@$key_in_data) <= 0){
 		dp::WARNING "###!!!! key in data not defined [$key]\n";
 	}
 	#dp::dp "key_in_data: $key_in_data " . scalar(@$key_in_data) . " [$key]\n";

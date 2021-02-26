@@ -164,19 +164,26 @@ if($golist{"tokyo"}){
 
 	csv2graph::new($TOKYO_DEF); 						# Load Apple Mobility Trends
 	csv2graph::load_csv($TOKYO_DEF);
-	#my $y1 = {};
-	#my $y2 = {};
-	my $y1 = csv2graph::reduce_cdp_target($TOKYO_DEF, ["positive_count,negative_count"]);
-	my $y2 = csv2graph::reduce_cdp_target($TOKYO_DEF, ["positive_rate"]);
-	my $marge = csv2graph::marge_csv($y1, $y2);		# Gererate Graph
+	csv2graph::calc_items($TOKYO_DEF, "sum", 
+				{mainkey => "positive_count,negative_count"}, # All Province/State with Canada, ["*","Canada",]
+				{mainkey => "tested_count" },# total gos ["","Canada"] null = "", = keep
+	);
+ 	csv2graph::dump_cdp($TOKYO_DEF, {ok => 1, lines => 5, items => 10});               
 
+	my $y2_graph = "line" ; # 'boxes fill', # 'boxes fill solid',
 	my $tko_graph = [];
 	my $tko_gpara01 = [
-		{dsc => "Tokyo Positve/negative/rate", lank => [1,10], static => "", target_col => ["",""] },
-		{dsc => "Tokyo Positve/negative/rate", lank => [1,10], static => "rlavr", target_col => ["",""] },
+		{dsc => "Tokyo Positve/negative/rate", lank => [1,10], static => "", 
+			target_col => {mainkey =>"tested_count,positive_count,positive_rate"},
+			y2key => "positive_rate", y2label => "rate", y2min => 0, y2max => "", y2_grap => $y2_graph,
+			ykey => "", ylabel => 'Number of cases', ymin => 0, },
+		{dsc => "Tokyo Positve/negative/rate", lank => [1,10], static => "rlavr", 
+			target_col => {mainkey =>"tested_count,positive_count,positive_rate"},
+			y2key => "rate", y2label => "rate", y2min => 0, y2max => "", y2_grap => $y2_graph,
+			ykey => "", ylabel => 'Number of cases', ymin => 0, },
 	];
 	push(@$tko_graph , 
-		csv2graph::csv2graph_list($marge, $TOKYO_GRAPH, $tko_gpara01));
+		csv2graph::csv2graph_list($TOKYO_DEF, $TOKYO_GRAPH, $tko_gpara01));
 
 	#	hospitalized,1,2,3,
 	#	severe_case,1,2,3,
@@ -187,13 +194,16 @@ if($golist{"tokyo"}){
 	my $marge2 = csv2graph::marge_csv($y21, $y22);		# Gererate Graph
 
 	my $tko_gpara02 = [
-		{dsc => "Tokyo Positive Status 01", lank => [1,10], static => "", target_col => ["",""] },
-		{dsc => "Tokyo Positive Status 02", lank => [1,10], static => "rlavr", target_col => ["",""] },
+		{dsc => "Tokyo Positive Status 01", lank => [1,10], static => "", target_col => [],
+				y2key => "severe", y2label => "severe_case", y2min => 0, y2max => "", y2_grap => $y2_graph, },
+		{dsc => "Tokyo Positive Status 02", lank => [1,10], static => "rlavr", target_col => [],
+				y2key => "severe", y2label => "severe_case", y2min => 0, y2max => "", y2_grap => $y2_graph, },
 	];
 	push(@$tko_graph , 
 		csv2graph::csv2graph_list($marge2, $TOKYO_ST_GRAPH, $tko_gpara02));
 
 	push(@$gp_list, @$tko_graph);
+
 	csv2graph::gen_html_by_gp_list($tko_graph, {						# Generate HTML file with graphs
 			html_tilte => "Tokyo Open Data",
 			src_url => $TOKYO_DEF->{src_url} // "src_url",
@@ -222,56 +232,26 @@ if($golist{japan}){
 	my $JAPAN_GRAPH = $defjapan::JAPAN_GRAPH;
 	csv2graph::new($JAPAN_DEF); 						# Load Apple Mobility Trends
 	csv2graph::load_csv($JAPAN_DEF);
- 	csv2graph::dump_cdp($JAPAN_DEF, {ok => 1, lines => 5, items => 10});               
+ 	#csv2graph::dump_cdp($JAPAN_DEF, {ok => 1, lines => 5, items => 10});               
 
 	my $y2_graph = "line" ; # 'boxes fill', # 'boxes fill solid',
-
-	#my $test_positive = csv2graph::reduce_cdp_target($JAPAN_DEF, {key => "testedPositive"});
-	#my $deaths  = csv2graph::reduce_cdp_target($JAPAN_DEF, {key => "deaths"});
-	#my $japan_def = csv2graph::marge_csv($deaths, $test_positive);	# Marge CCSE(ERN) and Apple Mobility Trends
- 	#csv2graph::dump_cdp($japan_def, {ok => 1, lines => 5, items => 10});               
-
 	my $jp_graph = [];
 	my $an = 0;
 	foreach my $area ("東京都", "千葉県", "埼玉県", "神奈川県", "茨城県"){
 		my $test_positive = csv2graph::reduce_cdp_target($JAPAN_DEF, {item => "testedPositive,deaths", prefectureNameJ => $area});
-#		my $test_positive_rlavr = csv2graph::reduce_cdp_target($JAPAN_DEF, {key => "testedPositive", prefectureNameJ => $area});
-#		csv2graph::calc_items($test_positive, "avr", 
-#					{"transportation_type" => "", "region" => "", "country" => ""},	# All Province/State with Canada, ["*","Canada",]
-#					{"transportation_type" => "avr", "region" => "="},# total gos ["","Canada"] null = "", = keep
-#		);
-#		calc::comvert2rlavr($amt_country);							# rlavr for marge with CCSE
 		calc::comvert2rlavr($test_positive, "rlavr");							# rlavr for marge with CCSE
- 		csv2graph::dump_cdp($test_positive, {ok => 1, lines => 5, items => 10});               
-
-#		my $deaths  = csv2graph::reduce_cdp_target($JAPAN_DEF, {key => "deaths", prefectureNameJ => $area});
-#		my $deaths_rlavr  = csv2graph::reduce_cdp_target($JAPAN_DEF, {key => "deaths", prefectureNameJ => $area});
-#		calc::comvert2rlavr($deaths_rlavr);							# rlavr for marge with CCSE
-#		#my $japan_def = csv2graph::marge_csv($test_positive, $test_positive_rlavr, $deaths, $deaths_rlavr);	# Marge CCSE(ERN) and Apple Mobility Trends
-#		my $japan_def = csv2graph::marge_csv($test_positive,  $deaths);	# Marge CCSE(ERN) and Apple Mobility Trends
-# 		csv2graph::dump_cdp($japan_def, {ok => 1, lines => 5, items => 10});               
+ 		#csv2graph::dump_cdp($test_positive, {ok => 1, lines => 5, items => 10});               
 
 		my $params = [];
-		foreach my $kind ("testedPositive", "deaths"){
+		foreach my $kind ("testedPositive,deaths"){
 			push(@$params, {dsc => "Japan $kind $area", lank => [1,10],  static => "", start_date => -90,
 				target_col => {item => $kind, prefectureNameJ => $area},
 				y2key => "deaths", y2label => 'DEATHS', y2min => 0, y2max => "", y2_graph => $y2_graph, # 'boxes fill solid',
 				ykey => "testedPositive", ylabel => 'POSITIVE', ymin => 0, }
-			);;
+			);
 		}
-		push(@$gp_list , 
-				csv2graph::csv2graph_list($test_positive, $JAPAN_GRAPH, $params)); 
+		push(@$gp_list, csv2graph::csv2graph_list($test_positive, $JAPAN_GRAPH, $params)); 
 		$an++;
-		#{dsc => "Japan TestPositive ", lank => [1,10], static => "rlavr", start_date => -90,
-		#	target_col => {key => "testedPositive", prefectureNameJ => "千葉県,埼玉県"} },
-		#{dsc => "Japan PeopleTested", lank => [1,10], static => "rlavr", target_col => {key => "peopleTested"} },
-		#{dsc => "Japan hospitalized", lank => [1,10], static => "rlavr", target_col => {key => "hospitalized"} },
-		#{dsc => "Japan serious", lank => [1,10], static => "rlavr", target_col => {key => "serious"} },
-		#{dsc => "Japan discharged", lank => [1,10], static => "rlavr", target_col => {key => "discharged"} },
-		#{dsc => "Japan deaths", lank => [1,10], static => "rlavr", target_col => {key => "deaths"} },
-		#{dsc => "Japan ERN", lank => [1,10], static => "", target_col => {key => "effectiveReproductionNumber"}, 
-		#{dsc => "Japan ERN", lank => [1,10], static => "", target_col => {key => "ern"}, 
-		#		ymin => "",ymax => ""},
 	}
 	csv2graph::gen_html($JAPAN_DEF, $JAPAN_GRAPH, $jp_graph);		# Generate Graph/HTHML
 }

@@ -105,17 +105,17 @@ sub	calc_items
 	}
 	dp::dp "target items : $target " . csvlib::join_array(",", $target_colp) . "\n" if($verbose);
 
-	my @key_order = select::gen_key_order($cdp, $cdp->{keys}); # keys to gen record key
-	my @riw = select::gen_key_order($cdp, [keys %$result_colp]); # keys order to gen record key
+	my @key_order = select::gen_key_order($cdp, $cdp->{keys}); 		# keys to gen record key
+	my @riw = select::gen_key_order($cdp, [keys %$result_colp]); 	# keys order to gen record key
 
 	dp::dp "key_order: " .join(",", @key_order) . "\n" if($verbose);
 	dp::dp "restore_order: " .join(",", @riw) . "\n" if($verbose);
 
 	my @result_info = ();
-	for(my $i = 0; $i < $cdp->{data_start}; $i++){			# clear to avoid undef
+	for(my $i = 0; $i < $cdp->{data_start}; $i++){				# clear to avoid undef
 		$result_info[$i] = "";
 	}
-	my $item_name_hash = $cdp->{item_name_hash};						# List and Hash need to make here
+	my $item_name_hash = $cdp->{item_name_hash};				# List and Hash need to make here
 	foreach my $k (keys %$result_colp){
 		my $n = $item_name_hash->{$k} // "";
 		if($n eq "") {
@@ -145,6 +145,10 @@ sub	calc_items
 		# dst_key		same,    same,   avr, same, same, same
 		#     v
 		# record_key	region + transportation_type ("avr")
+		#
+
+		#
+		#	Generate new key (result key)
 		#
 		my @key_list = ();
 		for (my $i = 0 ; $i <= $#key_order; $i++){				# [0, 1] 
@@ -177,19 +181,22 @@ sub	calc_items
 			}
 			push(@key_list, $item_name);
 		}
+
 		my $record_key = select::gen_record_key($key_dlm, \@key_order, \@dst_keys);
 		$record_key_list{$record_key}++;
 		dp::dp "record_key [$record_key]" . join(",", @key_order, "##", @key_list) . "\n" if($verbose && $record_key =~ /Japan/ );
 		
 		if(! defined $csv_data->{$record_key}){				# initial $record_key
 			dp::dp "init: $record_key\n" if($VERBOSE);
-			$key_items->{$record_key} = [@dst_keys];
-			$csv_data->{$record_key} = [];
+			
+##			$key_items->{$record_key} = [@dst_keys];
+##			$csv_data->{$record_key} = [];
+			csv2graph::cdp_add_record($cdp, $record_key, [@dst_keys], []);
 			my $dst_dp = $csv_data->{$record_key};			# total -> dst
 			for(my $i = 0; $i < scalar(@$src_dp); $i++){	# initial csv_data
 				$dst_dp->[$i] = 0;					
 			}
-			$src_csvp->{$record_key} = $src_csv;
+			$src_csvp->{$record_key} = $src_csv;			# add $record_key record to cdp
 			#dp::dp "$record_key : $src_csv\n";
 		}
 		my $dst_dp = $csv_data->{$record_key};				# total -> dst
