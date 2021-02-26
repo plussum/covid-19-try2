@@ -283,17 +283,33 @@ sub	init_cdp
 #
 sub	cdp_add_key_items
 {
-	my ($cdp, $key_names) = @_;
+	my ($cdp, $key_names, $labels) = @_;
 	my $item_name_list = $cdp->{item_name_list};
 
 	if(ref($key_names) ne "ARRAY"){
+		dp::WARNING "key namses is not ARRAY: $key_names\n";
 		my $kn = $key_names;
 		$key_names = [$kn];
 	}
+	dp::dp join(",", @$key_names) . "\n";
 	my $item_order = scalar(@$item_name_list);
 	push(@$item_name_list, @$key_names);		# set item_name 
 	foreach my $kn (@$key_names){
 		$cdp->{item_name_hash}->{$kn} = $item_order++;
+	}
+	dp::dp "add key : " . join(",", @$item_name_list) . "\n";
+
+	#
+	#	When label was sat, add new items for exist key_items
+	#		The case of calculation, such as rlavr, ern ....
+	#
+	$labels = $labels // [];
+	my $key_items = $cdp->{key_items};
+	foreach my $kn (keys %$key_items){
+		foreach my $initial (@$labels){
+			push(@{$key_items->{$kn}}, $initial);		# no data for exist record
+		}
+		#my $new_key = join($cdp->{dlm}, $key_name, @$labels);	# change master key seems messsy...
 	}
 	return 1;
 }

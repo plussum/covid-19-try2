@@ -74,6 +74,14 @@ my $VERBOSE = 0;
 #
 #	Main calc function
 #
+#			date1, date2, date3,....
+#	item1
+#	item2
+#	item3
+#		-----------------------------
+#		(avr, total)
+#
+#
 sub	calc_items
 {
 	my ($cdp, $method, $target_colp, $result_colp) = @_;
@@ -238,20 +246,47 @@ sub	rolling_average
 #
 #	combert csv data to ERN
 #
+#			item_name_list , item_name_has <- "calc"
+#
+#
 sub	comvert2rlavr
 {
-	my($cdp, $p) = @_;
+	my($cdp, $label) = @_;
 
 	my $gdp = {};
 	my $gp = {};
+	$label = $label // "";
 
-	my $work_csvp = reduce::dup_csv($cdp, "");
-	#&dump_csv_data($work_csvp, {ok => 1, lines => 5, message => "comver2rlavr:dup"}) if(1);
-	&rolling_average($cdp, $work_csvp, $gdp, $gp);
-	#&dump_csv_data($work_csvp, {ok => 1, lines => 5, message => "comver2rlavr:ern"}) if(1);
-	$cdp->{csv_data} = "";
-	$cdp->{csv_data} = $work_csvp;
-	
+	if(($label//"")){		# Not checked yet,, think better to use calc_items
+		if(! defined $cdp->{item_name_hash}->{calc}){
+			csv2graph::cdp_add_key_items($cdp, ["calc"], ["RAW"]);
+		}
+		my $calc_item = $cdp->{item_name_hash}->{calc};
+
+		my $work_csvp = reduce::dup_csv($cdp, "");
+		#&dump_csv_data($work_csvp, {ok => 1, lines => 5, message => "comver2rlavr:dup"}) if(1);
+		&rolling_average($cdp, $work_csvp, $gdp, $gp);
+
+		my $key_items = $cdp->{key_items};
+		my $key_dlm = $cdp->{key_dlm} // $config::DEFAULT_KEY_DLM;
+		foreach my $kn (keys %$work_csvp){
+			my $ckn = join($key_dlm, $kn, $label);
+			my @items = @{$key_items->{$kn}};
+			$items[$calc_item] = $label;
+			csv2graph::cdp_add_record($cdp, $ckn, [@items], $work_csvp->{$kn});
+			#dp::dp "$ckn\n";
+		}
+	}
+	else {
+		my $work_csvp = reduce::dup_csv($cdp, "");
+		#&dump_csv_data($work_csvp, {ok => 1, lines => 5, message => "comver2rlavr:dup"}) if(1);
+		&rolling_average($cdp, $work_csvp, $gdp, $gp);
+
+
+		#&dump_csv_data($work_csvp, {ok => 1, lines => 5, message => "comver2rlavr:ern"}) if(1);
+		$cdp->{csv_data} = "";
+		$cdp->{csv_data} = $work_csvp;
+	}
 	dp::dp "comvert2rlavr[csv_data]:" . dump::print_hash($cdp->{csv_data}) . "\n";
 
 	return $cdp;
@@ -264,7 +299,7 @@ sub	comvert2ern
 {
 	my($cdp, $p) = @_;
 
-	my $key_dlm = $cdp->{key_dlm} // "#";
+	my $key_dlm = $cdp->{key_dlm} // $config::DEFAULT_KEY_DLM;
 	my $gp  = {
 		lp => $p->{lp} // $config::RT_LP,
 		ip => $p->{ip} // $config::RT_IP,

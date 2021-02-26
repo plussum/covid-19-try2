@@ -138,6 +138,7 @@ sub	select_keys
 
 	$verbose = $verbose // "";
 	$verbose = 0 if($verbose eq "");
+	$verbose = 1;
 	my @target_col_array = ();
 	my @non_target_col_array = ();
 	my $condition = 0;
@@ -151,9 +152,9 @@ sub	select_keys
 	}
 	else {
 		@target_list = &gen_target_col($cdp, $target_colp);
-		dp::dp "target_colp: " . csvlib::join_array(",", $target_colp) . "\n" if($verbose);
+		#dp::dp "target_colp: " . csvlib::join_array(",", $target_colp) . "\n" if($verbose);
 		#dp::dp Dumper $target_colp;
-		dp::dp "target_list: " . csvlib::join_array(",", @target_list) . "\n" if($verbose);
+		#dp::dp "target_list: " . csvlib::join_array(",", @target_list) . "\n" if($verbose);
 		#dp::dp "target_list: [" . join(",", @target_list) . "]\n" if($verbose);
 		foreach my $sk (@target_list){
 			#dp::dp "Target col $sk\n";
@@ -177,8 +178,8 @@ sub	select_keys
 			$clm++;
 		}
 
-		dp::dp "Condition: $condition " . csvlib::join_array(", ", @target_col_array) . "\n" if($verbose);
-		dp::dp "Nontarget: " . csvlib::join_array(",", @non_target_col_array) . "\n" if($verbose);
+		#dp::dp "Condition: $condition " . csvlib::join_array(", ", @target_col_array) . "\n" if($verbose);
+		#dp::dp "Nontarget: " . csvlib::join_array(",", @non_target_col_array) . "\n" if($verbose);
 		my $key_items = $cdp->{key_items};
 		#dp::dp "Key_itmes: " . csvlib::join_array(",", $key_items) . "\n";
 		foreach my $key (keys %$key_items){
@@ -191,14 +192,14 @@ sub	select_keys
 
 			if($res >= $condition){
 				push(@$target_keys, $key);
-				if($verbose){
+				if(0 && $verbose){
 					dp::dp "### " . join(", ", (($res >= $condition) ? "O" : "-"), $key, $res, $condition, @$key_in_data) . "\n";
 				}
 			}
 		}
 	}
 
-	if($verbose){
+	if(0 && $verbose){
 		my $size = scalar(@$target_keys) - 1;
 		dp::dp "SIZE: $size\n";
 		$size = 5 if($size > 5);
@@ -254,7 +255,10 @@ sub	check_keys
 	my $condition = 0;
 	my $cols = scalar(@$target_col_array) - 1;
 
-	dp::dp csvlib::join_array(",", @$target_col_array) . "\n" if($verbose == 1);
+	my @debug_str = ();
+	push(@debug_str, "target_col :" . csvlib::join_array(",", @$target_col_array) );
+	push(@debug_str, "key_in_data:" . csvlib::join_array(",", @$key_in_data) );
+
 	for(my $kn = 0; $kn <= $cols; $kn++){
 		my $skey = $target_col_array->[$kn];
 		my $nskey = $non_target_col_array->[$kn];
@@ -282,18 +286,37 @@ sub	check_keys
 				dp::ABORT "$kn\n";
 			}
 		}
-		dp::dp "key_in_data $kn: [" . csvlib::join_arrayn(",", @$key_in_data) . "]\n" if($verbose);
-		dp::dp "key_in_data [" . $key_in_data->[$kn] . "] : ["  . csvlib::join_arrayn(",", @$skey) . "]\n" if($verbose);
+
 		dp::ABORT "key_in_data $kn [" . csvlib::join_arrayn(",", @$key_in_data) . "]\n" if(!defined $key_in_data->[$kn]);
 		dp::ABORT "target_col_array $kn\n" if(!defined $target_col_array->[$kn]);
-		dp::dp "data $kn $key_in_data->[$kn] =~ (" . join(",", @{$target_col_array->[$kn]}) . ") ["
-				 . join(",", @$key_in_data) . "]\n" if($verbose == 1);
-		
+
+		my $hit = 0;
 		if(csvlib::search_listn($key_in_data->[$kn], @$skey) >= 0){
-			$condition++ 									# Hit to target
+			$condition++;									# Hit to target
+			$hit = 1;
+		}
+		if($verbose){
+			if(0 && ($verbose > 1 || $hit)){
+				dp::dp "key_in_data $kn: $key_in_data->[$kn] [" . csvlib::join_arrayn(",", @$key_in_data) . "]\n";
+				dp::dp "seach_key : ["  . csvlib::join_arrayn(",", @$skey) . "]  -> $condition\n";
+				#dp::dp "data $kn $key_in_data->[$kn] =~ (" . join(",", @{$target_col_array->[$kn]}) . ") ["
+				#		 . join(",", @$key_in_data) . "]\n" if($verbose == 1);
+			}
 		}
 	}
-	#dp::dp "----> $condition: $kid\n" if($kid =~ /Canada/);
+	if($verbose){
+		my $n = 0;
+		foreach my $tg (@$target_col_array) {
+			$n++ if(scalar(@$tg) > 0);
+		}
+		#dp::dp ">>>>> $condition:$n  " . join(",", @$target_col_array). "\n";
+		push(@debug_str,  "----> $condition/$n =====" . (($condition >= $n) ? "HIT" : "NON") . "=====");
+		if($verbose > 1 || $condition >= $n){
+			foreach my $s (@debug_str){
+				dp::dp $s . "\n";
+			}
+		}
+	}
 	return $condition;
 }
 

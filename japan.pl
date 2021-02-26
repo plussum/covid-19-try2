@@ -222,6 +222,7 @@ if($golist{japan}){
 	my $JAPAN_GRAPH = $defjapan::JAPAN_GRAPH;
 	csv2graph::new($JAPAN_DEF); 						# Load Apple Mobility Trends
 	csv2graph::load_csv($JAPAN_DEF);
+ 	csv2graph::dump_cdp($JAPAN_DEF, {ok => 1, lines => 5, items => 10});               
 
 	my $y2_graph = "line" ; # 'boxes fill', # 'boxes fill solid',
 
@@ -233,32 +234,33 @@ if($golist{japan}){
 	my $jp_graph = [];
 	my $an = 0;
 	foreach my $area ("東京都", "千葉県", "埼玉県", "神奈川県", "茨城県"){
-		my $test_positive = csv2graph::reduce_cdp_target($JAPAN_DEF, {key => "testedPositive", prefectureNameJ => $area});
-		my $test_positive_rlavr = csv2graph::reduce_cdp_target($JAPAN_DEF, {key => "testedPositive", prefectureNameJ => $area});
+		my $test_positive = csv2graph::reduce_cdp_target($JAPAN_DEF, {item => "testedPositive,deaths", prefectureNameJ => $area});
+#		my $test_positive_rlavr = csv2graph::reduce_cdp_target($JAPAN_DEF, {key => "testedPositive", prefectureNameJ => $area});
 #		csv2graph::calc_items($test_positive, "avr", 
 #					{"transportation_type" => "", "region" => "", "country" => ""},	# All Province/State with Canada, ["*","Canada",]
 #					{"transportation_type" => "avr", "region" => "="},# total gos ["","Canada"] null = "", = keep
 #		);
 #		calc::comvert2rlavr($amt_country);							# rlavr for marge with CCSE
-		calc::comvert2rlavr($test_positive_rlavr);							# rlavr for marge with CCSE
+		calc::comvert2rlavr($test_positive, "rlavr");							# rlavr for marge with CCSE
+ 		csv2graph::dump_cdp($test_positive, {ok => 1, lines => 5, items => 10});               
 
-		my $deaths  = csv2graph::reduce_cdp_target($JAPAN_DEF, {key => "deaths", prefectureNameJ => $area});
-		my $deaths_rlavr  = csv2graph::reduce_cdp_target($JAPAN_DEF, {key => "deaths", prefectureNameJ => $area});
-		calc::comvert2rlavr($deaths_rlavr);							# rlavr for marge with CCSE
-		#my $japan_def = csv2graph::marge_csv($test_positive, $test_positive_rlavr, $deaths, $deaths_rlavr);	# Marge CCSE(ERN) and Apple Mobility Trends
-		my $japan_def = csv2graph::marge_csv($test_positive,  $deaths);	# Marge CCSE(ERN) and Apple Mobility Trends
- 		csv2graph::dump_cdp($japan_def, {ok => 1, lines => 5, items => 10});               
+#		my $deaths  = csv2graph::reduce_cdp_target($JAPAN_DEF, {key => "deaths", prefectureNameJ => $area});
+#		my $deaths_rlavr  = csv2graph::reduce_cdp_target($JAPAN_DEF, {key => "deaths", prefectureNameJ => $area});
+#		calc::comvert2rlavr($deaths_rlavr);							# rlavr for marge with CCSE
+#		#my $japan_def = csv2graph::marge_csv($test_positive, $test_positive_rlavr, $deaths, $deaths_rlavr);	# Marge CCSE(ERN) and Apple Mobility Trends
+#		my $japan_def = csv2graph::marge_csv($test_positive,  $deaths);	# Marge CCSE(ERN) and Apple Mobility Trends
+# 		csv2graph::dump_cdp($japan_def, {ok => 1, lines => 5, items => 10});               
 
 		my $params = [];
-		foreach my $static ("") { # , "rlavr"){
-			push(@$params, {dsc => "Japan TestPositive $area", lank => [1,10],  static => $static, start_date => -90,
-				target_col => {key => "testedPositive,deaths", prefectureNameJ => $area},
+		foreach my $kind ("testedPositive", "deaths"){
+			push(@$params, {dsc => "Japan $kind $area", lank => [1,10],  static => "", start_date => -90,
+				target_col => {item => $kind, prefectureNameJ => $area},
 				y2key => "deaths", y2label => 'DEATHS', y2min => 0, y2max => "", y2_graph => $y2_graph, # 'boxes fill solid',
 				ykey => "testedPositive", ylabel => 'POSITIVE', ymin => 0, }
 			);;
 		}
 		push(@$gp_list , 
-				csv2graph::csv2graph_list($japan_def, $JAPAN_GRAPH, $params)); 
+				csv2graph::csv2graph_list($test_positive, $JAPAN_GRAPH, $params)); 
 		$an++;
 		#{dsc => "Japan TestPositive ", lank => [1,10], static => "rlavr", start_date => -90,
 		#	target_col => {key => "testedPositive", prefectureNameJ => "千葉県,埼玉県"} },

@@ -44,13 +44,15 @@ sub	reduce_cdp_target_a
 
 	#dp::dp Dumper $target_colp;
 
+	$target_colp = $target_colp // "";
 	$dumpf = 1;
 	my @target_keys = ();
 	#dp::dp "reduce_cdp_target: $target_colp " . csvlib::join_array(",", $target_colp) . "\n";
-	my $target = select::select_keys($cdp, $target_colp // "", \@target_keys);
+	my $target = select::select_keys($cdp, $target_colp, \@target_keys);
 	#dp::dp "result of select(", $#target_keys, ") " . join(",", @target_keys) . "\n";
 	if($target < 0){
-		dp::ABORT "No data " . csvlib::join_array(",", @$target_colp) . "##" . join(",", @target_keys) . "\n";
+		my $tgps = ($target_colp) ? csvlib::join_array(",", $target_colp) : "null";
+		dp::ABORT "No data " . $tgps . "##" . join(",", @target_keys). "\n";
 	}
 	#my $ft = $target_colp->[0] ;
 	#if(0 && $ft eq "NULL"){
