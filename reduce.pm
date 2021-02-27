@@ -11,7 +11,9 @@ use warnings;
 use utf8;
 use Encode 'decode';
 use JSON qw/encode_json decode_json/;
+use Clone qw(clone);
 use Data::Dumper;
+
 use config;
 use csvlib;
 use dump;
@@ -26,29 +28,30 @@ my $dumpf = 0;
 #
 #
 #
+##sub	reduce_cdp_target
+##{
+##	my $self = shift;
+##	my ($target_colp) = @_;
+##
+##	my $dst_cdp = {};
+##	return &reduce_cdp_target_a($self, $dst_cdp,$target_colp);
+##}
+
+
+#
+#
+#
 sub	reduce_cdp_target
 {
-	my ($cdp, $target_colp) = @_;
-
-	my $dst_cdp = {};
-	return &reduce_cdp_target_a($dst_cdp, $cdp, $target_colp);
-}
-
-
-#
-#
-#
-sub	reduce_cdp_target_a
-{
-	my ($dst_cdp, $cdp, $target_colp) = @_;
+	my $self = shift;
+	my ($target_colp) = @_;
 
 	#dp::dp Dumper $target_colp;
-
 	$target_colp = $target_colp // "";
-	$dumpf = 1;
+
 	my @target_keys = ();
 	#dp::dp "reduce_cdp_target: $target_colp " . csvlib::join_array(",", $target_colp) . "\n";
-	my $target = select::select_keys($cdp, $target_colp, \@target_keys);
+	my $target = $self->select_keys($target_colp, \@target_keys);
 	#dp::dp "result of select(", $#target_keys, ") " . join(",", @target_keys) . "\n";
 	if($target < 0){
 		my $tgps = ($target_colp) ? csvlib::join_array(",", $target_colp) : "null";
@@ -61,77 +64,34 @@ sub	reduce_cdp_target_a
 	#	#dp::dp join("\n", @target_keys);
 	#	#dp::dp "################\n";
 	#}
-	&reduce_cdp($dst_cdp, $cdp, \@target_keys);
-	&dump_cdp($dst_cdp, {ok => 1, lines => 20, items => 20}) if($DEBUG);
-	$dumpf = 0;
+	my $dst_cdp = $self->reduce_cdp(\@target_keys);
+	$dst_cdp->dump({ok => 1, lines => 20, items => 20}) if($DEBUG);
+
 	return $dst_cdp;
 }
 
 sub	reduce_cdp
 {
-	my($dst_cdp, $cdp, $target_keys) = @_;
+	my $self = shift;
+	my($target_keys) = @_;
 
-	csv2graph::new($dst_cdp);
 
 	my $all_key = [];
 	if((!defined $target_keys) || $target_keys eq ""){
 		$target_keys = $all_key;
-		@$target_keys = keys %{$cdp->{csv_data}};
+		@$target_keys = keys %{$self->{csv_data}};
 		#dp::dp join(",", @$target_keys) . "\n";
 	}
-		
-
-	#my @arrays = ("date_list", "keys");
-	#my @hashs = ("order");
-	my @hash_with_keys = ("csv_data", "key_items");
-
-
-	csv2graph::new($dst_cdp);
-	%$dst_cdp = %$cdp;
-	# $cdp_values = [ "id", "title", "main_url", "src_url","csv_file", "src_dlm", "timefmt", "data_start", "down_load"]
-	foreach my $val (@$csv2graph::cdp_values){
-		$dst_cdp->{$val} = $cdp->{$val} // "";
-	}
-	# $cdp_arrays = [ "date_list", "keys", "load_order", "item_name_list", "defined_item_name_list",]
-	foreach my $array_item (@$csv2graph::cdp_arrays){
-		$dst_cdp->{$array_item} = [];
-		@{$dst_cdp->{$array_item}} = @{$cdp->{$array_item}};
-	}
-	# $cdp_hashs = ["order","item_name_hash", "defined_item_name_hash",]
-	foreach my $hash_item (@$csv2graph::cdp_hashs){
-		$dst_cdp->{$hash_item} = {};
-		%{$dst_cdp->{$hash_item}} = %{$cdp->{$hash_item}};
-	}
-	# $cdp_hash_with_keys = ["csv_data", "key_items"]
-	foreach my $hwk (@$csv2graph::cdp_hash_with_keys){
-		my $src = $cdp->{$hwk};
-		$dst_cdp->{$hwk} = {};
-		my $dst = $dst_cdp->{$hwk};
-	
-		foreach my $key (@$target_keys){
-			#dp::dp "reduce - target_keys: $hwk:$key\n";# if($dumpf);
-			$dst->{$key} = [];
-			#dp::dp "$hwk: $key:\n";
-			if(! defined $src->{$key}){
-				dp::WARNING "$hwk $key is not allocated\n";
-				next;
-			}
-			@{$dst->{$key}} = @{$src->{$key}};
-		}
-	}
-
-	my $dst_key = $dst_cdp->{key_items};
-	my $dst_csv = $dst_cdp->{csv_data};
-	my $src_csv = $cdp->{csv_data};
-	my $dst_load_order = $dst_cdp->{load_order};
-	# @{$dst_cdp->{load_order}} = @$target_keys;		
-	@$dst_load_order = ();
-	foreach my $k (@{$cdp->{load_order}}){
-		push(@$dst_load_order, $k) if(defined $src_csv->{$k});
+	my $dst_cdp = clone($self);
+	$dst_cdp->remove_data();					# remove csv and related data
+	#dp::dp join(",", $self->{key_items}, $self->{csv_data}) . "\n";
+	foreach my $key (@$target_keys){			# set target data from source cdp (self)
+		$dst_cdp->add_record($key, $self->{key_items}->{$key}, $self->{csv_data}->{$key});
 	}
 
 	if($DEBUG){
 		my $kn = 0;
+		my $dst_csv = $dst_cdp->{csv_data};
 		foreach my $key (keys %$dst_csv){
 			last if($kn++ > 5);
 
@@ -139,52 +99,70 @@ sub	reduce_cdp
 			#dp::dp "csv[$key] " . join(",", @{$dst_csv->{$key}}[0..5]) . "\n";
 			#dp::dp "key[$key] " . join(",", @{$dst_key->{$key}}[0..5]) . "\n";
 		}
-		dump::dump_cdp($dst_cdp, {ok => 1, lines => 20, items => 20, search_key => "Canada"}); # if($DEBUG);
+		$dst_cdp->dump_cdp({ok => 1, lines => 20, items => 20, search_key => "Canada"}); # if($DEBUG);
 	}
+	return  $dst_cdp;
 }
 
 #
 #	Copy and Reduce CSV DATA with replace data set
 #
-sub	dup_cdp
+sub	dup
 {
-	my($cdp) = @_;
+	my $self = shift;
 	
 	#csv2graph::dump_cdp($cdp, {ok => 1, lines => 5});
-	my $dst_cdp = {};
-	&reduce_cdp($dst_cdp, $cdp, ""); 
+
+	my $dst_cdp = clone($self);
+##	my $dst_cdp = {};
+##	&reduce_cdp($dst_cdp, $cdp, ""); 
 
 	return $dst_cdp;
 }
 
 sub	dup_csv
 {
-	#my ($cdp, $work_csv, $target_keys) = @_;
-	my ($cdp, $target_keys) = @_;
+	my $self = shift;
+	my ($target_keys) = @_;
 
-	my $work_csv = {};
+	my $src_csv = $self->{csv_data};
+	my $dst_csv = {};
 
-	my $csv_data = $cdp->{csv_data};
-	#dp::dp "dup_csv: cdp[$cdp] csv_data : $csv_data\n";
-	$target_keys = $target_keys // "";
-	if(! $target_keys){
-		my @tgk = ();
-		my $csv_data = $cdp->{csv_data};
-		#dp::dp ">>dup_csv cdp[$cdp] csv_data[$csv_data]\n";
-		foreach my $k (keys %$csv_data){
-			push(@tgk, $k);
+	if(($target_keys // "")){						# when target key [] was sat
+		$dst_csv = clone($src_csv);
+	}
+	else {
+		foreach my $key (@$target_keys){			# set target data from source cdp (self)
+			$dst_csv->{$key} =  $src_csv->{$key};
 		}
-		#@$target_keys = (keys %$csv_data);
-		#dp::dp "DUP.... " . join(",", @tgk) . "\n";
-		$target_keys = \@tgk;
-		#exit;
 	}
-	foreach my $key (@$target_keys){						#
-		$work_csv->{$key} = [];
-		#dp::dp "$key: $csv_data->{$key}\n";
-		push(@{$work_csv->{$key}}, @{$csv_data->{$key}});
-	}
-	return $work_csv;
+
+	return $dst_csv;
+
+##
+##	my $work_csv = {};
+##
+##	my $csv_data = $cdp->{csv_data};
+##	#dp::dp "dup_csv: cdp[$cdp] csv_data : $csv_data\n";
+##	$target_keys = $target_keys // "";
+##	if(! $target_keys){
+##		my @tgk = ();
+##		my $csv_data = $cdp->{csv_data};
+##		#dp::dp ">>dup_csv cdp[$cdp] csv_data[$csv_data]\n";
+##		foreach my $k (keys %$csv_data){
+##			push(@tgk, $k);
+##		}
+##		#@$target_keys = (keys %$csv_data);
+##		#dp::dp "DUP.... " . join(",", @tgk) . "\n";
+##		$target_keys = \@tgk;
+##		#exit;
+##	}
+##	foreach my $key (@$target_keys){						#
+##		$work_csv->{$key} = [];
+##		#dp::dp "$key: $csv_data->{$key}\n";
+##		push(@{$work_csv->{$key}}, @{$csv_data->{$key}});
+##	}
+##	return $work_csv;
 }
 
 1;

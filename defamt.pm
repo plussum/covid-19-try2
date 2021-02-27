@@ -33,7 +33,7 @@ our $AMT_DEF = {
 	id => "amt",
 	src_info => "Apple Mobility Trends",
 	main_url =>  "https://covid19.apple.com/mobility",
-	csv_file =>  "$config::WIN_PATH/applemobile/applemobilitytrends.csv.txt",
+	src_file =>  "$config::WIN_PATH/applemobile/applemobilitytrends.csv.txt",
 	src_url => "https://covid19.apple.com/mobility",		# set
 
 	down_load => \&download,

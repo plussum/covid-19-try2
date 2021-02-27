@@ -83,6 +83,8 @@ use utf8;
 use Encode 'decode';
 use JSON qw/encode_json decode_json/;
 use Data::Dumper;
+use Clone qw(clone);
+
 use config;
 use csvlib;
 use calc;
@@ -124,12 +126,12 @@ our $cdp_hashs = [
 	"order",							# sorted order 
 	"item_name_hash",					# {"Province" => 0,"Region" => 1,"Lat" => 2,"Long" => 3]
 	"alias",							# Set from @defined_item_name_list
-	"src_csv",
 ];
 
 our $cdp_hash_with_keys = [
 	"csv_data", 						# csv_data->{Japan#Tokyo}: [10123, 10124,,,,]
 	"key_items",						# key_items->{Japan#Tokyo}: ["Tokyo","Japan",33,39],
+	"src_csv",							# source csv ID (,,, may not work ... )
 ];
 
 our $cdp_values = [
@@ -187,6 +189,7 @@ our $DEFAULT_GRAPHDEF_PARAMS = {
 	
 # set dump
 sub	dump_cdp { return dump::dump_cdp(@_); }
+sub	dump{ return dump::dump_cdp(@_); }
 sub dump_key_items { return dump::dump_key_items(@_); } 
 sub	dump_csv_data { return dump::dump_csv_data(@_); }
 
@@ -196,7 +199,7 @@ sub	load_csv {return load::load_csv(@_);}
 #	Reduce
 sub	reduce_cdp_target {return reduce::reduce_cdp_target(@_);}
 sub	reduce_cdp {return reduce::reduce_cdp(@_);}
-sub	dup_cdp {return reduce::dup_cdp(@_);}
+sub	dup{return reduce::dup(@_);}
 sub	dup_csv {return reduce::dup_csv(@_);}
 
 #	Marge
@@ -209,6 +212,13 @@ sub	comvert2rlavr{return calc::comvert2rlavr(@_);}
 sub	comvert2ern {return calc::comvert2ern(@_);}
 sub	ern {return calc::ern(@_);}
 
+# select
+sub	gen_record_key {return select::gen_record_key(@_);} 
+sub	gen_key_order {return select::gen_key_order(@_);}
+sub	gen_target_col {return select::gen_target_col(@_);}
+sub	select_keys {return select::select_keys(@_);}
+sub	check_keys {return select::check_keys(@_);}
+sub	date_range {return select::date_range(@_);}
 
 
 #
@@ -216,10 +226,21 @@ sub	ern {return calc::ern(@_);}
 #
 sub	new
 {
-	my ($cdp) = @_;
-	
-	&init_cdp($cdp);
-	return ($cdp);
+	my $class = shift;
+	my $def  = shift;
+	my $self = {};
+	if($def//""){
+		$self = clone($def);
+	}
+	#dp::dp Dumper $self;
+
+	&init_cdp($self);
+	return bless $self, $class;
+
+#	my ($cdp) = @_;
+#	
+#	&init_cdp($cdp);
+#	return ($cdp);
 }
 
 sub	init_cdp
@@ -281,35 +302,37 @@ sub	init_cdp
 #
 #	add an key item to csv definition
 #
-sub	cdp_add_key_items
+sub	add_key_items
 {
-	my ($cdp, $key_names, $labels) = @_;
-	my $item_name_list = $cdp->{item_name_list};
+	my $self = shift;
+	my ($key_names, $labels) = @_;
+
+	my $item_name_list = $self->{item_name_list};
 
 	if(ref($key_names) ne "ARRAY"){
 		dp::WARNING "key namses is not ARRAY: $key_names\n";
 		my $kn = $key_names;
 		$key_names = [$kn];
 	}
-	dp::dp join(",", @$key_names) . "\n";
+	#dp::dp join(",", @$key_names) . "\n";
 	my $item_order = scalar(@$item_name_list);
 	push(@$item_name_list, @$key_names);		# set item_name 
 	foreach my $kn (@$key_names){
-		$cdp->{item_name_hash}->{$kn} = $item_order++;
+		$self->{item_name_hash}->{$kn} = $item_order++;
 	}
-	dp::dp "add key : " . join(",", @$item_name_list) . "\n";
+	#dp::dp "add key : " . join(",", @$item_name_list) . "\n";
 
 	#
 	#	When label was sat, add new items for exist key_items
 	#		The case of calculation, such as rlavr, ern ....
 	#
 	$labels = $labels // [];
-	my $key_items = $cdp->{key_items};
+	my $key_items = $self->{key_items};
 	foreach my $kn (keys %$key_items){
 		foreach my $initial (@$labels){
 			push(@{$key_items->{$kn}}, $initial);		# no data for exist record
 		}
-		#my $new_key = join($cdp->{dlm}, $key_name, @$labels);	# change master key seems messsy...
+		#my $new_key = join($self->{dlm}, $key_name, @$labels);	# change master key seems messsy...
 	}
 	return 1;
 }
@@ -317,20 +340,62 @@ sub	cdp_add_key_items
 #
 #	add an item (key) to csv definition
 #
-sub	cdp_add_record
+sub	add_record
 {
-	my ($cdp, $k, $itemp, $dp) = @_;
+	my $self = shift;
+	my ($k, $itemp, $dp) = @_;
 
+	#csvlib::disp_caller(1..5);
 	$itemp = $itemp // [];
 	$dp = $dp // [];
-	my $csv_data = $cdp->{csv_data};
-	my $key_items = $cdp->{key_items};
-	my $load_order = $cdp->{load_order};
 
 	#dp::dp "load_order: $load_order\n";
-	$csv_data->{$k} = [@$dp];		# set csv data array
-	$key_items->{$k} = [@$itemp];
-	push(@$load_order, $k);
+	$self->{csv_data}->{$k} = [@$dp];		# set csv data array
+	$self->{key_items}->{$k} = [@$itemp];
+	$self->{src_csv}->{$k} = 0;
+	push(@{$self->{load_order}}, $k);
+
+	return 1;
+}
+
+#
+#	Not checked yet
+#
+sub	remove_record
+{
+	my $self = shift;
+	my ($k, $itemp, $dp) = @_;
+
+	my $load_order = $self->{load_order};
+
+	delete($self->{csv_data}->{$k}); 
+	delete($self->{key_items}->{$k});
+	delete($self->{src_csv}->{$k});
+	for(my $i = 0; $i < scalar(@$load_order); $i++){
+		if($load_order->[$i] eq $k){
+			splice(@$load_order, $i, 1);
+			last;
+		}
+	}
+	return 1;
+}
+
+#
+#	Not checked yet
+#
+sub	remove_data
+{
+	my $self = shift;
+
+	foreach my $hwk (@$cdp_hash_with_keys){
+		undef($self->{$hwk}); 
+		$self->{$hwk} = {};
+	}
+	foreach my $ark ("load_order"){
+		undef($self->{$ark});
+		$self->{$ark} = [];
+	}
+	return 1;
 }
 
 #
@@ -365,19 +430,20 @@ sub	init_graph_params
 #
 sub	set_alias
 {
-	my ($cdp, $alias) = @_;
+	my $self = shift;
+	my ($alias) = @_;
 
 	foreach my $k (keys %$alias){
 		my $v = $alias->{$k};
 		if($v =~ /\D/){
-			if(! defined $cdp->{item_name_hash}){
+			if(! defined $self->{item_name_hash}){
 				dp::WARNING "alias: $v is not defined in item_name_list, $k, $v\n";
 				next;
 			}
-			$v = $cdp->{item_name_hash};
+			$v = $self->{item_name_hash};
 		}
-		$cdp->{item_name_hash}->{$k} = $v;
-		$cdp->{alias}->{$k} = $v;		# no plan for using, but ...
+		$self->{item_name_hash}->{$k} = $v;
+		$self->{alias}->{$k} = $v;		# no plan for using, but ...
 	}
 }
 
@@ -386,10 +452,11 @@ sub	set_alias
 #
 sub	gen_graph_by_list
 {
-	my($cdp, $gdp, $gp_list) = @_;
+	my $self = shift;
+	my($gdp, $gp_list) = @_;
 
 	foreach my $gp (@$gp_list){
-		&csv2graph($cdp, $gdp, $gp);
+		$self->csv2graph($gdp, $gp);
 		#dp::dp join(",", $gp->{dsc}, $gp->{start_date}, $gp->{end_date},
 		#		$gp->{fname}, $gp->{plot_png}, $gp->{plot_csv}, $gp->{plot_cmd}) . "\n";
 	}
@@ -401,7 +468,8 @@ sub	gen_graph_by_list
 #
 sub gen_html_by_gp_list
 {
-	my ($graph_params, $p) = @_;
+	#dp::dp "params:" . csvlib::join_array(",", @_). "\n";
+	my ($package, $graph_params, $p) = @_;
 
 	my $html_title = $p->{html_tilte} // "html_title";
 	my $src_url = $p->{src_url} //"src_url";
@@ -493,28 +561,29 @@ sub gen_html_by_gp_list
 #
 sub	gen_html
 {
-	my ($cdp, $gdp, $gp_list) = @_;
+	my $self = shift;
+	my ($gdp, $gp_list) = @_;
 
-	csvlib::disp_caller(1..3); # if($VERBOSE);
+	csvlib::disp_caller(1..3) if($VERBOSE);
 	my $html_file = $gdp->{html_file};
 	my $png_path = $gdp->{png_path};
 	my $png_rel_path = $gdp->{png_rel_path};
-	my $data_source = $cdp->{data_source};
+	my $data_source = $self->{data_source};
 	my $dst_dlm = $gdp->{dst_dlm} // "\t";
 
 	#foreach my $gp (@{$gdp->{graph_params}}){
 	foreach my $gp (@$gp_list){
 		last if($gp->{dsc} eq ($gdp->{END_OF_DATA}//$config::END_OF_DATA));
-		&csv2graph($cdp, $gdp, $gp);
+		$self->csv2graph($gdp, $gp);
 	}
 	my $p = {
-		src_url => $cdp->{src_url} // "",
+		src_url => $self->{src_url} // "",
 		html_title => $gdp->{html_title} // "",
 		html_file => $gdp->{html_file} // "",
 		png_path => $gdp->{png_path} // "",
 		png_rel_path => $gdp->{png_rel_path} // "",
 	};
-	&gen_html_by_gp_list($gp_list, $p);
+	$self->gen_html_by_gp_list($gp_list, $p);
 }
 
 
@@ -523,14 +592,15 @@ sub	gen_html
 #
 sub	csv2graph_list
 {
-	my($cdp, $gdp, $graph_params, $verbose) = @_;
+	my $self = shift;
+	my($gdp, $graph_params, $verbose) = @_;
 	$verbose = $verbose // "";
 
-	if(! (defined $cdp->{id})){
+	if(! (defined $self->{id})){
 		dp::ABORT "may be you call  csv2graph_list_mix, instead of csv2graph_list\n";
 	}
 	foreach my $gp (@$graph_params){
-		&csv2graph($cdp, $gdp, $gp, $verbose);
+		&csv2graph($self, $gdp, $gp, $verbose);
 	}
 	return (@$graph_params);
 }
@@ -563,9 +633,10 @@ sub	csv2graph_list_mix
 #
 sub	csv2graph
 {
-	my($cdp, $gdp, $gp, $verbose) = @_;
+	my $self = shift;
+	my($gdp, $gp, $verbose) = @_;
 	$verbose = $verbose // "";
-	my $csv_data = $cdp->{csv_data};
+	my $csv_data = $self->{csv_data};
 
 	&init_graph_definition_params($gdp);
 	&init_graph_params($gp, $gdp);
@@ -573,16 +644,16 @@ sub	csv2graph
 	#
 	#	Set Date Infomation to Graph Parameter
 	#
-	my $date_list = $cdp->{date_list};
-	my $dates = $cdp->{dates};
-	#dp::dp "util: $cdp->{id} \n";
-	my $start_date = util::date_calc(($gp->{start_date} // ""), $date_list->[0], $cdp->{dates}, $date_list);
-	my $end_date   = util::date_calc(($gp->{end_date} // ""),   $date_list->[$dates], $cdp->{dates}, $date_list);
+	my $date_list = $self->{date_list};
+	my $dates = $self->{dates};
+	#dp::dp "util: $self->{id} \n";
+	my $start_date = util::date_calc(($gp->{start_date} // ""), $date_list->[0], $self->{dates}, $date_list);
+	my $end_date   = util::date_calc(($gp->{end_date} // ""),   $date_list->[$dates], $self->{dates}, $date_list);
 	#dp::dp "START_DATE: $start_date [" . ($gp->{start_date} // "NULL"). "] END_DATE: $end_date [" . ($gp->{end_date}//"NULL") . "]\n";
 	$gp->{start_date} = $start_date;
 	$gp->{end_date} = $end_date;
 	#dp::dp "START_DATE: $start_date [" . ($gp->{start_date} // "NULL"). "] END_DATE: $end_date [" . ($gp->{end_date}//"NULL") . "]\n";
-	select::date_range($cdp, $gdp, $gp); 						# Data range (set dt_start, dt_end (position of array)
+	$self->date_range($gdp, $gp); 						# Data range (set dt_start, dt_end (position of array)
 
 	#
 	#	Set File Name
@@ -603,7 +674,7 @@ sub	csv2graph
 	#
 	#	select data and generate csv data
 	#
-	my @target_keys = ();
+	my $target_keys = [];
 	my $target_col = $gp->{target_col};
 	my $tn = -1;
 	if(defined $target_col){
@@ -619,22 +690,22 @@ sub	csv2graph
 		csvlib::disp_caller(1..3);
 	}
 
-	select::select_keys($cdp, $target_col, \@target_keys, 0);	# select data for target_keys
-	#dp::dp "target_key: " . join(" : ", @target_keys). "\n" ;
+	$self->select_keys($target_col, $target_keys, 0);	# select data for target_keys
+	#dp::dp "target_key: " . join(" : ", @$target_keys). "\n" ;
 	#dp::dp "target_col: " . join(" : ", @{$gp->{target_col}}) . "\n";
-	if($#target_keys < 0){
+	if(scalar(@$target_keys) <= 0){
 		return -1;
 	}
 
 	#my %work_csv = ();									# copy csv data to work csv
-	#reduce::dup_csv($cdp, \%work_csv, \@target_keys);
-	my $work_csv = reduce::dup_csv($cdp, \@target_keys);
+	#reduce::dup_csv($self, \%work_csv, $target_keys);
+	my $work_csv = $self->dup_csv($target_keys);
 	
 	if($gp->{static} eq "rlavr"){ 						# Rolling Average
-		calc::rolling_average($cdp, $work_csv, $gdp, $gp);
+		$self->rolling_average($work_csv, $gdp, $gp);
 	}
 	elsif($gp->{static} eq "ern"){ 						# Rolling Average
-		calc::ern($cdp, $work_csv, $gdp, $gp);
+		$self->ern($work_csv, $gdp, $gp);
 	}
 
 	#
@@ -645,18 +716,18 @@ sub	csv2graph
 	$lank[0] = 1 if(defined $lank[0] && ! $lank[0]);
 	my $lank_select = (defined $lank[0] && defined $lank[1] && $lank[0] && $lank[1]) ? 1 : "";
 
-	my @sorted_keys = ();								# sort
+	my $sorted_keys = [];								# sort
 	if($lank_select){
-		&sort_csv($cdp, $work_csv, $gp, \@target_keys, \@sorted_keys);
+		$self->sort_csv($work_csv, $gp, $target_keys, $sorted_keys);
 	}
 	else {
-		my $load_order = $cdp->{load_order};
-		@sorted_keys = @$load_order;		# no sort, load Order
+		my $load_order = $self->{load_order};
+		@$sorted_keys = @$load_order;		# no sort, load Order
 	}
 
-	my $order = $cdp->{order};							# set order of key
+	my $order = $self->{order};							# set order of key
 	my $n = 1;
-	foreach my $k (@sorted_keys){
+	foreach my $k (@$sorted_keys){
 		$order->{$k} = ($lank_select) ? $n : 1;
 		$n++;
 	}
@@ -664,16 +735,16 @@ sub	csv2graph
 	#
 	#	Genrarte csv file and graph (png)
 	#
-	my @output_keys = ();
-	foreach my $key (@sorted_keys){
+	my $output_keys = [];
+	foreach my $key (@$sorted_keys){
 		next if($lank_select && ($order->{$key} < $lank[0] || $order->{$key} > $lank[1]));
-		push(@output_keys, $key);
+		push(@$output_keys, $key);
 	}
-	my $csv_for_plot = &gen_csv_file($cdp, $gdp, $gp, $work_csv, \@output_keys);		# Generate CSV File
+	my $csv_for_plot = $self->gen_csv_file($gdp, $gp, $work_csv, $output_keys);		# Generate CSV File
 	#dp::dp "$csv_for_plot\n";
 
-	&graph($csv_for_plot, $cdp, $gdp, $gp);					# Generate Graph
-	return @;
+	$self->graph($csv_for_plot, $gdp, $gp);					# Generate Graph
+	return 1;
 }
 
 
@@ -682,10 +753,11 @@ sub	csv2graph
 #
 sub	gen_csv_file
 {
-	my($cdp, $gdp, $gp, $work_csvp, $output_keysp) = @_;
+	my $self = shift;
+	my($gdp, $gp, $work_csvp, $output_keysp) = @_;
 	my $fname = $gp->{fname};
-	my $date_list = $cdp->{date_list};
-	my $dst_dlm = $gdp->{dst_dlm} // $cdp->{dst_dlm};
+	my $date_list = $self->{date_list};
+	my $dst_dlm = $gdp->{dst_dlm} // $self->{dst_dlm};
 	my $dt_start = $gp->{dt_start};
 	my $dt_end = $gp->{dt_end};
 
@@ -695,7 +767,7 @@ sub	gen_csv_file
 	open(CSV, "> $csv_for_plot") || die "cannot create $csv_for_plot";
 	binmode(CSV, ":utf8");
 
-	my $order = $cdp->{order};
+	my $order = $self->{order};
 	my @csv_label = ();
 	foreach my $k (@$output_keysp){
 		my $label = join(":", $order->{$k}, $k);
@@ -726,12 +798,14 @@ sub	gen_csv_file
 #
 sub	sort_csv
 {
-	my ($cdp, $cvdp, $gp, $target_keysp, $sorted_keysp) = @_;
+	my $self = shift;
+	my ($cvdp, $gp, $target_keysp, $sorted_keysp) = @_;
+	# $self->sort_csv($work_csv, $gp, $target_keys, $sorted_keys);
 	my $dt_start = $gp->{dt_start};
 	my $dt_end = $gp->{dt_end};
 
 	my %SORT_VAL = ();
-	my $src_csv = $cdp->{src_csv} // "";
+	my $src_csv = $self->{src_csv} // "";
 	my $src_csv_count = scalar(keys %$src_csv);
 	#dp::dp "sort_csv: " . scalar(@$target_keysp) . "\n";
 	foreach my $key (@$target_keysp){
@@ -781,14 +855,15 @@ sub	sort_csv
 #
 sub	graph
 {
-	my($csv_for_plot, $cdp, $gdp, $gp) = @_;
+	my $self = shift;
+	my($csv_for_plot, $gdp, $gp) = @_;
 
 	my $start_date = $gp->{start_date} // "-NONE-";
 	my $end_date = $gp->{end_date} // "-NONE-";
 
 	#dp::dp "START_DATE: $start_date END_DATE: $end_date\n";
 
-	my $src_info = $cdp->{src_info} // "";
+	my $src_info = $self->{src_info} // "";
 	if($src_info){
 		$src_info = "[$src_info]";
 	}
@@ -896,7 +971,7 @@ _EOD_
 	dp::dp "PLOT $plotf\n";
 	#dp::dp "### $csvf\n";
 
-	my $src_csv = $cdp->{src_csv} // "";
+	my $src_csv = $self->{src_csv} // "";
 	#my $y2_source = $gp->{y2_source} // ($gdp->{y2_source} // "");
 	my $y2key = $gp->{y2key} // "";
 	#dp::dp "soruce_csv[$src_csv] $y2_source\n";
@@ -904,7 +979,7 @@ _EOD_
 	
 
 	for(my $i = 1; $i <= $#label; $i++){
-		my $graph = $gp->{graph} // ($gdp->{graph} // ($cdp->{graph} // $DEFAULT_GRAPH));
+		my $graph = $gp->{graph} // ($gdp->{graph} // ($self->{graph} // $DEFAULT_GRAPH));
 		my $y2_graph = "";
 		my $key = $label[$i];
 		$key =~ s/^[0-9]+://;
@@ -923,9 +998,9 @@ _EOD_
 			if($y2key && $key =~ /$y2key/) {
 				$axis = "axis x1y2" ;
 				$dot = "dt (7,3)";
-				$graph = $gp->{y2_graph} // ($gdp->{y2_graph} // ($cdp->{y2_graph} // $DEFAULT_GRAPH));
+				$graph = $gp->{y2_graph} // ($gdp->{y2_graph} // ($self->{y2_graph} // $DEFAULT_GRAPH));
 			}
-			dp::dp "$key $src_csv->{$key},$y2key: [$axis]\n";
+			#dp::dp "$key $src_csv->{$key},$y2key: [$axis]\n";
 		}
 		#dp::dp "axis:[$axis]\n";
 		#my $pl = sprintf("'%s' using 1:%d $axis with lines title '%d:%s' linewidth %d $dot", 
@@ -952,7 +1027,7 @@ _EOD_
 	$PARAMS =~ s/#PLOT_PARAM#/$plot/g;
 	dp::dp $plot . "\n" if($VERBOSE);
 
-	my $date_list = $cdp->{date_list};
+	my $date_list = $self->{date_list};
 	my $dt_start = $gp->{dt_start};
 	my $dt_end = $gp->{dt_end};
 	#dp::dp join(",", @$date_list) . "\n";

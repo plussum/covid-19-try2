@@ -50,7 +50,7 @@ sub	ABORT
 		print $info . join("", $warn);
 	}
 	print $info . "-" x 30 . "\n";
-	&disp_caller(1..4);
+	&disp_caller(1..6);
 	exit 1;
 }
 sub disp_caller

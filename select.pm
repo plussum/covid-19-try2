@@ -134,11 +134,12 @@ sub	gen_target_col
 #
 sub	select_keys
 {
-	my($cdp, $target_colp, $target_keys, $verbose) = @_;
+	my $self = shift;
+	my($target_colp, $target_keys, $verbose) = @_;
 
 	$verbose = $verbose // "";
 	$verbose = 0 if($verbose eq "");
-	$verbose = 1;
+	#$verbose = 2;
 	my @target_col_array = ();
 	my @non_target_col_array = ();
 	my $condition = 0;
@@ -147,11 +148,11 @@ sub	select_keys
 	my @target_list =  ();
 	#dp::dp "[$target_colp]\n";
 	if(! ($target_colp//"") || util::array_size($target_colp) <= 0){
-		@$target_keys = keys %{$cdp->{csv_data}};		# put all keys to target keys
-		dp::dp "target_keys: " . scalar(@$target_keys) . "\n";
+		@$target_keys = keys %{$self->{csv_data}};		# put all keys to target keys
+		#dp::dp "target_keys: " . scalar(@$target_keys) . "\n";
 	}
 	else {
-		@target_list = &gen_target_col($cdp, $target_colp);
+		@target_list = &gen_target_col($self, $target_colp);
 		#dp::dp "target_colp: " . csvlib::join_array(",", $target_colp) . "\n" if($verbose);
 		#dp::dp Dumper $target_colp;
 		#dp::dp "target_list: " . csvlib::join_array(",", @target_list) . "\n" if($verbose);
@@ -180,10 +181,11 @@ sub	select_keys
 
 		#dp::dp "Condition: $condition " . csvlib::join_array(", ", @target_col_array) . "\n" if($verbose);
 		#dp::dp "Nontarget: " . csvlib::join_array(",", @non_target_col_array) . "\n" if($verbose);
-		my $key_items = $cdp->{key_items};
+		my $key_items = $self->{key_items};
 		#dp::dp "Key_itmes: " . csvlib::join_array(",", $key_items) . "\n";
 		foreach my $key (keys %$key_items){
 			my $key_in_data = $key_items->{$key};
+			#dp::dp Dumper $key_in_data;
 			my $res = &check_keys($key_in_data, \@target_col_array, \@non_target_col_array, $key, $verbose);
 			#dp::dp "[$key:$condition:$res]\n" ;#if($verbose  > 1);
 			dp::dp "### " . join(", ", (($res >= $condition) ? "O" : "-"), $key, $res, $condition, "[".join(",", @$key_in_data)."]") . "\n" if($verbose > 1) ;
@@ -218,7 +220,7 @@ sub	select_keys
 			#"No data Target[".ref($target_colp)."]:(".csvlib::join_array(",", $target_colp).") Result:(".join(",", @$target_keys).")\n",
 			"No data: Target[".$target_colp."]:(".csvlib::join_array(",", $target_colp).") Result:(".join(",", @$target_keys).")\n",
 			"Poosibly miss use of [ ], {} at target_colp " . ref($target_colp) . "\n",
-			"$dkey:(" . join(",", @{$cdp->{$dkey}}) . ")\n",
+			"$dkey:(" . join(",", @{$self->{$dkey}}) . ")\n",
 		);
 		csvlib::disp_caller(1..3);
 	}
@@ -247,6 +249,14 @@ sub	check_keys
 	$verbose = $verbose // 0;
 	$verbose = 0 if($verbose eq "");
 
+	if($key_in_data && ref($key_in_data) ne "ARRAY"){
+		if(ref($key_in_data) eq "HASH"){
+			dp::dp "---------------------\n";
+			dp::dp scalar(keys %$key_in_data) . "\n";
+			dp::dp csvlib::join_array($key_in_data) . "\n";
+		}
+		dp::ABORT "$key_in_data\n";
+	}
 	if(!(defined $key_in_data) || scalar(@$key_in_data) <= 0){
 		dp::WARNING "###!!!! key in data not defined [$key]\n";
 	}

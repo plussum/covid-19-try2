@@ -45,7 +45,7 @@ our $JAPAN_DEF =
 	id => "japan",
 	src_info => "Japan COVID-19 data (Tokyo Keizai)",
 	main_url => "-- tokyo keizai data --- ",
-	csv_file => "$TKO_PATH/prefectures.csv",
+	src_file => "$TKO_PATH/prefectures.csv",
 	src_url => 	"--- src url ---",		# set
 	down_load => \&download,
 

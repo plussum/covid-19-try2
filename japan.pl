@@ -162,13 +162,13 @@ if($golist{"tokyo"}){
 	my $TOKYO_ST_DEF = $deftokyo::TOKYO_ST_DEF;
 	my $TOKYO_ST_GRAPH = $deftokyo::TOKYO_ST_GRAPH;
 
-	csv2graph::new($TOKYO_DEF); 						# Load Apple Mobility Trends
-	csv2graph::load_csv($TOKYO_DEF);
-	csv2graph::calc_items($TOKYO_DEF, "sum", 
+	my $tko_cdp = csv2graph->new($TOKYO_DEF); 						# Load Apple Mobility Trends
+	$tko_cdp->load_csv();
+	$tko_cdp->calc_items("sum", 
 				{mainkey => "positive_count,negative_count"}, # All Province/State with Canada, ["*","Canada",]
 				{mainkey => "tested_count" },# total gos ["","Canada"] null = "", = keep
 	);
- 	csv2graph::dump_cdp($TOKYO_DEF, {ok => 1, lines => 5, items => 10});               
+# 	$tko_cdp->dump({ok => 1, lines => 5, items => 10});               
 
 	my $y2_graph = "line" ; # 'boxes fill', # 'boxes fill solid',
 	my $tko_graph = [];
@@ -183,16 +183,12 @@ if($golist{"tokyo"}){
 			ykey => "", ylabel => 'Number of cases', ymin => 0, },
 	];
 	push(@$tko_graph , 
-		csv2graph::csv2graph_list($TOKYO_DEF, $TOKYO_GRAPH, $tko_gpara01));
+		$tko_cdp->csv2graph_list($TOKYO_GRAPH, $tko_gpara01));
 
 	#	hospitalized,1,2,3,
 	#	severe_case,1,2,3,
-	csv2graph::new($TOKYO_ST_DEF); 						# Load Apple Mobility Trends
-	csv2graph::load_csv($TOKYO_ST_DEF);
-	my $y21 = csv2graph::reduce_cdp_target($TOKYO_ST_DEF, ["hospitalized"]);
-	my $y22 = csv2graph::reduce_cdp_target($TOKYO_ST_DEF, ["severe_case"]);
-	my $marge2 = csv2graph::marge_csv($y21, $y22);		# Gererate Graph
-
+	my $st_cdp = csv2graph->new($TOKYO_ST_DEF); 						# Load Apple Mobility Trends
+	$st_cdp->load_csv();
 	my $tko_gpara02 = [
 		{dsc => "Tokyo Positive Status 01", lank => [1,10], static => "", target_col => [],
 				y2key => "severe", y2label => "severe_case", y2min => 0, y2max => "", y2_grap => $y2_graph, },
@@ -200,11 +196,10 @@ if($golist{"tokyo"}){
 				y2key => "severe", y2label => "severe_case", y2min => 0, y2max => "", y2_grap => $y2_graph, },
 	];
 	push(@$tko_graph , 
-		csv2graph::csv2graph_list($marge2, $TOKYO_ST_GRAPH, $tko_gpara02));
+		$st_cdp->csv2graph_list($TOKYO_ST_GRAPH, $tko_gpara02));
 
 	push(@$gp_list, @$tko_graph);
-
-	csv2graph::gen_html_by_gp_list($tko_graph, {						# Generate HTML file with graphs
+	csv2graph->gen_html_by_gp_list($tko_graph, {						# Generate HTML file with graphs
 			html_tilte => "Tokyo Open Data",
 			src_url => $TOKYO_DEF->{src_url} // "src_url",
 			html_file => "$HTML_PATH/tokyo_opendata.html",
@@ -214,7 +209,6 @@ if($golist{"tokyo"}){
 			dst_dlm => $TOKYO_GRAPH->{dst_dlm} // "dst_dlm",
 		}
 	);
-
 }
 
 #
@@ -230,30 +224,31 @@ if($golist{"tokyo"}){
 if($golist{japan}){
 	my $JAPAN_DEF = $defjapan::JAPAN_DEF;
 	my $JAPAN_GRAPH = $defjapan::JAPAN_GRAPH;
-	csv2graph::new($JAPAN_DEF); 						# Load Apple Mobility Trends
-	csv2graph::load_csv($JAPAN_DEF);
- 	#csv2graph::dump_cdp($JAPAN_DEF, {ok => 1, lines => 5, items => 10});               
+
+	my $japan_def = csv2graph->new($JAPAN_DEF); 						# Load Apple Mobility Trends
+	$japan_def->load_csv($JAPAN_DEF);
+ 	#$japan_def->dump_cdp({ok => 1, lines => 5, items => 10});               
 
 	my $y2_graph = "line" ; # 'boxes fill', # 'boxes fill solid',
 	my $jp_graph = [];
 	my $an = 0;
 	foreach my $area ("東京都", "千葉県", "埼玉県", "神奈川県", "茨城県"){
-		my $test_positive = csv2graph::reduce_cdp_target($JAPAN_DEF, {item => "testedPositive,deaths", prefectureNameJ => $area});
-		calc::comvert2rlavr($test_positive, "rlavr");							# rlavr for marge with CCSE
- 		#csv2graph::dump_cdp($test_positive, {ok => 1, lines => 5, items => 10});               
+		my $test_positive = $japan_def->reduce_cdp_target({item => "testedPositive,deaths", prefectureNameJ => $area});
+		$test_positive->comvert2rlavr("rlavr");							# rlavr for marge with CCSE
+ 		#$test_positive->dump_cdp({ok => 1, lines => 5, items => 10});               
 
 		my $params = [];
 		foreach my $kind ("testedPositive,deaths"){
 			push(@$params, {dsc => "Japan $kind $area", lank => [1,10],  static => "", start_date => -90,
-				target_col => {item => $kind, prefectureNameJ => $area},
+				#target_col => {item => $kind, prefectureNameJ => $area},
 				y2key => "deaths", y2label => 'DEATHS', y2min => 0, y2max => "", y2_graph => $y2_graph, # 'boxes fill solid',
 				ykey => "testedPositive", ylabel => 'POSITIVE', ymin => 0, }
 			);
 		}
-		push(@$gp_list, csv2graph::csv2graph_list($test_positive, $JAPAN_GRAPH, $params)); 
+		push(@$gp_list, $test_positive->csv2graph_list($JAPAN_GRAPH, $params)); 
 		$an++;
 	}
-	csv2graph::gen_html($JAPAN_DEF, $JAPAN_GRAPH, $jp_graph);		# Generate Graph/HTHML
+	$japan_def->gen_html($JAPAN_GRAPH, $jp_graph);		# Generate Graph/HTHML
 }
 
 #
@@ -265,14 +260,17 @@ if($golist{tkow}){
 
 	csv2graph::new($TKOW_DEF); 						# Load Apple Mobility Trends
 	csv2graph::load_csv($TKOW_DEF);
+	calc::comvert2rlavr($TKOW_DEF, "rlavr");			# rlavr for marge with CCSE
 
+	my $y2_graph = "line" ; # line 'boxes fill', # 'boxes fill solid',
 	my $tkow_graph = [
-		{dsc => "気温 ", lank => [1,10], static => "", target_col => {key => "~気温"}},
-		{dsc => "気温 ", lank => [1,10], static => "rlavr", target_col => {key => "~気温"}},
-		{dsc => "平均気温 ", lank => [1,10], static => "", target_col => {key => "~平均気温"}},
-		{dsc => "平均気温 ", lank => [1,10], static => "rlavr", target_col => {key => "~平均気温"}},
-		{dsc => "平均湿度 ", lank => [1,10], static => "", target_col => {key => "~平均湿度"}},
-		{dsc => "平均湿度 ", lank => [1,10], static => "rlavr", target_col => {key => "~平均湿度"}},
+		{dsc => "気温と湿度", lank => [1,10], static => "", target_col => {mainkey => "~平均気温,~平均湿度"},
+			y2key => "湿度", y2label => "湿度", y2min => 0, y2max => "", y2_graph => $y2_graph,
+			ylabel => "温度", ymin => 0, ymax => "" },
+		{dsc => "気温 RAW", lank => [1,10], static => "", target_col => {mainkey => "~気温", calc => "RAW"},},
+		{dsc => "気温 RLAVR", lank => [1,10], static => "", target_col => {mainkey => "~気温", calc => "rlavr"},},
+		{dsc => "平均気温 ", lank => [1,10], static => "", target_col => {mainkey => "~平均気温"}},
+		{dsc => "平均湿度 ", lank => [1,10], static => "", target_col => {mainkey => "~平均湿度"}},
 	];
 	push(@$gp_list , 
 		csv2graph::csv2graph_list($TKOW_DEF, $TKOW_GRAPH, $tkow_graph)); 
@@ -281,7 +279,7 @@ if($golist{tkow}){
 #
 #	Generate HTML FILE
 #
-csv2graph::gen_html_by_gp_list($gp_list, {						# Generate HTML file with graphs
+csv2graph->gen_html_by_gp_list($gp_list, {						# Generate HTML file with graphs
 		html_tilte => "COVID-19 related data visualizer ",
 		src_url => "src_url",
 		html_file => "$HTML_PATH/csv2graph_index.html",

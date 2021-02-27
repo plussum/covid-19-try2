@@ -40,7 +40,7 @@ our $TKOW_DEF =
 	id => "tkow",
 	src_info => "Tokyo Wheater", 
 	main_url => "-- tokyo wheather data --- ",
-	csv_file => "$CSV_PATH/TokyoWeather.csv",
+	src_file => "$CSV_PATH/TokyoWeather.csv",
 	src_url => 	"--- src url ---",		# set
 	down_load => \&download,
 

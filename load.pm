@@ -27,60 +27,80 @@ my $LAST_DATE = "";
 #
 sub	load_csv
 {
-	my ($cdp, $download) = @_;
+	my $self = shift;
+	my ($p) = @_;
 
+	my $download = $p->{download} // "";
+	my $src_file = "";
+	$src_file = ($p->{src_file} // ($self->{src_file} // "")) if($p);
+	#dp::dp "#### " . $self->{src_file} . "\n";
+	
 	if(($download // "")){
-		my $download = $cdp->{download};
-		$download->($cdp);
+		my $download = $self->{download};
+		$download->($self);
 	}
-
-	dp::dp "LOAD CSV  [$cdp->{src_info}][$cdp->{id}]\n";
+	if(! $src_file){
+		dp::WARNING "load_csv: no src_file information\n";
+		return "";
+	}
+	if(! -e $src_file){
+		dp::WARNING "load_csv: $src_file is not found\n";
+		return "";
+	}
+	
+	#
+	#
+	#
+	dp::dp "LOAD CSV  [$self->{src_info}][$self->{id}]\n";
 	my $rc = 0;
-	my $direct = $cdp->{direct} // "";
+	my $direct = $self->{direct} // "";
 	if($direct =~ /json/i){
-		$rc = &load_json($cdp);
+		$rc = &load_json($self, $src_file);
 	}
 	elsif($direct =~ /transact/i){
-		$rc = &load_transaction($cdp);
+		$rc = &load_transaction($self, $src_file);
 	}
 	elsif($direct =~ /vertical/i){
-		$rc = &load_csv_vertical($cdp);
+		$rc = load_csv_vertical($self, $src_file);
 	}
 	else {
-		$rc = &load_csv_holizontal($cdp);
+		$rc = load_csv_holizontal($self, $src_file);
 	}
 
-	if(($cdp->{cumrative} // "")){
-		&cumrative2daily($cdp);
+	if(($self->{cumrative} // "")){
+		&cumrative2daily($self);
 	}
 
-	#dp::dp "----- $cdp->{src_csv}\n";
-	if(! defined $cdp->{src_csv}){
-		$cdp->{src_csv} = {};
+	#
+	#	src_csv: use for marge 
+	#
+	#dp::dp "----- $self->{src_csv}\n";
+	if(! defined $self->{src_csv}){
+		$self->{src_csv} = {};
 	}
-	my $src_csv = $cdp->{src_csv}; 
-	my $csvp = $cdp->{csv_data};
-	foreach my $key (keys %{$cdp->{csv_data}}){
+	my $src_csv = $self->{src_csv}; 
+	my $csvp = $self->{csv_data};
+	foreach my $key (keys %{$self->{csv_data}}){
 		#dp::dp "$key => $csvp->{$key}  " . ($src_csv->{$key} // "undef") . "\n";
 		$src_csv->{$key} = 0;
+		
 	}
 	#dp::dp "-----\n";
-	#@{$cdp->{item_name_list}} = @w[0..($data_start-1)];	# set item_name 
+	#@{$self->{item_name_list}} = @w[0..($data_start-1)];	# set item_name 
 
 
 	#
 	#	set alias
 	#
-	csv2graph::set_alias($cdp, $cdp->{alias});
+	$self->set_alias($self->{alias});
 
 	#
 	#	DEBUG: Dump data 
 	#
-	my $dates = $cdp->{dates};
-	my $date_list = $cdp->{date_list};
-	dp::dp "loaded($cdp->{id}) $dates records $date_list->[0] - $date_list->[$dates] ($rc)\n";
-	dump::dump_cdp($cdp, {ok => 1, lines => 5}) if($rc || $VERBOSE > 1);
-	
+	my $dates = $self->{dates};
+	my $date_list = $self->{date_list};
+	dp::dp "loaded($self->{id}) $dates records $date_list->[0] - $date_list->[$dates] ($rc)\n";
+	$self->dump({ok => 1, lines => 5}) if($rc || $VERBOSE > 1);
 	return 0;
 }
 
@@ -94,23 +114,23 @@ sub	load_csv
 #
 sub	load_csv_holizontal
 {
-	my ($cdp) = @_;
+	my $self = shift;
+	my ($src_file) = @_;
 
-	my $csv_file = $cdp->{csv_file};
-	my $data_start = $cdp->{data_start};
-	my $src_dlm = $cdp->{src_dlm};
-	my $date_list = $cdp->{date_list};
-	my $csv_data = $cdp->{csv_data};	# Data of record ->{$key}->[]
-	my $key_items = $cdp->{key_items};	# keys of record ->{$key}->[]
-	my @keys = @{$cdp->{keys}};			# Item No for gen HASH Key
-	my $timefmt = $cdp->{timefmt};
+	my $data_start = $self->{data_start};
+	my $src_dlm = $self->{src_dlm};
+	my $date_list = $self->{date_list};
+	my $csv_data = $self->{csv_data};	# Data of record ->{$key}->[]
+	my $key_items = $self->{key_items};	# keys of record ->{$key}->[]
+	my @keys = @{$self->{keys}};			# Item No for gen HASH Key
+	my $timefmt = $self->{timefmt};
 
 	#
 	#	Load CSV DATA
 	#
-	dp::dp "$csv_file\n";
-	system("nkf -w80 $csv_file >$csv_file.utf8");			# -w8 (with BOM) contain code ,,,so lead some trouble
-	open(FD, "$csv_file.utf8") || die "Cannot open $csv_file.utf8";
+	dp::dp "$src_file\n";
+	system("nkf -w80 $src_file >$src_file.utf8");			# -w8 (with BOM) contain code ,,,so lead some trouble
+	open(FD, "$src_file.utf8") || die "Cannot open $src_file.utf8";
 	binmode(FD, ":utf8");
 	my $line = <FD>;
 	$line =~ s/[\r\n]+$//;
@@ -122,29 +142,29 @@ sub	load_csv_holizontal
 
 	#dp::dp "[" . join(",", @w[0..5]) . "]\n";
 
-##	my $item_name_list = $cdp->{item_name_list};
-##	my $item_name_hash = $cdp->{item_name_hash};						# List and Hash need to make here
+##	my $item_name_list = $self->{item_name_list};
+##	my $item_name_hash = $self->{item_name_hash};						# List and Hash need to make here
 ##	@$item_name_list = @w[0..($data_start - 1)];	# set item_name 
 ##	for(my $i = 0; $i < scalar(@$item_name_list); $i++){				# use for loading and gen keys
 ##		my $kn = $item_name_list->[$i];
 ##		$item_name_hash->{$kn} = $i;
 ##	}
-	csv2graph::cdp_add_key_items($cdp,[$config::MAIN_KEY, @item_name[0..($data_start - 1)]]);
+	$self->add_key_items([$config::MAIN_KEY, @item_name[0..($data_start - 1)]]);
 
 	@$date_list = @item_name[$data_start..$#item_name];
 	for(my $i = 0; $i < scalar(@$date_list); $i++){
 		$date_list->[$i] = util::timefmt($timefmt, $date_list->[$i]);
 	}
 		
-	$cdp->{dates} = scalar(@$date_list) - 1;
+	$self->{dates} = scalar(@$date_list) - 1;
 	$FIRST_DATE = $date_list->[0];
 	$LAST_DATE = $date_list->[$#item_name - $data_start];
 
 	#dp::dp join(",", "# ", @$date_list) . "\n";
 	#dp::dp "keys : ", join(",", @keys). "\n";
-	my @key_order = select::gen_key_order($cdp, $cdp->{keys});		# keys to gen record key
-	my $load_order = $cdp->{load_order};
-	my $key_dlm = $cdp->{key_dlm}; 
+	my @key_order = $self->gen_key_order($self->{keys});		# keys to gen record key
+	my $load_order = $self->{load_order};
+	my $key_dlm = $self->{key_dlm}; 
 	my $ln = 0;
 	while(<FD>){
 		s/[\r\n]+$//;
@@ -157,14 +177,14 @@ sub	load_csv_holizontal
 ##		$key_items->{$k} = [@items[0..($data_start - 1)]];	# set csv data
 ##		push(@$load_order, $k);
 
-		csv2graph::cdp_add_record($cdp, $master_key, 
+		$self->add_record($master_key, 
 				[$master_key, @items[0..($data_start-1)]], [@items[$data_start..$#items]]);		# add record without data
 		
 		$ln++;
 		#last if($ln > 50);
 	}
 	close(FD);
-	#dp::dp "CSV_HOLIZONTASL: " . join(",", @{$cdp->{item_name_list}}) . "\n";
+	#dp::dp "CSV_HOLIZONTASL: " . join(",", @{$self->{item_name_list}}) . "\n";
 	return 0;
 }
 
@@ -184,38 +204,38 @@ sub	load_csv_holizontal
 #
 sub	load_csv_vertical
 {
-	my ($cdp) = @_;
+	my $self = shift;
+	my ($src_file) = @_;
 
 	my $remove_head = 1;
-	my $csv_file = $cdp->{csv_file};
-	my $data_start = $cdp->{data_start};
-	my $src_dlm = $cdp->{src_dlm};
-	my $date_list = $cdp->{date_list};
-	my $csv_data = $cdp->{csv_data};
-	my $key_items = $cdp->{key_items};
-	my @keys = @{$cdp->{keys}};
-	my $timefmt = $cdp->{timefmt};
-	my $item_name_line = $cdp->{item_name_line} // 0;
-	my $data_start_line = $cdp->{data_start_line} // 1;
-	my $load_col = $cdp->{load_col} // "";
-	my $load_order = $cdp->{load_order};
+	my $data_start = $self->{data_start};
+	my $src_dlm = $self->{src_dlm};
+	my $date_list = $self->{date_list};
+	my $csv_data = $self->{csv_data};
+	my $key_items = $self->{key_items};
+	my @keys = @{$self->{keys}};
+	my $timefmt = $self->{timefmt};
+	my $item_name_line = $self->{item_name_line} // 0;
+	my $data_start_line = $self->{data_start_line} // 1;
+	my $load_col = $self->{load_col} // "";
+	my $load_order = $self->{load_order};
 
 	#
 	#	set main key (item name) 
 	#	vertical csv had only main key (1 key)
 	#
-	##my $key_name = $cdp->{key_name} // "";			# set key name as "key" or $cdp->{key_name}
+	##my $key_name = $self->{key_name} // "";			# set key name as "key" or $self->{key_name}
 	##$key_name = $config::MAIN_KEY if(! $key_name);
-	csv2graph::cdp_add_key_items($cdp,[$config::MAIN_KEY]);
-	#@{$cdp->{item_name_list}} = ($key_name);		# set item_name 
-	#$cdp->{item_name_hash}->{$key_name} = 0;
+	$self->add_key_items([$config::MAIN_KEY]);
+	#@{$self->{item_name_list}} = ($key_name);		# set item_name 
+	#$self->{item_name_hash}->{$key_name} = 0;
 
 	#
 	#	Load CSV DATA
 	#
-	dp::dp "LOAD:$csv_file\n";
-	system("nkf -w80 $csv_file >$csv_file.utf8");
-	open(FD, "$csv_file.utf8" ) || die "Cannot open $csv_file.utf8";
+	dp::dp "LOAD:$src_file\n";
+	system("nkf -w80 $src_file >$src_file.utf8");
+	open(FD, "$src_file.utf8" ) || die "Cannot open $src_file.utf8";
 	binmode(FD, ":utf8");
 	#binmode(FD, ":encording(cp932)");
 
@@ -264,7 +284,7 @@ sub	load_csv_vertical
 			$item_names[$cl] = $kk;
 		}
 		#dp::dp "$cl: $k\n";
-		csv2graph::cdp_add_record($cdp, $k, [$item_names[$cl]], []);		# add record without data
+		$self->add_record($k, [$item_names[$cl]], []);		# add record without data
 	}
 
 	#
@@ -285,7 +305,7 @@ sub	load_csv_vertical
 	
 		#dp::dp "$date, [$src_dlm]" . join(",", @items) ."\n";
 		$date_list->[$ln] = util::timefmt($timefmt, $date);
-		#dp::dp "date:$ln $date " . $date_list->[$ln] . " ($timefmt) $cdp->{title}\n";
+		#dp::dp "date:$ln $date " . $date_list->[$ln] . " ($timefmt) $self->{title}\n";
 		#my @w = ($date);	
 		for(my $i = 0; $i <= $#items; $i++){
 			next if(! $load_flag[$i]);
@@ -302,12 +322,12 @@ sub	load_csv_vertical
 #	foreach my $k (keys %$csv_data){
 #		dp::dp "$k: \n" . join(",", @{$csv_data->{$k}}). "\n";
 #	}
-	$cdp->{dates} = $ln - 1;
+	$self->{dates} = $ln - 1;
 	$FIRST_DATE = $date_list->[0];
 	$LAST_DATE = $date_list->[$ln-1];
-#	dump::dump_cdp($cdp, {ok => 1, lines => 5});
+#	$self->dump({ok => 1, lines => 5});
 #	exit;
-	return 0;
+	return 1;
 }
 
 #
@@ -318,20 +338,20 @@ sub	load_csv_vertical
 #
 sub	load_json
 {
-	my ($cdp) = @_;
+	my $self = shift;
+	my ($src_file) = @_;
 
 	my $remove_head = 1;
-	my $src_file = $cdp->{src_file};
-	my @items = @{$cdp->{json_items}};
+	my @items = @{$self->{json_items}};
 	my $date_key = shift(@items);
 
-	$cdp->{data_start} = $cdp->{data_start} // 1 ;
-	my $date_list = $cdp->{date_list};
-	my $csv_data = $cdp->{csv_data};
-	my $key_items = $cdp->{key_items};
-	my @keys = @{$cdp->{keys}};
-	my $timefmt = $cdp->{timefmt};
-	my $load_order = $cdp->{load_order};
+	$self->{data_start} = $self->{data_start} // 1 ;
+	my $date_list = $self->{date_list};
+	my $csv_data = $self->{csv_data};
+	my $key_items = $self->{key_items};
+	my @keys = @{$self->{keys}};
+	my $timefmt = $self->{timefmt};
+	my $load_order = $self->{load_order};
 
 	my $rec = 0;
 	my $date_name = "";
@@ -355,7 +375,7 @@ sub	load_json
 ##	if(!defined $csv_data){
 ##		dp::dp "somthing wrong at json, csv_data\n";
 ##		$csv_data = {};
-##		$cdp->{csv_data} = $csv_data;
+##		$self->{csv_data} = $csv_data;
 ##	}
 ##	foreach my $k (@items){
 ##		$key_items->{$k} = [$k];
@@ -363,16 +383,16 @@ sub	load_json
 ##		#dp::dp "csv_data($k) :". $csv_data->{$k} . "\n";
 ##	}	
 
-##	my $key_name = $cdp->{key_name} // "";			# set key name as "key" or $cdp->{key_name}
+##	my $key_name = $self->{key_name} // "";			# set key name as "key" or $self->{key_name}
 ##	$key_name = $config::MAIN_KEY if(! $key_name);
-	csv2graph::cdp_add_key_items($cdp,[$config::MAIN_KEY, @items]);
+	$self->add_key_items([$config::MAIN_KEY, @items]);
 	foreach my $master_key (@items){
-		csv2graph::cdp_add_record($cdp, $master_key, [$master_key], []);		# add record without data
+		$self->add_record($master_key, [$master_key], []);		# add record without data
 	}
 
-##	@{$cdp->{item_name_list}} = ($key_name);	# set item_name 
-##	$cdp->{item_name_hash}->{$key_name} = 0;
-##	dp::dp "item_name_list: (" . join(",", @{$cdp->{item_name_list}}). ") [$key_name]\n";
+##	@{$self->{item_name_list}} = ($key_name);	# set item_name 
+##	$self->{item_name_hash}->{$key_name} = 0;
+##	dp::dp "item_name_list: (" . join(",", @{$self->{item_name_list}}). ") [$key_name]\n";
 ##
 ##	for(my $itn = 0; $itn <= $#items; $itn++){
 ##		$load_order->[$itn] = $items[$itn];
@@ -395,7 +415,7 @@ sub	load_json
 	#foreach my $k (@items){
 	#	print Dumper $csv_data->{$k};
 	#}
-	$cdp->{dates} = $#data0;
+	$self->{dates} = $#data0;
 	$FIRST_DATE = $date_list->[0];
 	$LAST_DATE = $date_list->[$#data0];
 	return 0;
@@ -406,37 +426,37 @@ sub	load_json
 #
 sub	load_transaction
 {
-	my ($cdp) = @_;
+	my $self = shift;
+	my ($src_file) = @_;
 
-	my $csv_file = $cdp->{csv_file};
-	my $data_start = $cdp->{data_start};
-	my $date_list = $cdp->{date_list};
-	my $csv_data = $cdp->{csv_data};
-	my $key_items = $cdp->{key_items};
-	my @keys = @{$cdp->{keys}};
-	my $timefmt = $cdp->{timefmt};
-	my $key_dlm = $cdp->{key_dlm} // "#";
-	my $load_order = $cdp->{load_order};
+	my $data_start = $self->{data_start};
+	my $date_list = $self->{date_list};
+	my $csv_data = $self->{csv_data};
+	my $key_items = $self->{key_items};
+	my @keys = @{$self->{keys}};
+	my $timefmt = $self->{timefmt};
+	my $key_dlm = $self->{key_dlm} // "#";
+	my $load_order = $self->{load_order};
 
-	dp::dp "$csv_file\n";
-	open(FD, $csv_file) || die "cannot open $csv_file";
+	dp::dp "$src_file\n";
+	open(FD, $src_file) || die "cannot open $src_file";
 	binmode(FD, ":utf8");
 	my $line = <FD>;
 	$line =~ s/[\r\n]+$//;
 	my @items = util::csv($line);
 
-##	my $key_name = $cdp->{key_name} // "";
+##	my $key_name = $self->{key_name} // "";
 ##	$key_name = $config::MAIN_KEY if(! $key_name);
-##	@{$cdp->{item_name_list}} = (@items[0..($data_start-1)], $key_name);	# set item_name 
+##	@{$self->{item_name_list}} = (@items[0..($data_start-1)], $key_name);	# set item_name 
 ##	my $kn = 0;
 ##	foreach my $k (@items[0..($data_start-1)], $key_name){
 ##		#dp::dp "$k: $kn\n";
-##		$cdp->{item_name_hash}->{$k} = $kn++;
+##		$self->{item_name_hash}->{$k} = $kn++;
 ##	}
 
-##	my $key_name = $cdp->{key_name} // "";			# set key name as "key" or $cdp->{key_name}
+##	my $key_name = $self->{key_name} // "";			# set key name as "key" or $self->{key_name}
 ##	$key_name = $config::MAIN_KEY if(! $key_name);
-	csv2graph::cdp_add_key_items($cdp,[$config::MAIN_KEY, @items[0..($data_start-1)],"item"]);
+	$self->add_key_items([$config::MAIN_KEY, @items[0..($data_start-1)],"item"]);
 
 	#dp::dp join(",", "# " , @key_list) . "\n";
 	dp::dp "load_transaction: " . join(", ", @items) . "\n";
@@ -455,7 +475,7 @@ sub	load_transaction
 		my @gen_key = ();			# Generate key
 		foreach my $n (@keys){
 			if($n =~ /\D/){			# not number
-				my $nn = $cdp->{item_name_hash}->{$n} // -1;
+				my $nn = $self->{item_name_hash}->{$n} // -1;
 				if($nn < 0){
 					dp::WARNING "key: no defined key[$n] " . join(",", @keys) . "\n";
 				}
@@ -481,7 +501,7 @@ sub	load_transaction
 ##				@{$key_items->{$master_key}} = (@vals[0..($data_start - 1)], $item_name);
 ##
 ##				push(@$load_order, $master_key);
-				csv2graph::cdp_add_record($cdp, $master_key,
+				$self->add_record($master_key,
 						 [$master_key, @vals[0..($data_start-1)], $item_name], []);		# add record without data
 			}
 			my $v = $vals[$i] // 0;
@@ -503,7 +523,7 @@ sub	load_transaction
 		}
 	}
 
-	$cdp->{dates} = $dt_end;
+	$self->{dates} = $dt_end;
 	$FIRST_DATE = $date_list->[0];
 	$LAST_DATE = $date_list->[$dt_end];
 
@@ -515,9 +535,9 @@ sub	load_transaction
 #
 sub	cumrative2daily
 {
-	my($cdp) = @_;
+	my $self = shift;
 
-	my $csv_data = $cdp->{csv_data};
+	my $csv_data = $self->{csv_data};
 
 	foreach my $k  (keys %$csv_data){
 		my $dp = $csv_data->{$k};

@@ -62,6 +62,8 @@ use utf8;
 use Encode 'decode';
 use JSON qw/encode_json decode_json/;
 use Data::Dumper;
+use Clone qw(clone);
+
 use config;
 use csvlib;
 use util;
@@ -84,38 +86,39 @@ my $VERBOSE = 0;
 #
 sub	calc_items
 {
-	my ($cdp, $method, $target_colp, $result_colp) = @_;
+	my $self = shift;
+	my ($method, $target_colp, $result_colp) = @_;
 
 	my $verbose = 0;
 	#
 	#	Calc 
 	#
-	my $csv_data = $cdp->{csv_data};
-	my $key_items = $cdp->{key_items};
-	my $key_dlm = $cdp->{key_dlm};
-	my $src_csvp = $cdp->{src_csv};
+	my $csv_data = $self->{csv_data};
+	my $key_items = $self->{key_items};
+	my $key_dlm = $self->{key_dlm};
+	my $src_csvp = $self->{src_csv};
 
 	#my $target_colp = $instruction->{target_col};
 	#my $result_colp = $instruction->{result_col};
 
 	my $target_keys = [];
-	my $target = &select::select_keys($cdp, $target_colp // "", $target_keys);	# set target records
+	my $target = $self->select_keys($target_colp // "", $target_keys);	# set target records
 	if($target < 0){
 		return -1;
 	}
 	dp::dp "target items : $target " . csvlib::join_array(",", $target_colp) . "\n" if($verbose);
 
-	my @key_order = select::gen_key_order($cdp, $cdp->{keys}); 		# keys to gen record key
-	my @riw = select::gen_key_order($cdp, [keys %$result_colp]); 	# keys order to gen record key
+	my @key_order = $self->gen_key_order($self->{keys}); 		# keys to gen record key
+	my @riw = $self->gen_key_order([keys %$result_colp]); 	# keys order to gen record kee
 
 	dp::dp "key_order: " .join(",", @key_order) . "\n" if($verbose);
 	dp::dp "restore_order: " .join(",", @riw) . "\n" if($verbose);
 
 	my @result_info = ();
-	for(my $i = 0; $i < $cdp->{data_start}; $i++){				# clear to avoid undef
+	for(my $i = 0; $i < $self->{data_start}; $i++){				# clear to avoid undef
 		$result_info[$i] = "";
 	}
-	my $item_name_hash = $cdp->{item_name_hash};				# List and Hash need to make here
+	my $item_name_hash = $self->{item_name_hash};				# List and Hash need to make here
 	foreach my $k (keys %$result_colp){
 		my $n = $item_name_hash->{$k} // "";
 		if($n eq "") {
@@ -191,12 +194,12 @@ sub	calc_items
 			
 ##			$key_items->{$record_key} = [@dst_keys];
 ##			$csv_data->{$record_key} = [];
-			csv2graph::cdp_add_record($cdp, $record_key, [@dst_keys], []);
+			$self->add_record($record_key, [@dst_keys], []);
 			my $dst_dp = $csv_data->{$record_key};			# total -> dst
 			for(my $i = 0; $i < scalar(@$src_dp); $i++){	# initial csv_data
 				$dst_dp->[$i] = 0;					
 			}
-			$src_csvp->{$record_key} = $src_csv;			# add $record_key record to cdp
+			$src_csvp->{$record_key} = $src_csv;			# add $record_key record to self
 			#dp::dp "$record_key : $src_csv\n";
 		}
 		my $dst_dp = $csv_data->{$record_key};				# total -> dst
@@ -230,10 +233,11 @@ sub	calc_items
 #
 sub	rolling_average
 {
-	my($cdp, $work_csvp, $gdp, $gp, $param) = @_;
+	my $self = shift;
+	my($work_csvp, $gdp, $gp, $param) = @_;
 
 	$param = $param // "";
-	my $avr_date = $cdp->{avr_date};
+	my $avr_date = $self->{avr_date};
 	foreach my $key (keys %$work_csvp){
 		my $dp = $work_csvp->{$key};
 		for(my $i = scalar(@$dp) - 1; $i >= $avr_date; $i--){
@@ -258,45 +262,46 @@ sub	rolling_average
 #
 sub	comvert2rlavr
 {
-	my($cdp, $label) = @_;
+	my $self = shift;
+	my($label) = @_;
 
 	my $gdp = {};
 	my $gp = {};
 	$label = $label // "";
 
 	if(($label//"")){		# Not checked yet,, think better to use calc_items
-		if(! defined $cdp->{item_name_hash}->{calc}){
-			csv2graph::cdp_add_key_items($cdp, ["calc"], ["RAW"]);
+		if(! defined $self->{item_name_hash}->{calc}){
+			$self->add_key_items(["calc"], ["RAW"]);
 		}
-		my $calc_item = $cdp->{item_name_hash}->{calc};
+		my $calc_item = $self->{item_name_hash}->{calc};
 
-		my $work_csvp = reduce::dup_csv($cdp, "");
+		my $work_csvp = clone($self->{csv_data});
 		#&dump_csv_data($work_csvp, {ok => 1, lines => 5, message => "comver2rlavr:dup"}) if(1);
-		&rolling_average($cdp, $work_csvp, $gdp, $gp);
+		&rolling_average($self, $work_csvp, $gdp, $gp);
 
-		my $key_items = $cdp->{key_items};
-		my $key_dlm = $cdp->{key_dlm} // $config::DEFAULT_KEY_DLM;
+		my $key_items = $self->{key_items};
+		my $key_dlm = $self->{key_dlm} // $config::DEFAULT_KEY_DLM;
 		foreach my $kn (keys %$work_csvp){
 			my $ckn = join($key_dlm, $kn, $label);
 			my @items = @{$key_items->{$kn}};
 			$items[$calc_item] = $label;
-			csv2graph::cdp_add_record($cdp, $ckn, [@items], $work_csvp->{$kn});
+			$self->add_record($ckn, [@items], $work_csvp->{$kn});
 			#dp::dp "$ckn\n";
 		}
 	}
 	else {
-		my $work_csvp = reduce::dup_csv($cdp, "");
+		my $work_csvp = clone($self->{csv_data});
 		#&dump_csv_data($work_csvp, {ok => 1, lines => 5, message => "comver2rlavr:dup"}) if(1);
-		&rolling_average($cdp, $work_csvp, $gdp, $gp);
+		&rolling_average($self, $work_csvp, $gdp, $gp);
 
 
 		#&dump_csv_data($work_csvp, {ok => 1, lines => 5, message => "comver2rlavr:ern"}) if(1);
-		$cdp->{csv_data} = "";
-		$cdp->{csv_data} = $work_csvp;
+		$self->{csv_data} = "";
+		$self->{csv_data} = $work_csvp;
 	}
-	dp::dp "comvert2rlavr[csv_data]:" . dump::print_hash($cdp->{csv_data}) . "\n";
+	dp::dp "comvert2rlavr[csv_data]:" . dump::print_hash($self->{csv_data}) . "\n";
 
-	return $cdp;
+	return $self;
 }
 
 #
@@ -304,9 +309,10 @@ sub	comvert2rlavr
 #
 sub	comvert2ern
 {
-	my($cdp, $p) = @_;
+	my $self = shift;
+	my($p) = @_;
 
-	my $key_dlm = $cdp->{key_dlm} // $config::DEFAULT_KEY_DLM;
+	my $key_dlm = $self->{key_dlm} // $config::DEFAULT_KEY_DLM;
 	my $gp  = {
 		lp => $p->{lp} // $config::RT_LP,
 		ip => $p->{ip} // $config::RT_IP,
@@ -314,18 +320,18 @@ sub	comvert2ern
 	my $gdp = {};
 	#my $ern_csvp = {};
 
-	my $ern_csvp = reduce::dup_csv($cdp, "");
-	#%$ern_csvp  = %{$cdp->{csv_data}};
+	my $ern_csvp = clone($self->{csv_data});
+	#%$ern_csvp  = %{$self->{csv_data}};
 	#&dump_csv_data($ern_csvp, {ok => 1, lines => 5, message => "comver2ern:dup"}) if(1);
 
-	&ern($cdp, $ern_csvp, $gdp, $gp);
+	&ern($self, $ern_csvp, $gdp, $gp);
 
-	$cdp->{csv_data} = "";
-	$cdp->{csv_data} = $ern_csvp;
+	$self->{csv_data} = "";
+	$self->{csv_data} = $ern_csvp;
 
 	if(0){			# add "ern" to keys : Japan -> Japan-ern
-		my $csvp = $cdp->{csv_data};
-		my $keyp = $cdp->{key_items};
+		my $csvp = $self->{csv_data};
+		my $keyp = $self->{key_items};
 		my @key_list = (keys %$ern_csvp);
 		foreach my $key (@key_list){
 			my $dkey = join($key_dlm,  $key, "ern");
@@ -339,7 +345,7 @@ sub	comvert2ern
 	}
 	#dump::dump_csv_data($ern_csvp, {ok => 1, lines => 5, message => "comver2ern:ern"}) if(1);
 
-	return $cdp;
+	return $self;
 }
 
 #
@@ -347,17 +353,18 @@ sub	comvert2ern
 #
 sub	ern
 {
-	my($cdp, $work_csvp, $gdp, $gp) = @_;
+	my $self = shift;
+	my($work_csvp, $gdp, $gp) = @_;
 
 	my $lp = $gp->{lp} // ($gdp->{lp} // $config::RT_LP);
 	my $ip = $gp->{ip} // ($gdp->{ip} // $config::RT_IP);	# 5 感染期間
-	my $avr_date = $cdp->{avr_date};
+	my $avr_date = $self->{avr_date};
 
 	dp::dp "CALC ERN: $lp, $ip\n";
 	my %rl_avr = ();
-	&rolling_average($cdp, $work_csvp, $gdp, $gp);
+	&rolling_average($self, $work_csvp, $gdp, $gp);
 
-	my $date_number = $cdp->{dates};
+	my $date_number = $self->{dates};
 	my $rate_term = $date_number - $ip - $lp;
 	my $date_term = $rate_term - 1;
 	my @keylist = (keys %$work_csvp);
@@ -383,7 +390,7 @@ sub	ern
 			}
 			# print "$country $dt: $ppre / $pat\n";
 		}
-		$cdp->{NaN_start} = $dt;
+		$self->{NaN_start} = $dt;
 		for(; $dt <= $date_number; $dt++){
 			$ern[$dt] = "NaN";
 		}
@@ -396,7 +403,7 @@ sub	ern
 		#$dp = $work_csvp->{$dkey};
 		#dp::dp "$dkey: " . join(",", @$dp[0..5]). "\n";
 	}
-	return $cdp;
+	return $self;
 }	
 
 1;
