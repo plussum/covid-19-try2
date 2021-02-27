@@ -56,7 +56,7 @@ sub	gen_key_order
 		my $itn = $k;
 		if($k =~ /\D/){
 			$itn = $item_name_hash->{$k} // "UNDEF";
-			dp::dp ">> $k: [$itn]\n" if($VERBOSE);
+			#dp::dp ">> $k: [$itn]\n"; #if($VERBOSE);
 			if($itn eq "UNDEF"){
 				dp::ABORT "no item_name_hash defined [$k] (" . join(",", keys %$item_name_hash) . ")\n";
 			}

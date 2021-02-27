@@ -45,7 +45,7 @@ our $CCSE_DEF = {
 
 	src_dlm => ",",
 	key_dlm => "-",
-	keys => [1, 0],		# 5, 1, 2
+	keys => ["Country/Region", "Province/State"],		# 5, 1, 2
 	data_start => 4,
 
 	direct => "holizontal",		# vertical or holizontal(Default)

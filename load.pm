@@ -170,8 +170,8 @@ sub	load_csv_holizontal
 		s/[\r\n]+$//;
 		#my $line = decode('utf-8', $_);
 		my $line = $_;
-		my @items = split(/$src_dlm/, $line);
-		my $master_key = select::gen_record_key($key_dlm, \@key_order, \@items);
+		my @items = (split(/$src_dlm/, $line));
+		my $master_key = select::gen_record_key($key_dlm, \@key_order, ["masterkey", @items]);
 
 ##		$csv_data->{$k}= [@items[$data_start..$#items]];	# set csv data
 ##		$key_items->{$k} = [@items[0..($data_start - 1)]];	# set csv data
@@ -456,7 +456,7 @@ sub	load_transaction
 
 ##	my $key_name = $self->{key_name} // "";			# set key name as "key" or $self->{key_name}
 ##	$key_name = $config::MAIN_KEY if(! $key_name);
-	$self->add_key_items([$config::MAIN_KEY, @items[0..($data_start-1)],"item"]);
+	$self->add_key_items([$config::MAIN_KEY, "item", @items[0..($data_start-1)]]);
 
 	#dp::dp join(",", "# " , @key_list) . "\n";
 	dp::dp "load_transaction: " . join(", ", @items) . "\n";

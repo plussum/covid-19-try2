@@ -54,7 +54,7 @@ our $JAPAN_DEF =
 	timefmt => '%Y:0-%m:1-%d:2',		# comverbt to %Y-%m-%d
 	src_dlm => ",",
 	key_dlm => "#",
-	keys => [3],		# PrefectureNameJ, and Column name
+	keys => ["prefectureNameJ"],		# PrefectureNameJ, and Column name
 	data_start => 5,
 	alias => { ern => "effectiveReproductionNumber"},
 };

@@ -207,9 +207,10 @@ sub	marge_csv{return marge::marge_csv(@_);}
 
 # calc
 sub	calc_items {return calc::calc_items(@_);}
+sub	calc_method {return calc::calc_method(@_);}
 sub	rolling_average {return calc::rolling_average(@_);}
-sub	comvert2rlavr{return calc::comvert2rlavr(@_);}
-sub	comvert2ern {return calc::comvert2ern(@_);}
+sub	calc_rlavr{return calc::calc_rlavr(@_);}
+sub	calc_ern {return calc::calc_ern(@_);}
 sub	ern {return calc::ern(@_);}
 
 # select
@@ -307,13 +308,27 @@ sub	add_key_items
 	my $self = shift;
 	my ($key_names, $labels) = @_;
 
-	my $item_name_list = $self->{item_name_list};
-
+	#
 	if(ref($key_names) ne "ARRAY"){
 		dp::WARNING "key namses is not ARRAY: $key_names\n";
 		my $kn = $key_names;
 		$key_names = [$kn];
 	}
+
+	#
+	#	When label was sat, add new items for exist key_items
+	#		The case of calculation, such as rlavr, ern ....
+	#
+	$labels = $labels // [];
+	my $key_items = $self->{key_items};
+	foreach my $kn (keys %$key_items){				# set $label[] for all record
+		foreach my $initial (@$labels){
+			push(@{$key_items->{$kn}}, $initial);		# no data for exist record
+		}
+		#my $new_key = join($self->{dlm}, $key_name, @$labels);	# change master key seems messsy...
+	}
+	my $item_name_list = $self->{item_name_list};
+
 	#dp::dp join(",", @$key_names) . "\n";
 	my $item_order = scalar(@$item_name_list);
 	push(@$item_name_list, @$key_names);		# set item_name 
@@ -322,18 +337,7 @@ sub	add_key_items
 	}
 	#dp::dp "add key : " . join(",", @$item_name_list) . "\n";
 
-	#
-	#	When label was sat, add new items for exist key_items
-	#		The case of calculation, such as rlavr, ern ....
-	#
-	$labels = $labels // [];
-	my $key_items = $self->{key_items};
-	foreach my $kn (keys %$key_items){
-		foreach my $initial (@$labels){
-			push(@{$key_items->{$kn}}, $initial);		# no data for exist record
-		}
-		#my $new_key = join($self->{dlm}, $key_name, @$labels);	# change master key seems messsy...
-	}
+
 	return 1;
 }
 
@@ -660,7 +664,7 @@ sub	csv2graph
 	#
 	my $fname = $gp->{fname} // "";
 	if(! $fname){
-		$fname = join(" ", $gp->{dsc}, $gp->{static}, $gp->{start_date});
+		$fname = join(" ", ($gp->{dsc}//"csvgraph"), ($gp->{static}//""), $gp->{start_date});
 		$fname =~ s/[\/\.\*\ #]/_/g;
 		$fname =~ s/\W+/_/g;
 		$fname =~ s/__+/_/g;
@@ -701,10 +705,11 @@ sub	csv2graph
 	#reduce::dup_csv($self, \%work_csv, $target_keys);
 	my $work_csv = $self->dup_csv($target_keys);
 	
-	if($gp->{static} eq "rlavr"){ 						# Rolling Average
+	my $static = $gp->{static} // "";
+	if($static eq "rlavr"){ 						# Rolling Average
 		$self->rolling_average($work_csv, $gdp, $gp);
 	}
-	elsif($gp->{static} eq "ern"){ 						# Rolling Average
+	elsif($static eq "ern"){ 						# Rolling Average
 		$self->ern($work_csv, $gdp, $gp);
 	}
 
@@ -867,7 +872,7 @@ sub	graph
 	if($src_info){
 		$src_info = "[$src_info]";
 	}
-	my $title = join(" ", $gp->{dsc}, $gp->{static}, "($end_date)") . "    $src_info";
+	my $title = join(" ", ($gp->{dsc}//""), ($gp->{static}//""), "($end_date)") . "    $src_info";
 	#dp::dp "[$title] $gp->{plot_png}\n";
 	#dp::dp "#### " . join(",", "[" . $p->{lank}[0] . "]", @lank) . "\n";
 

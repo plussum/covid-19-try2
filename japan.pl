@@ -84,7 +84,7 @@ my $additional_plot = join(",", values %additional_plot_item);
 
 
 
-my @cdp_list = ($deftokyo::TOKYO_DEF, $defjapan::JAPAN_DEF, $deftkow::TKOW_DEF); 
+my @cdp_list = ($deftokyo::TOKYO_DEF, $defjapan::JAPAN_DEF, $deftkow::TKOW_DEF, $defccse::CCSE_DEF); 
 
 my $cmd_list = {}; # "amt-jp" => 1, "amt-jp-pref" => 1, "tkow-ern" => 1};
 
@@ -234,7 +234,7 @@ if($golist{japan}){
 	my $an = 0;
 	foreach my $area ("東京都", "千葉県", "埼玉県", "神奈川県", "茨城県"){
 		my $test_positive = $japan_def->reduce_cdp_target({item => "testedPositive,deaths", prefectureNameJ => $area});
-		$test_positive->comvert2rlavr("rlavr");							# rlavr for marge with CCSE
+		$test_positive->calc_rlavr();							# rlavr for marge with CCSE
  		#$test_positive->dump_cdp({ok => 1, lines => 5, items => 10});               
 
 		my $params = [];
@@ -258,9 +258,9 @@ if($golist{tkow}){
 	my $TKOW_DEF   = $deftkow::TKOW_DEF;
 	my $TKOW_GRAPH = $deftkow::TKOW_GRAPH;
 
-	csv2graph::new($TKOW_DEF); 						# Load Apple Mobility Trends
-	csv2graph::load_csv($TKOW_DEF);
-	calc::comvert2rlavr($TKOW_DEF, "rlavr");			# rlavr for marge with CCSE
+	my $tkow_cdp = csv2graph->new($TKOW_DEF); 						# Load Apple Mobility Trends
+	$tkow_cdp->load_csv();
+	$tkow_cdp->calc_rlavr();			# rlavr for marge with CCSE
 
 	my $y2_graph = "line" ; # line 'boxes fill', # 'boxes fill solid',
 	my $tkow_graph = [
@@ -273,7 +273,68 @@ if($golist{tkow}){
 		{dsc => "平均湿度 ", lank => [1,10], static => "", target_col => {mainkey => "~平均湿度"}},
 	];
 	push(@$gp_list , 
-		csv2graph::csv2graph_list($TKOW_DEF, $TKOW_GRAPH, $tkow_graph)); 
+		$tkow_cdp->csv2graph_list($TKOW_GRAPH, $tkow_graph)); 
+}
+#
+#	Load Johns Hoping Univercity CCSE
+#
+#	Province/State,Country/Region,Lat,Long,1/22/20
+#
+if($golist{ccse}){
+	my @TARGET_REAGION = (
+			"Japan", "US,United States",
+			"United Kingdom", "France", #"Spain", "Italy", "Russia", 
+	#			"Germany", "Poland", "Ukraine", "Netherlands", "Czechia,Czech Republic", "Romania",
+	#			"Belgium", "Portugal", "Sweden",
+	#		"India",  "Indonesia", "Israel", # "Iran", "Iraq","Pakistan",
+	#		"Brazil", "Colombia", "Argentina", "Chile", "Mexico", "Canada", 
+	#		"South Africa", 
+	);
+
+	my $CCSE_DEF = $defccse::CCSE_DEF;
+	my $CCSE_GRAPH = $defccse::CCSE_GRAPH;
+
+	my $ccse_cdp = csv2graph->new($CCSE_DEF); 							# Load Johns Hopkings University CCSE
+	$ccse_cdp->load_csv();
+	#$ccse_cdp->dump({ok => 1, lines => 1, items => 10, search_key => "Canada"}); # if($DEBUG);
+	$ccse_cdp->calc_items("sum", 
+				{"Province/State" => "", "Country/Region" => "Canada"},		# All Province/State with Canada, ["*","Canada",]
+				{"Province/State" => "null", "Country/Region" => "="}		# total gos ["","Canada"] null = "", = keep
+	);
+	#$ccse_cdp->dump({ok => 1, lines => 5, items => 10, search_key => "Canada"}); # if($DEBUG);
+	my $ccse_country = $ccse_cdp->reduce_cdp_target({"Province/State" => "NULL"});	# Select Country
+	my $ccse_ern = $ccse_cdp->reduce_cdp_target({"Province/State" => "NULL"});	# Select Country
+	$ccse_ern->calc_ern();			# ern for marge with CCSE
+	$ccse_ern->dump({ok => 1, lines => 5, items => 10, search_key => "Japan"}); # if($DEBUG);
+
+	$ccse_country->{src_info} .= "-- reduced";
+	#csv2graph::dump_cdp($ccse_country, {ok => 1, lines => 5, items => 10, search_key => "Japan"}); # if($DEBUG);
+	my $gp = []; 
+	my $prov = "Province/State";
+	my $cntry = "Country/Region";
+	foreach my $reagion (@TARGET_REAGION){
+		foreach my $static ("", "rlavr", "ern"){
+			push (@$gp, {
+				dsc => "CCSE $reagion", lank => [1,10], static => $static,
+				target_col => {$prov => "NULL", $cntry => "$reagion"},	# Country only
+				}
+			);
+		}
+	}
+
+	my $ccse_graph_01 = [
+		{dsc => "Japan ", lank => [1,10], static => "rlavr", target_col => {"$prov" => "", "$cntry" => "Japan", calc => "RAW"}},
+		{dsc => "Canada ", lank => [1,10], static => "rlavr", target_col => {"$prov" => "", "$cntry" => "Canada"}},
+	#	{dsc => "Japan top 10", lank => [1,10], static => "rlavr", target_col => {"$prov" => "", "$cntry" => "Japan"}},
+		{dsc => "World Wild ", lank => [1,10], static => "rlavr", target_col => {"$prov" => "", "$cntry" => ""}},
+		{dsc => "World Wild ", lank => [11,20], static => "rlavr", target_col => {"$prov" => "", "$cntry" => ""}},
+	];
+
+	push(@$gp_list,
+		 $ccse_ern->csv2graph_list($CCSE_GRAPH, [
+			{dsc => "Japan ern", lank => [1,10], target_col => {$prov => "", $cntry => "Japan", calc => "ern"}}]));
+	push(@$gp_list,
+		 $ccse_country->csv2graph_list($CCSE_GRAPH, [@$ccse_graph_01, @$gp])); 
 }
 
 #

@@ -113,6 +113,7 @@ sub	calc_items
 
 	dp::dp "key_order: " .join(",", @key_order) . "\n" if($verbose);
 	dp::dp "restore_order: " .join(",", @riw) . "\n" if($verbose);
+	dp::dp "restore_order: " . csvlib::join_array(",", $result_colp) . "\n" if($verbose);
 
 	my @result_info = ();
 	for(my $i = 0; $i < $self->{data_start}; $i++){				# clear to avoid undef
@@ -157,7 +158,7 @@ sub	calc_items
 		for (my $i = 0 ; $i <= $#key_order; $i++){				# [0, 1] 
 			my $kn = $key_order[$i];
 			my $item_name = $src_kp->[$kn];				# ["Qbek", "Canada"]
-			dp::dp "$item_name [$i][$kn]($result_info[$kn])\n" if($verbose);
+			#dp::dp "itemnaem: $item_name [$i][$kn]($result_info[$kn])" . csvlib::join_array(",", @{$src_kp}) . "\n";# if($verbose);
 			if($result_info[$kn]){
 				my $rsi = $result_info[$kn];
 				if($rsi eq "null"){
@@ -173,7 +174,7 @@ sub	calc_items
 				}
 				elsif($rsi =~ /^=/){
 				}
-				else {
+				else {			# if something else set, comvert to it (like, rlavr, ern, ,,,)
 					dp::dp "$item_name -> $rsi\n" if($verbose);
 					$item_name = $rsi;
 				}
@@ -186,8 +187,9 @@ sub	calc_items
 		}
 
 		my $record_key = select::gen_record_key($key_dlm, \@key_order, \@dst_keys);
+
 		$record_key_list{$record_key}++;
-		dp::dp "record_key [$record_key]" . join(",", @key_order, "##", @key_list) . "\n" if($verbose && $record_key =~ /Japan/ );
+		#dp::dp "record_key [$record_key]" . join(",", @key_order, "##", @key_list) . "\n" ;#if($verbose && $record_key =~ /Japan/ );
 		
 		if(! defined $csv_data->{$record_key}){				# initial $record_key
 			dp::dp "init: $record_key\n" if($VERBOSE);
@@ -234,12 +236,11 @@ sub	calc_items
 sub	rolling_average
 {
 	my $self = shift;
-	my($work_csvp, $gdp, $gp, $param) = @_;
+	my($csvp) = @_;
 
-	$param = $param // "";
 	my $avr_date = $self->{avr_date};
-	foreach my $key (keys %$work_csvp){
-		my $dp = $work_csvp->{$key};
+	foreach my $key (keys %$csvp){
+		my $dp = $csvp->{$key};
 		for(my $i = scalar(@$dp) - 1; $i >= $avr_date; $i--){
 			my $tl = 0;
 			for(my $j = $i - $avr_date + 1; $j <= $i; $j++){
@@ -252,6 +253,7 @@ sub	rolling_average
 			$dp->[$i] = $avr;
 		}
 	}
+	return $csvp;
 }	
 
 #
@@ -260,46 +262,55 @@ sub	rolling_average
 #			item_name_list , item_name_has <- "calc"
 #
 #
-sub	comvert2rlavr
+sub	calc_rlavr
 {
 	my $self = shift;
-	my($label) = @_;
+	my $csvp = shift;
 
-	my $gdp = {};
-	my $gp = {};
-	$label = $label // "";
+	return $self->calc_method("rlavr", $csvp);
+}
 
-	if(($label//"")){		# Not checked yet,, think better to use calc_items
-		if(! defined $self->{item_name_hash}->{calc}){
-			$self->add_key_items(["calc"], ["RAW"]);
-		}
-		my $calc_item = $self->{item_name_hash}->{calc};
+sub	calc_ern
+{
+	my $self = shift;
+	my $csvp = shift;
 
-		my $work_csvp = clone($self->{csv_data});
-		#&dump_csv_data($work_csvp, {ok => 1, lines => 5, message => "comver2rlavr:dup"}) if(1);
-		&rolling_average($self, $work_csvp, $gdp, $gp);
+	return $self->calc_method("ern", $csvp);
+}
 
-		my $key_items = $self->{key_items};
-		my $key_dlm = $self->{key_dlm} // $config::DEFAULT_KEY_DLM;
-		foreach my $kn (keys %$work_csvp){
-			my $ckn = join($key_dlm, $kn, $label);
-			my @items = @{$key_items->{$kn}};
-			$items[$calc_item] = $label;
-			$self->add_record($ckn, [@items], $work_csvp->{$kn});
-			#dp::dp "$ckn\n";
-		}
+sub	calc_method
+{
+	my $self = shift;
+	my($method, @params) = @_;
+
+
+	if(! defined $self->{item_name_hash}->{calc}){		# gen key item "calc"
+		dp::dp "------ calc \n";
+		$self->add_key_items(["calc"], ["RAW"]);		# set calc = RAW for exit rows
+	}
+	my $calc_item = $self->{item_name_hash}->{calc};
+
+	my $work_csvp = clone($self->{csv_data});			# clone self
+	#&dump_csv_data($work_csvp, {ok => 1, lines => 5, message => "comver2rlavr:dup"}) if(1);
+	if($method eq "rlavr"){
+		$self->rolling_average($work_csvp, @params);	# comber csv_data to rlavr
+	}
+	elsif($method eq "ern"){
+		$self->ern($work_csvp, @params);				# comber csv_data to ern
 	}
 	else {
-		my $work_csvp = clone($self->{csv_data});
-		#&dump_csv_data($work_csvp, {ok => 1, lines => 5, message => "comver2rlavr:dup"}) if(1);
-		&rolling_average($self, $work_csvp, $gdp, $gp);
-
-
-		#&dump_csv_data($work_csvp, {ok => 1, lines => 5, message => "comver2rlavr:ern"}) if(1);
-		$self->{csv_data} = "";
-		$self->{csv_data} = $work_csvp;
+		dp::ABORT "undefined method [$method]\n";
 	}
-	dp::dp "comvert2rlavr[csv_data]:" . dump::print_hash($self->{csv_data}) . "\n";
+
+	my $key_items = $self->{key_items};
+	my $key_dlm = $self->{key_dlm} // $config::DEFAULT_KEY_DLM;
+	foreach my $kn (keys %$work_csvp){
+		my $ckn = join($key_dlm, $kn, $method);
+		my $items = [@{$key_items->{$kn}}];
+		$items->[$calc_item] = $method;
+		$self->add_record($ckn, $items, $work_csvp->{$kn});
+	}
+	dp::dp "calc_method[$method,csv_data]:" . dump::print_hash($self->{csv_data}) . "\n";
 
 	return $self;
 }
@@ -307,46 +318,24 @@ sub	comvert2rlavr
 #
 #	combert csv data to ERN
 #
-sub	comvert2ern
-{
-	my $self = shift;
-	my($p) = @_;
-
-	my $key_dlm = $self->{key_dlm} // $config::DEFAULT_KEY_DLM;
-	my $gp  = {
-		lp => $p->{lp} // $config::RT_LP,
-		ip => $p->{ip} // $config::RT_IP,
-	};
-	my $gdp = {};
-	#my $ern_csvp = {};
-
-	my $ern_csvp = clone($self->{csv_data});
-	#%$ern_csvp  = %{$self->{csv_data}};
-	#&dump_csv_data($ern_csvp, {ok => 1, lines => 5, message => "comver2ern:dup"}) if(1);
-
-	&ern($self, $ern_csvp, $gdp, $gp);
-
-	$self->{csv_data} = "";
-	$self->{csv_data} = $ern_csvp;
-
-	if(0){			# add "ern" to keys : Japan -> Japan-ern
-		my $csvp = $self->{csv_data};
-		my $keyp = $self->{key_items};
-		my @key_list = (keys %$ern_csvp);
-		foreach my $key (@key_list){
-			my $dkey = join($key_dlm,  $key, "ern");
-			$csvp->{$dkey} = $csvp->{$key};
-			delete($csvp->{$key});
-
-			$keyp->{$dkey} = $keyp->{$key};
-			delete($keyp->{$key});
-			#dp::dp "$k=>$ern_csvp->{$k}\n";
-		}
-	}
-	#dump::dump_csv_data($ern_csvp, {ok => 1, lines => 5, message => "comver2ern:ern"}) if(1);
-
-	return $self;
-}
+##sub	ern
+##{
+##	my $self = shift;
+##	my($csvp, $p) = @_;
+##
+##	my $gp  = {
+##		lp => $p->{lp} // $self->{lp} // $config::RT_LP,
+##		ip => $p->{ip} // $self->{ip} // $config::RT_IP,
+##	};
+##	my $gdp = {};
+##	#my $ern_csvp = {};
+##
+##	$self->ern($csvp, $gdp, $gp);
+##
+##	#dump::dump_csv_data($ern_csvp, {ok => 1, lines => 5, message => "comver2ern:ern"}) if(1);
+##
+##	return $self;
+##}
 
 #
 #	ERN
@@ -354,22 +343,22 @@ sub	comvert2ern
 sub	ern
 {
 	my $self = shift;
-	my($work_csvp, $gdp, $gp) = @_;
+	my($csvp, $p) = @_;
 
-	my $lp = $gp->{lp} // ($gdp->{lp} // $config::RT_LP);
-	my $ip = $gp->{ip} // ($gdp->{ip} // $config::RT_IP);	# 5 感染期間
+	my $lp = $p->{lp} // $self->{lp} // $config::RT_LP;
+	my $ip = $p->{ip} // $self->{lp} // $config::RT_IP;	# 5 感染期間
 	my $avr_date = $self->{avr_date};
 
 	dp::dp "CALC ERN: $lp, $ip\n";
 	my %rl_avr = ();
-	&rolling_average($self, $work_csvp, $gdp, $gp);
+	$self->rolling_average($csvp);
 
 	my $date_number = $self->{dates};
 	my $rate_term = $date_number - $ip - $lp;
 	my $date_term = $rate_term - 1;
-	my @keylist = (keys %$work_csvp);
+	my @keylist = (keys %$csvp);
 	foreach my $key (@keylist){
-		my $dp = $work_csvp->{$key};
+		my $dp = $csvp->{$key};
 		my @ern = ();
 		my $dt = 0;
 		for($dt = 0; $dt < $rate_term; $dt++){
@@ -386,7 +375,7 @@ sub	ern
 				$ern[$dt] =  0;
 			}
 			if($ern[$dt] > 100){
-				dp::WARNING "ern bigger than 100 : ern:$ern[$dt] = ppre($ppre) / pat($pat)\n";
+				dp::WARNING "ern bigger than 100 : ern:$ern[$dt] = ppre($ppre) / pat($pat)\n" if($VERBOSE);
 			}
 			# print "$country $dt: $ppre / $pat\n";
 		}
@@ -394,14 +383,7 @@ sub	ern
 		for(; $dt <= $date_number; $dt++){
 			$ern[$dt] = "NaN";
 		}
-
-		#delete($work_csvp->{$key});
-		#my $dkey = join($key_dlm,  $key, "ern");
-		#$work_csvp->{$dkey} = [];
-		#@{$work_csvp->{$dkey}} = @ern;
-		@$dp = @ern;
-		#$dp = $work_csvp->{$dkey};
-		#dp::dp "$dkey: " . join(",", @$dp[0..5]). "\n";
+		@$dp = @ern;			# overwrite csv data by ern
 	}
 	return $self;
 }	
