@@ -99,7 +99,7 @@ sub	load_csv
 	#
 	my $dates = $self->{dates};
 	my $date_list = $self->{date_list};
-	dp::dp "loaded($self->{id}) $dates records $date_list->[0] - $date_list->[$dates] ($rc)\n";
+	#dp::dp "loaded($self->{id}) $dates records $date_list->[0] - $date_list->[$dates] ($rc)\n";
 	$self->dump({ok => 1, lines => 5}) if($rc || $VERBOSE > 1);
 	return 0;
 }
@@ -128,7 +128,7 @@ sub	load_csv_holizontal
 	#
 	#	Load CSV DATA
 	#
-	dp::dp "$src_file\n";
+	dp::dp "source_file: $src_file\n";
 	system("nkf -w80 $src_file >$src_file.utf8");			# -w8 (with BOM) contain code ,,,so lead some trouble
 	open(FD, "$src_file.utf8") || die "Cannot open $src_file.utf8";
 	binmode(FD, ":utf8");

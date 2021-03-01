@@ -792,7 +792,7 @@ sub	csv2graph_list_gpmix
 
 	dp::dp join(",", @gp_mix_list) . "\n";
 	foreach my $gp_mix (@gp_mix_list){
-		dp::dp "$gp_mix\n";
+		#dp::dp "$gp_mix\n";
 		&csv2graph_mix("csv2graph", $gp_mix);
 	}
 	return (@gp_mix_list);
@@ -802,7 +802,7 @@ sub	csv2graph_mix
 {
 	my $package = shift;
 	my($gp_mix, $verbose) = @_;
-	dp::dp join(",", $gp_mix, $verbose // "") . "\n";
+	#dp::dp join(",", $gp_mix, $verbose // "") . "\n";
 	$verbose = $verbose // "";
 	my $gdp = $gp_mix->{gdp};
 	my $dst_dlm = $gdp->{dst_dlm} // "\t";
@@ -829,10 +829,10 @@ sub	csv2graph_mix
 	#
 	my $gp_list = [];
 	foreach my $gpp (@{$gp_mix->{graph_items}}){
-		dp::dp "####### " . $gpp->{cdp}->{id} . "\n";
+		#dp::dp "####### " . $gpp->{cdp}->{id} . "\n";
 		push(@$gp_list, {%$gpp});
 	}
-	dp::dp scalar(@$gp_list) . "\n";
+	#dp::dp scalar(@$gp_list) . "\n";
 
 	#
 	#	Calc Date 
@@ -846,13 +846,34 @@ sub	csv2graph_mix
 		$start_max = $ds if($ds gt $start_max);
 		$end_min   = $de if($de lt $end_min);
 	}
-	dp::dp join(",", $start_max, $end_min) . "\n";
+	#dp::dp join(",", $start_max, $end_min) . "\n";
 	my $start_max_ut = csvlib::ymds2tm($start_max);
 	my $end_min_ut = csvlib::ymds2tm($end_min);
 	my $dates = ($end_min_ut - $start_max_ut) / (24*60*60);
+
+	#
+	#	Error date miss much
+	#
+	if($dates <= 0){
+		dp::WARNING "Date miss much \n";
+		dp::dp "max_start, min_end: " . join(",", $start_max, $end_min, $dates) . "\n";
+		foreach my $gpp (@$gp_list){
+			my $ds = $gpp->{cdp}->{date_list}->[0];
+			my $cdp = $gpp->{cdp};
+			my ($ds, $de) = ($cdp->{date_list}->[0], $cdp->{date_list}->[$dates]);
+			dp::dp $cdp->{id} . ": " . join(",", $ds, $de, $gpp->{date_diff}) . "\n";
+		}
+		return 0;
+	}
+
 	foreach my $gpp (@$gp_list){
 		my $ds = $gpp->{cdp}->{date_list}->[0];
-		$gpp->{date_diff}  = $start_max_ut - csvlib::ymds2tm($ds);
+		$gpp->{date_diff}  = ($start_max_ut - csvlib::ymds2tm($ds)) / (24*60*60);
+
+
+		my $cdp = $gpp->{cdp};
+		my ($ds, $de) = ($cdp->{date_list}->[0], $cdp->{date_list}->[$dates]);
+		dp::dp $cdp->{id} . ": " . join(",", $ds, $de, $gpp->{date_diff}) . "\n";
 	}
 	my $gen_dates = int($end_min_ut - $start_max_ut)/(24*60*60);
 	my $start_date = util::date_calc(($gp_mix->{start_date} // 0), $start_max, $dates, $start_max);	# 2021-01-01
@@ -875,7 +896,7 @@ sub	csv2graph_mix
 		#my $ccse_country = $ccse_cdp->reduce_cdp_target({"Province/State" => "NULL"});	# Select Country
 		my $cdp_org = $gpp->{cdp};
 		my $cdp = $cdp_org->reduce_cdp_target($gpp->{target_col});
-		$cdp->dump({ok => 1, lines => 5, items => 10}); # if($DEBUG);
+		$cdp->dump({ok => 1, lines => 5, items => 10}) if($DEBUG);
 
 		my $csv_data = $cdp->{csv_data};
 
@@ -926,10 +947,12 @@ sub	csv2graph_mix
 		#
 		#	Sort target record
 		#
-##		my @lank = ();
-##		@lank = (@{$gpp->{lank}}) if(defined $gpp->{lank});
-##		$lank[0] = 1 if(defined $lank[0] && ! $lank[0]);
-		my $lank_select = 0; #(defined $lank[0] && defined $lank[1] && $lank[0] && $lank[1]) ? 1 : "";
+		my @lank = (1,10);
+		$lank[0] = $gpp->{lank}->[0]//1;	# if(defined $gpp->{lank});
+		$lank[0] = 1 if(! $lank[0]);
+		$lank[1] = $gpp->{lank}->[1]//10; 	#if
+		$lank[1] = 10 if(! $lank[1]);
+		my $lank_select = 1; #(defined $lank[0] && defined $lank[1] && $lank[0] && $lank[1]) ? 1 : "";
 
 		my $sorted_keys = [];								# sort
 		if($lank_select){
@@ -953,11 +976,12 @@ sub	csv2graph_mix
 		my $start_date_tm = csvlib::ymds2tm($start_date) + $gpp->{date_diff};
 		my $diff = $gpp->{date_diff};
 		foreach my $key (@$sorted_keys){
-##			next if($lank_select && ($order->{$key} < $lank[0] || $order->{$key} > $lank[1]));
+			next if($lank_select && ($order->{$key} < $lank[0] || $order->{$key} > $lank[1]));
 			
 			my @csv_data = @{$cdp->{csv_data}->{$key}};
-			push(@$graph_csv, [join($LABEL_DLM, $key, $gpp->{axis}//""), @csv_data[$diff..($diff+$dates)]]);
-			dp::dp "$diff, $dates , " . join(",", @{$graph_csv->[scalar(@$graph_csv) - 1]}). "\n";
+			my $lbl = join($LABEL_DLM, (($static) ? "$key-$static" : $key), ($gpp->{axis}//""));
+			push(@$graph_csv, [$lbl, @csv_data[$diff..($diff+$dates)]]);
+			#dp::dp "$diff, $dates , " . join(",", @{$graph_csv->[scalar(@$graph_csv) - 1]}). "\n";
 		}
 	}
 	#my $csv_for_plot = $self->gen_csv_file($gdp, $gpp, $work_csv, $output_keys);		# Generate CSV File
@@ -1107,7 +1131,6 @@ sub	sort_csv
 #
 sub	graph
 {
-	dp::dp join(",", @_) . "\n";
 	my $self = shift;
 	my($csv_for_plot, $gdp, $gp) = @_;
 
@@ -1236,7 +1259,7 @@ _EOD_
 		my $y2_graph = "";
 		my ($key, $axis_flag) = split($LABEL_DLM, $label[$i]);
 		$axis_flag = $axis_flag // "y1";
-		dp::dp join(",", $label[$i], $key, $axis_flag) . "\n";
+		#dp::dp join(",", $label[$i], $key, $axis_flag) . "\n";
 		$key =~ s/^[0-9]+://;
 		$key =~ s/[']/_/g;	# avoid error at plot
 		#dp::dp "### $i: $key $src_csv, $y2key\n";
@@ -1249,7 +1272,7 @@ _EOD_
 			$axis = "axis x1y2" ;
 			$dot = "dt (7,3)";
 			$graph = $gp->{y2_graph} // ($gdp->{y2_graph} // $DEFAULT_GRAPH);
-			dp::dp "$key $y2key/$axis_flag: [$axis]\n";
+			#dp::dp "$key $y2key/$axis_flag: [$axis]\n";
 		}
 		#dp::dp "axis:[$axis]\n";
 		#my $pl = sprintf("'%s' using 1:%d $axis with lines title '%d:%s' linewidth %d $dot", 
@@ -1286,7 +1309,7 @@ _EOD_
 		my @aw = ();
 
 		my $den = $gp->{dt_end};
-		dp::dp "range: " . join(",", $den, scalar(@$date_list) ) . "\n"; 
+		#dp::dp "range: " . join(",", $den, scalar(@$date_list) ) . "\n"; 
 		my $last_date = csvlib::ymds2tm($date_list->[$den]) / (24 * 60 * 60);	# Draw arrow on sunday
 		my $s_date = ($last_date - 2) % 7;
 		$s_date = 7 if($s_date == 0);

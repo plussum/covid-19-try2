@@ -79,7 +79,7 @@ sub	date_calc
 {
 	my($date, $default, $max, $list) = @_;
 			
-	csvlib::disp_caller(1..3);
+	#csvlib::disp_caller(1..3);
 
 	$date = $date // "";
 	$date = $default if($date eq "");
@@ -101,10 +101,10 @@ sub	date_calc
 			$date = $list->[$date];
 		}
 		else {
-			dp::dp "date_calc list: $list\n";
+			#dp::dp "date_calc list: $list\n";
 			my $date_ut = csvlib::ymds2tm($list) + $date * 24*60*60;
 			$date = csvlib::ut2date($date_ut, "-");
-			dp::dp "[[$date]]\n";
+			#dp::dp "[[$date]]\n";
 		}
 	}
 	return $date;

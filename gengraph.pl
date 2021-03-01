@@ -236,20 +236,35 @@ if($golist{ccse})
 	my $cntry = "Country/Region";
 	push(@$gp_list, csv2graph->csv2graph_list_gpmix(
 		{gdp => $CCSE_GRAPH, dsc => "Japan new cases and ern", start_date => 0, y2max => 3,
+			additional_plot => $additional_plot_item{ern}, 
 			graph_items => [
 			{cdp => $ccse_ern, target_col => {$prov => "", $cntry => "Japan", calc => "RAW"}, static => ""},
 			{cdp => $ccse_ern, target_col => {$prov => "", $cntry => "Japan", calc => "RAW"}, static => "rlavr"},
 			{cdp => $ccse_ern, target_col => {$prov => "", $cntry => "Japan", calc => "ern"}, axis => "y2"},
 			],
 		},
+
 		{gdp => $CCSE_GRAPH, dsc => "Japan new cases and ern from prov", start_date => 0, y2max => 3,
+			additional_plot => $additional_plot_item{ern}, 
 			graph_items => [
-			{cdp => $ccse_country, target_col => {$prov => "", $cntry => "Japan",}, static => ""},
-			{cdp => $ccse_country, target_col => {$prov => "", $cntry => "Japan",}, static => "rlavr"},
-			{cdp => $ccse_country, target_col => {$prov => "", $cntry => "Japan",}, axis => "y2"},
+			{cdp => $ccse_country, target_col => {$prov => "", $cntry => "Japan,US",}, static => ""},
+			{cdp => $ccse_country, target_col => {$prov => "", $cntry => "Japan,US",}, static => "rlavr"},
+			{cdp => $ccse_country, target_col => {$prov => "", $cntry => "Japan,US",}, static => "ern", axis => "y2"},
 			],
 		},
-
+		{gdp => $CCSE_GRAPH, dsc => "Japan new cases and ern from prov 3m", start_date => -91, y2max => 3,
+			additional_plot => $additional_plot_item{ern}, 
+			graph_items => [
+			{cdp => $ccse_country, target_col => {$prov => "", $cntry => "Japan,US",}, static => ""},
+			{cdp => $ccse_country, target_col => {$prov => "", $cntry => "Japan,US",}, static => "rlavr"},
+			{cdp => $ccse_country, target_col => {$prov => "", $cntry => "Japan,US",}, static => "ern", axis => "y2"},
+			],
+		},
+		{gdp => $CCSE_GRAPH, dsc => "Japan new cases and ern from prov 3m", start_date => 0, y2max => 3,
+			graph_items => [
+			{cdp => $ccse_country, target_col => {$prov => "",}, static => "", lank => [0,5]},
+			],
+		},
 	));
 	dp::dp "##### done \n";
 }
@@ -329,27 +344,52 @@ if($golist{amt}){
 				{"transportation_type" => "avr", "region" => "="},# total gos ["","Canada"] null = "", = keep
 	);
 
-	push(@$gp_list , csv2graph->csv2graph_list_mix( 
-		{cdp => $amt_country, gdp => $AMT_GRAPH, 
-			dsc => "Worldwide Apple Mobility Trends World Wilde", lank => [1,10], static => "", },
-		{cdp => $amt_country, gdp => $AMT_GRAPH, 
-			dsc => "Worldwide Apple Mobility Trends World Wilde average", lank => [1,10], static => "rlavr", 
-			target_col => {transportation_type => $AVR}, },
-		{cdp => $amt_country, gdp => $AMT_GRAPH,
-			dsc => "Japan Apple Mobility Trends Japan", lank => [1,10], static => "rlavr", 
-			target_col => {region => "Japan",} ,},
-
-		{cdp => $amt_country, gdp => $AMT_GRAPH, 
-			dsc => "(a part of) EU mobility States.", lank => [1,10], static => "rlavr", 
-			target_col => { region => $EU, transportation_type => "avr"},},
-		{cdp => $amt_pref, gdp => $AMT_GRAPH, 
-			dsc => "Worldwide Apple mobility Japan Pref.", lank => [1,10], static => "rlavr", 
-			target_col => {country => "Japan", transportation_type => "avr"}},
-		{cdp => $amt_pref, gdp => $AMT_GRAPH,
-			dsc => "United State mobility.", lank => [1,10], static => "rlavr", 
-			target_col => {country => "United States", transportation_type => "avr"},},
+	push(@$gp_list, csv2graph->csv2graph_list_gpmix(
+		{gdp => $AMT_GRAPH, dsc => "Worldwide Apple Mobility Trends World Wilde", start_date => 0, 
+			graph_items => [
+			{cdp => $amt_country, static => ""},
+			{cdp => $amt_country, static => "rlavr"},
+			],
+		},
+		{gdp => $AMT_GRAPH, dsc => "Japan Apple Mobility Trends", start_date => 0, 
+			graph_items => [
+			{cdp => $amt_country, static => "", target_col => {region => "Japan",} ,},
+			],
+		},
+		{gdp => $AMT_GRAPH, dsc => "EU Apple Mobility Trends", start_date => 0, 
+			graph_items => [
+			{cdp => $amt_country, static => "", target_col => {region => $EU, transportation_type => "avr"}, static => "rlavr"},
+			],
+		},
+		{gdp => $AMT_GRAPH, dsc => "Japan Apple Mobility Trends Prefs", start_date => 0, 
+			graph_items => [
+			{cdp => $amt_pref, static => "", target_col => {country => "Japan", transportation_type => "avr"}, static => "rlavr"},
+			],
+		},
 	));
-	#dp::dp "-" x 20 . "\n";
+
+
+##	push(@$gp_list , csv2graph->csv2graph_list_mix( 
+##		{cdp => $amt_country, gdp => $AMT_GRAPH, 
+##			dsc => "Worldwide Apple Mobility Trends World Wilde", lank => [1,10], static => "", },
+##		{cdp => $amt_country, gdp => $AMT_GRAPH, 
+##			dsc => "Worldwide Apple Mobility Trends World Wilde average", lank => [1,10], static => "rlavr", 
+##			target_col => {transportation_type => $AVR}, },
+##		{cdp => $amt_country, gdp => $AMT_GRAPH,
+##			dsc => "Japan Apple Mobility Trends Japan", lank => [1,10], static => "rlavr", 
+##			target_col => {region => "Japan",} ,},
+##
+##		{cdp => $amt_country, gdp => $AMT_GRAPH, 
+##			dsc => "(a part of) EU mobility States.", lank => [1,10], static => "rlavr", 
+##			target_col => { region => $EU, transportation_type => "avr"},},
+##		{cdp => $amt_pref, gdp => $AMT_GRAPH, 
+##			dsc => "Worldwide Apple mobility Japan Pref.", lank => [1,10], static => "rlavr", 
+##			target_col => {country => "Japan", transportation_type => "avr"}},
+##		{cdp => $amt_pref, gdp => $AMT_GRAPH,
+##			dsc => "United State mobility.", lank => [1,10], static => "rlavr", 
+##			target_col => {country => "United States", transportation_type => "avr"},},
+##	));
+##	#dp::dp "-" x 20 . "\n";
 
 }
 
@@ -474,14 +514,13 @@ if($golist{"amt-ccse"})
 				{"transportation_type" => "", "region" => "", "country" => ""},	# All Province/State with Canada, ["*","Canada",]
 				{"transportation_type" => "avr", "region" => "="},# total gos ["","Canada"] null = "", = keep
 	);
-	$amt_country->calc_rlavr();							# rlavr for marge with CCSE
+##	$amt_country->calc_rlavr();							# rlavr for marge with CCSE
 
 	my $amt_pref = $amt_cdp->reduce_cdp_target({geo_type => $SUBR});
 	$amt_pref->calc_items("avr", 
 				{"transportation_type" => "", "region" => "", "country" => ""},	# All Province/State with Canada, ["*","Canada",]
 				{"transportation_type" => "avr", "region" => "="},# total gos ["","Canada"] null = "", = keep
 	);
-	$amt_pref->calc_rlavr();							# rlavr for marge with CCSE
 
 	#
 	#	CCSE
@@ -501,76 +540,91 @@ if($golist{"amt-ccse"})
 	
 	#
 	#	Marge amt and ccse, gen rlabr and erc
+	#	geo_type,region,transportation_type,alternative_name,sub-region,country,2020-01-13,,,,
 	#
 	my $ccse_rlavr = $ccse_country->dup();
 
+	my $prov = "Province/State";		# ccse
+	my $cntry = "Country/Region";		# ccse
+	foreach my $reagion (@TARGET_REAGION){			# Generate Graph Parameters
+		push(@$gp_list, csv2graph->csv2graph_list_gpmix(
+			{gdp => $AMT_GRAPH, dsc => "Worldwide Apple Mobility Trends World Wilde and ccse ern $reagion", start_date => 0, y2max => 3,
+				graph_items => [
+				{cdp => $ccse_country, static => "ern",   target_col => {$prov => "", $cntry => $reagion}, axis => "y2"},
+				{cdp => $amt_country,  static => "rlavr", target_col => {region => $reagion,}},
+				],
+			},
+		));
+	}
+
+
 	#	Rolling Average
-	$ccse_rlavr = $ccse_country->calc_rlavr();					# Calc Rooling Average
-	$ccse_rlavr->dump({ok => 1, lines => 5, items => 20, message => "ccse_rlavr"});
-	my $ccse_amt_rlavr = $ccse_rlavr->marge_csv($amt_country);	# Marge CCSE and Apple Mobility Trends
+##	$ccse_rlavr = $ccse_country->calc_rlavr();					# Calc Rooling Average
+##	$ccse_rlavr->dump({ok => 1, lines => 5, items => 20, message => "ccse_rlavr"});
+##	my $ccse_amt_rlavr = $ccse_rlavr->marge_csv($amt_country);	# Marge CCSE and Apple Mobility Trends
 
 	#	set infomation for graph
-	$ccse_amt_rlavr->{id} = "amt-ccse-rlavr";
-	$ccse_amt_rlavr->{src_info} = "(rlavr)Apple Mobility Trends and Johns Hokings Univ.";
-	$ccse_amt_rlavr->{main_url} = "please reffer amt and ccse";
-	$ccse_amt_rlavr->{csv_file} = "please reffer amt and ccse";
-	$ccse_amt_rlavr->{src_url} =  "please reffer amt and ccse";	
-	$ccse_amt_rlavr->dump({ok => 1, lines => 5, items => 20, message => "ccse_amt_rlavr"});
-
-	#	ERN
-	my $ccse_country_ern = $ccse_country->calc_ern($ccse_country);					# Calc ERN
-	#$ccse_country->dump({ok => 1, lines => 5, items => 20, message => "ccse_countly"});
-	my $ccse_amt_ern = $ccse_country->marge_csv($amt_country);	# Marge CCSE(ERN) and Apple Mobility Trends
-	$ccse_amt_ern->{id} = "amt-ccse-ern";
-	$ccse_amt_ern->{src_info} = "(ern)Apple Mobility Trends and Johns Hokings Univ.";
-	$ccse_amt_ern->{main_url} = "please reffer amt and ccse";
-	$ccse_amt_ern->{csv_file} = "please reffer amt and ccse";
-	$ccse_amt_ern->{src_url} =  "please reffer amt and ccse";	
-	$ccse_amt_ern->dump({ok => 1, lines => 5, items => 20, message => "ccse_amt_ern"});
-
-	my $MARGE_GRAPH_PARAMS = {
-		html_title => "MARGE Apple Mobility Trends and ERN",
-		png_path   => $PNG_PATH,
-		png_rel_path => $PNG_REL_PATH,
-		html_file => "$HTML_PATH/applemobile_ern.html",
-
-		y2label => 'ERN', y2min => 0, y2max => 3, y2_source => 0,		# soruce csv definition for y2
-		ylabel => '%', ymin => 0,
-		additional_plot => $additional_plot,
-	};
-
-	#
-	#	Generate Graph Pamaters
-	#
-	my $g_params = [];
-	foreach my $reagion (@TARGET_REAGION){			# Generate Graph Parameters
-		my $rn = $reagion;
-		$rn =~ s/,.*$//;
-		my @rr = ();
-		foreach my $r (split(/,/, $reagion)){
-			push(@rr, "~$r", "~$r#");			# ~ regex
-		}
-		$reagion = join(",", @rr);
-		
-		my @dsc_list = ("ern", "rlavr");
-		foreach my $cdp ($ccse_amt_ern){#, $ccse_amt_rlavr){
-			my $dsc = shift(@dsc_list);
-			push (@$g_params, {
-					cdp => $cdp, 
-					gdp => $MARGE_GRAPH_PARAMS, 
-					dsc => "Mobiliy and $dsc $rn",
-					lank => [1,10],
-					static => "",
-					target_col => {mainkey => $reagion},
-				}
-			);
-		}
-		last;
-	} 
-
-	#	Set to graph list
-	push(@$gp_list, csv2graph->csv2graph_list_mix(@$g_params));
-	#csv2graph::gen_graph_by_list($ccse_amt, $MARGE_GRAPH_PARAMS, $g_params);
+##	$ccse_amt_rlavr->{id} = "amt-ccse-rlavr";
+##	$ccse_amt_rlavr->{src_info} = "(rlavr)Apple Mobility Trends and Johns Hokings Univ.";
+##	$ccse_amt_rlavr->{main_url} = "please reffer amt and ccse";
+##	$ccse_amt_rlavr->{csv_file} = "please reffer amt and ccse";
+##	$ccse_amt_rlavr->{src_url} =  "please reffer amt and ccse";	
+##	$ccse_amt_rlavr->dump({ok => 1, lines => 5, items => 20, message => "ccse_amt_rlavr"});
+##
+##	#	ERN
+##	my $ccse_country_ern = $ccse_country->calc_ern($ccse_country);					# Calc ERN
+##	#$ccse_country->dump({ok => 1, lines => 5, items => 20, message => "ccse_countly"});
+##	my $ccse_amt_ern = $ccse_country->marge_csv($amt_country);	# Marge CCSE(ERN) and Apple Mobility Trends
+##	$ccse_amt_ern->{id} = "amt-ccse-ern";
+##	$ccse_amt_ern->{src_info} = "(ern)Apple Mobility Trends and Johns Hokings Univ.";
+##	$ccse_amt_ern->{main_url} = "please reffer amt and ccse";
+##	$ccse_amt_ern->{csv_file} = "please reffer amt and ccse";
+##	$ccse_amt_ern->{src_url} =  "please reffer amt and ccse";	
+##	$ccse_amt_ern->dump({ok => 1, lines => 5, items => 20, message => "ccse_amt_ern"});
+##
+##	my $MARGE_GRAPH_PARAMS = {
+##		html_title => "MARGE Apple Mobility Trends and ERN",
+##		png_path   => $PNG_PATH,
+##		png_rel_path => $PNG_REL_PATH,
+##		html_file => "$HTML_PATH/applemobile_ern.html",
+##
+##		y2label => 'ERN', y2min => 0, y2max => 3, y2_source => 0,		# soruce csv definition for y2
+##		ylabel => '%', ymin => 0,
+##		additional_plot => $additional_plot,
+##	};
+##
+##	#
+##	#	Generate Graph Pamaters
+##	#
+##	my $g_params = [];
+##	foreach my $reagion (@TARGET_REAGION){			# Generate Graph Parameters
+##		my $rn = $reagion;
+##		$rn =~ s/,.*$//;
+##		my @rr = ();
+##		foreach my $r (split(/,/, $reagion)){
+##			push(@rr, "~$r", "~$r#");			# ~ regex
+##		}
+##		$reagion = join(",", @rr);
+##		
+##		my @dsc_list = ("ern", "rlavr");
+##		foreach my $cdp ($ccse_amt_ern){#, $ccse_amt_rlavr){
+##			my $dsc = shift(@dsc_list);
+##			push (@$g_params, {
+##					cdp => $cdp, 
+##					gdp => $MARGE_GRAPH_PARAMS, 
+##					dsc => "Mobiliy and $dsc $rn",
+##					lank => [1,10],
+##					static => "",
+##					target_col => {mainkey => $reagion},
+##				}
+##			);
+##		}
+##		last;
+##	} 
+##
+##	#	Set to graph list
+##	push(@$gp_list, csv2graph->csv2graph_list_mix(@$g_params));
+##	#csv2graph::gen_graph_by_list($ccse_amt, $MARGE_GRAPH_PARAMS, $g_params);
 }
 
 #

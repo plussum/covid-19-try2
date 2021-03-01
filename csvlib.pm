@@ -267,7 +267,7 @@ sub ymds2tm
 {
 	my ($ymds) = @_;
 
-	dp::dp "$ymds\n";
+	#dp::dp "$ymds\n";
 	my ($y, $m, $d, $h, $mn, $s) = split(/[\/\-]/, $ymds);
 
 	$y = $y // 2020;
