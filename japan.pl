@@ -171,7 +171,6 @@ if($golist{"tokyo"}){
 # 	$tko_cdp->dump({ok => 1, lines => 5, items => 10});               
 
 	my $y2_graph = "line" ; # 'boxes fill', # 'boxes fill solid',
-	my $tko_graph = [];
 	my $tko_gpara01 = [
 		{dsc => "Tokyo Positve/negative/rate", lank => [1,10], static => "", 
 			target_col => {mainkey =>"tested_count,positive_count,positive_rate"},
@@ -182,6 +181,8 @@ if($golist{"tokyo"}){
 			y2key => "rate", y2label => "rate", y2min => 0, y2max => "", y2_grap => $y2_graph,
 			ykey => "", ylabel => 'Number of cases', ymin => 0, },
 	];
+
+	my $tko_graph = [];
 	push(@$tko_graph , 
 		$tko_cdp->csv2graph_list($TOKYO_GRAPH, $tko_gpara01));
 
@@ -333,6 +334,7 @@ if($golist{ccse}){
 	push(@$gp_list,
 		 $ccse_ern->csv2graph_list($CCSE_GRAPH, [
 			{dsc => "Japan ern", lank => [1,10], target_col => {$prov => "", $cntry => "Japan", calc => "ern"}}]));
+
 	push(@$gp_list,
 		 $ccse_country->csv2graph_list($CCSE_GRAPH, [@$ccse_graph_01, @$gp])); 
 }

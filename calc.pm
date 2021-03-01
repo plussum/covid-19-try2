@@ -286,7 +286,7 @@ sub	calc_method
 
 	if(! defined $self->{item_name_hash}->{calc}){		# gen key item "calc"
 		dp::dp "------ calc \n";
-		$self->add_key_items(["calc"], ["RAW"]);		# set calc = RAW for exit rows
+		$self->add_key_items(["calc"], "RAW");		# set calc = RAW for exit rows
 	}
 	my $calc_item = $self->{item_name_hash}->{calc};
 

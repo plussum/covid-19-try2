@@ -123,11 +123,11 @@ sub dump_key_items
 		}
 		my @w = @{$key_items->{$k}};
 		if($#w < 0){
-			dp::WARNING "$k: " . $#w . "\n";
+			dp::WARNING "nodata in key_items: $k: (" . $#w . ")\n";
 		}
 		for(my $i = 0; $i < $#w; $i++){ 
 			if(! defined $w[$i]){
-				dp::WARNING "$k:$i  " . $#w . "\n";
+				dp::WARNING "nodatea at :$k [$i]  (" . $#w . ")\n";
 			}
 		}
 				

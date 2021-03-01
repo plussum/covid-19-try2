@@ -337,6 +337,8 @@ sub	date_range
 {
 	my($cdp, $gdp, $gp) = @_;
 
+	dp::dp "date_range: " . join(",", $cdp, $gdp, $gp) . "\n";
+
 	my $id = $cdp->{id} // ($cdp->{src_info} // "no-id");
 	my $date_list = $cdp->{date_list};
 	#dp::dp "DATE: " . join(", ", $gp->{start_date}, $gp->{end_date}, "#", @$date_list[0..5]) . "\n";
@@ -357,5 +359,6 @@ sub	date_range
 	$dt_end = $cdp->{dates} if($dt_end < 0 || $dt_end > $cdp->{dates});
 	$gp->{dt_start} = $dt_start;
 	$gp->{dt_end}   = $dt_end;
+	dp::dp "date_range: " . join(",", $dt_start, $dt_end) . "\n";
 }
 1;

@@ -38,10 +38,22 @@ sub	recur
 
 	my @array = ();
 	my $ref = ref($item);
-	if($ref eq "HASH" ||  $ref eq "ARRAY"){
-		my $s = &join_array($dlm, $param, $item);
-		$s = ($ref eq "HASH") ? "{$s}" : "[$s]";
-		push(@array, $s);
+	if($ref eq "HASH"){
+		my @w = ();
+		foreach my $k (keys %$item){
+			push(@w,  "$k"  . "=>" . $item->{$k});
+		}
+		my $s = join($dlm, @w);
+		push(@array, "{" . $s . "}");
+	}
+	elsif($ref eq "ARRAY"){
+		my @w = ();
+		for(my $i = 0; $i < scalar(@$item); $i++){
+			my $v = $item->[$i] // "undef";
+			push(@w, "#$i($v)");
+		}
+		my $s = join($dlm, @w);
+		push(@array, "[" . $s . "]");
 	}
 	#dp::dp $param->{deep} . " [$item:$ref]" . join($dlm, @array) . "\n";
 	return join($dlm, @array);
@@ -70,7 +82,7 @@ sub	join_array
 
 	if(ref($array[0]) eq "HASH" and defined $array[0]->{joint_array_param}){
 		$param = $array[0];
-		$deep = $param->{deep} // 1;
+		$deep = $param->{deep} // 3;
 		$deep--;
 		return "" if($deep < 0);
 
@@ -86,7 +98,7 @@ sub	join_array
 			my @w = ();
 			my $i = 0;
 			foreach my $v (@$item){
-				my $s = $v;
+				my $s = $v // "undef";
 				if(&ahv($v) > 0){
 					$s = &recur($dlm, $param, $v);
 				}
@@ -100,7 +112,7 @@ sub	join_array
 			my $i = 0;
 			foreach my $k (keys %$item) {
 				my $s = "";
-				my $v = $item->{$k};
+				my $v = $item->{$k} // "undef";
 				if(&ahv($v) > 0){
 					$s = "$k=>" . &recur($dlm, $param, $v);
 				}
@@ -113,7 +125,7 @@ sub	join_array
 			$i++;
 		}
 		else {
-			$item = "#$n:$item";
+			$item = "#$n:" . ($item // "undef");
 		}
 		push(@join, $item);
 		$n++;
@@ -199,6 +211,17 @@ sub ut2dt
 	return $s;
 }
 
+sub ut2date
+{
+	my ($tm, $dlm) = @_;
+
+	$dlm = $dlm // "-";
+	my($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) = localtime($tm);
+	my $s = sprintf("%04d$dlm%02d$dlm%02d", $year + 1900, $mon + 1, $mday);
+	return $s;
+}
+
+
 #
 #	unix_time, "/", -> "20/01/02"
 #
@@ -244,6 +267,7 @@ sub ymds2tm
 {
 	my ($ymds) = @_;
 
+	dp::dp "$ymds\n";
 	my ($y, $m, $d, $h, $mn, $s) = split(/[\/\-]/, $ymds);
 
 	$y = $y // 2020;
