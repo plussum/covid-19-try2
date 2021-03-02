@@ -790,7 +790,7 @@ sub	csv2graph_list_gpmix
 	my(@gp_mix_list) = @_;
 	#my $verbose = $verbose // "";
 
-	dp::dp join(",", @gp_mix_list) . "\n";
+	#dp::dp join(",", @gp_mix_list) . "\n";
 	foreach my $gp_mix (@gp_mix_list){
 		#dp::dp "$gp_mix\n";
 		&csv2graph_mix("csv2graph", $gp_mix);
@@ -806,6 +806,12 @@ sub	csv2graph_mix
 	$verbose = $verbose // "";
 	my $gdp = $gp_mix->{gdp};
 	my $dst_dlm = $gdp->{dst_dlm} // "\t";
+
+	if(defined $gdp->{id} || !defined $gdp->{png_path}){
+		dp::WARNING "gdp may wrong, maybe cdp ?\n";
+		print Dumper $gdp;
+		return 0;
+	}
 
 	#
 	#	Set File Name
@@ -824,6 +830,7 @@ sub	csv2graph_mix
 	$gp_mix->{plot_csv} = $gp_mix->{plot_csv} // "$fname-plot.csv.txt";
 	$gp_mix->{plot_cmd} = $gp_mix->{plot_cmd} // "$fname-plot.txt";
 
+	#dp::dp "fname:: $fname " . join(",", $gp_mix->{plot_png}, $gp_mix->{plot_csv}, $gp_mix->{plot_cmd}) . "\n";
 	#
 	#	init params 
 	#
@@ -858,7 +865,6 @@ sub	csv2graph_mix
 		dp::WARNING "Date miss much \n";
 		dp::dp "max_start, min_end: " . join(",", $start_max, $end_min, $dates) . "\n";
 		foreach my $gpp (@$gp_list){
-			my $ds = $gpp->{cdp}->{date_list}->[0];
 			my $cdp = $gpp->{cdp};
 			my ($ds, $de) = ($cdp->{date_list}->[0], $cdp->{date_list}->[$dates]);
 			dp::dp $cdp->{id} . ": " . join(",", $ds, $de, $gpp->{date_diff}) . "\n";
@@ -867,18 +873,16 @@ sub	csv2graph_mix
 	}
 
 	foreach my $gpp (@$gp_list){
-		my $ds = $gpp->{cdp}->{date_list}->[0];
-		$gpp->{date_diff}  = ($start_max_ut - csvlib::ymds2tm($ds)) / (24*60*60);
-
-
 		my $cdp = $gpp->{cdp};
 		my ($ds, $de) = ($cdp->{date_list}->[0], $cdp->{date_list}->[$dates]);
-		dp::dp $cdp->{id} . ": " . join(",", $ds, $de, $gpp->{date_diff}) . "\n";
+		$gpp->{date_diff}  = ($start_max_ut - csvlib::ymds2tm($ds)) / (24*60*60);
+
+		#dp::dp $cdp->{id} . ": " . join(",", $ds, $de, $gpp->{date_diff}) . "\n";
 	}
 	my $gen_dates = int($end_min_ut - $start_max_ut)/(24*60*60);
 	my $start_date = util::date_calc(($gp_mix->{start_date} // 0), $start_max, $dates, $start_max);	# 2021-01-01
 	my $end_date   = util::date_calc(($gp_mix->{end_date} // $dates),   $end_min, $dates, $start_max);		# 2021-01-02
-	dp::dp "graph_mix:(start_date, end_date, dates) " . join(",", $start_date, $end_date, $dates, $gp_mix->{start_date}) . "\n";
+	#dp::dp "graph_mix:(start_date, end_date, dates) " . join(",", $start_date, $end_date, $dates, $gp_mix->{start_date}) . "\n";
 
 	$gp_mix->{start_date} = $start_date;
 	$gp_mix->{end_date} = $end_date;
@@ -952,6 +956,7 @@ sub	csv2graph_mix
 		$lank[0] = 1 if(! $lank[0]);
 		$lank[1] = $gpp->{lank}->[1]//10; 	#if
 		$lank[1] = 10 if(! $lank[1]);
+		#dp::dp "LANK: $lank[0], $lank[1]\n";
 		my $lank_select = 1; #(defined $lank[0] && defined $lank[1] && $lank[0] && $lank[1]) ? 1 : "";
 
 		my $sorted_keys = [];								# sort
@@ -978,6 +983,7 @@ sub	csv2graph_mix
 		foreach my $key (@$sorted_keys){
 			next if($lank_select && ($order->{$key} < $lank[0] || $order->{$key} > $lank[1]));
 			
+			#dp::dp "order: $key -> $order->{$key}\n";
 			my @csv_data = @{$cdp->{csv_data}->{$key}};
 			my $lbl = join($LABEL_DLM, (($static) ? "$key-$static" : $key), ($gpp->{axis}//""));
 			push(@$graph_csv, [$lbl, @csv_data[$diff..($diff+$dates)]]);
@@ -986,7 +992,7 @@ sub	csv2graph_mix
 	}
 	#my $csv_for_plot = $self->gen_csv_file($gdp, $gpp, $work_csv, $output_keys);		# Generate CSV File
 	#dp::dp "$csv_for_plot\n";
-
+	dp::dp "PNG_PATH: " . $gdp->{png_path} . "\n";
 	my $csv_for_plot = $gdp->{png_path} . "/" . $gp_mix->{plot_csv}; #"/$fname-plot.csv.txt";
 	#dp::dp "### $csv_for_plot\n";
 	open(CSV, "> $csv_for_plot") || die "cannot create $csv_for_plot";
@@ -1098,6 +1104,8 @@ sub	sort_csv
 			$v = 0 if((!$v) || $v eq "NaN");
 			$total += $v ;
 		}
+		$total = 10 ** 20  - 1 if($total eq "Inf");		# for avoiding error at sort
+		$total = 0  if($total eq "NaN");				# for avoiding error at sort
 		$SORT_VAL{$key} = $total;
 		#dp::dp "$key: [$total]\n";
 		#if($src_csv && (! defined $src_csv->{$key})){
@@ -1116,15 +1124,22 @@ sub	sort_csv
 	else {
 		#dp::dp "--- src_csv -- $gp->{dsc} " . ref($src_csv) . "\n";
 		foreach my $k (keys %SORT_VAL){
-			next if(defined $src_csv->{$k});
+			#dp::dp "$k: $SORT_VAL{$k}\n";
+			next if((defined $src_csv->{$k}) && (defined $SORT_VAL{$k}));
 
-			dp::dp "$k is not defined to src_csv\n";
+			dp::dp "$k is not defined to src_csv or SORT_VAL\n";
 		}
-		@$sorted_keysp = (sort {($src_csv->{$a}//0) <=> ($src_csv->{$b}//0) 
-						or $SORT_VAL{$b} <=> $SORT_VAL{$a}} keys %SORT_VAL);
+		#@$sorted_keysp = (sort {($src_csv->{$a}//0) <=> ($src_csv->{$b}//0) 
+		#				or ($SORT_VAL{$b}//0) <=> ($SORT_VAL{$a}//0)} keys %SORT_VAL);
+		@$sorted_keysp = (sort {$SORT_VAL{$b} <=> $SORT_VAL{$a}} keys %SORT_VAL);
 		#dp::dp "------------" . scalar(@$sorted_keysp) . "/" . keys(%SORT_VAL) . "\n";
 	}
 }
+sub	sort_val
+{
+	
+}
+
 
 #
 #	Generate Glaph from csv file by gnuplot
@@ -1285,7 +1300,7 @@ _EOD_
 			#dp::dp "BOX\n";
 			$graph =~ s/box/box fill/ if(! ($graph =~ /fill/));
 		}
-		my $pl = sprintf("'%s' using 1:%d $axis with $graph title '%s' ", $csvf, $i + 1, $key);
+		my $pl = sprintf("'%s' using 1:%d $axis with $graph title '%d:%s' ", $csvf, $i + 1, $i, $key);
 		push(@p, $pl);
 	}
 	#push(@p, "0 with lines dt '-' title 'base line'");

@@ -13,10 +13,10 @@ use utf8;
 use Encode 'decode';
 use config;
 
-my $WIN_PATH = $config::WIN_PATH;
-my $HTML_PATH = "$WIN_PATH/HTML2";
-my $PNG_PATH  = "$WIN_PATH/PNG2";
-my $PNG_REL_PATH  = "../PNG2";
+my $WIN_PATH = "$config::WIN_PATH";
+my $HTML_PATH = "$WIN_PATH/HTML2",
+my $PNG_PATH  = "$WIN_PATH/PNG2",
+my $PNG_REL_PATH  = "../PNG2",
 my $CSV_PATH  = $config::WIN_PATH;
 
 my $DEFAULT_AVR_DATE = $config::DEFAULT_AVR_DATE;

@@ -456,13 +456,14 @@ sub	load_transaction
 
 ##	my $key_name = $self->{key_name} // "";			# set key name as "key" or $self->{key_name}
 ##	$key_name = $config::MAIN_KEY if(! $key_name);
-	$self->add_key_items([$config::MAIN_KEY, "item", @items[0..($data_start-1)]]);
+	$self->add_key_items([$config::MAIN_KEY, @items[0..($data_start-1)], "item"]);
 
 	#dp::dp join(",", "# " , @key_list) . "\n";
 	dp::dp "load_transaction: " . join(", ", @items) . "\n";
 
 	my $dt_end = -1;
 	while(<FD>){
+		#dp::dp $_;
 		my (@vals)  = util::csv($_);
 
 		$vals[0] += 2000 if($vals[0] < 100);
@@ -479,8 +480,9 @@ sub	load_transaction
 				if($nn < 0){
 					dp::WARNING "key: no defined key[$n] " . join(",", @keys) . "\n";
 				}
-				$n = $nn;
+				$n = $nn - 1;		# added "mainkey" and "item"
 			}
+			#dp::dp "$n: " . csvlib::join_array(",", @vals) . "\n";
 			my $itm = $vals[$n];
 			push(@gen_key, $itm);
 		}
@@ -511,7 +513,7 @@ sub	load_transaction
 		}
 	}
 	close(FD);
-	dp::dp "##### data_end at transaction: $dt_end: $date_list->[$dt_end]\n";
+	dp::dp "##### data_end at transaction: $self->{id} $dt_end: $date_list->[$dt_end]\n";
 
 	#
 	#	Set unassgined data with 0
