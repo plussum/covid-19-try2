@@ -161,7 +161,7 @@ sub	load_csv_holizontal
 	$LAST_DATE = $date_list->[$#item_name - $data_start];
 
 	#dp::dp join(",", "# ", @$date_list) . "\n";
-	#dp::dp "keys : ", join(",", @keys). "\n";
+	dp::dp "keys : ", join(",", @keys). "\n";
 	my @key_order = $self->gen_key_order($self->{keys});		# keys to gen record key
 	my $load_order = $self->{load_order};
 	my $key_dlm = $self->{key_dlm}; 
@@ -172,6 +172,7 @@ sub	load_csv_holizontal
 		my $line = $_;
 		my @items = (split(/$src_dlm/, $line));
 		my $master_key = select::gen_record_key($key_dlm, \@key_order, ["masterkey", @items]);
+		#dp::dp "MASTER_KEY: " .$master_key . "\n";
 
 ##		$csv_data->{$k}= [@items[$data_start..$#items]];	# set csv data
 ##		$key_items->{$k} = [@items[0..($data_start - 1)]];	# set csv data
@@ -297,6 +298,8 @@ sub	load_csv_vertical
 	#
 	#	Load dated data
 	#
+	my $added_key = select::added_key($self);
+
 	$ln = 0;
 	while(<FD>){
 		s/[\r\n]+$//;
@@ -310,7 +313,7 @@ sub	load_csv_vertical
 		for(my $i = 0; $i <= $#items; $i++){
 			next if(! $load_flag[$i]);
 
-			my $k = $item_names[$i];
+			my $k = $item_names[$i] . $added_key;
 			$csv_data->{$k}->[$ln]= $items[$i];
 			#push(@w, "$ln:{". $k . "}:$items[$i]");
 		}
@@ -372,38 +375,19 @@ sub	load_json
 	my @data0 = (@{$positive->{data}});
 	#dp::dp "### $date_key\n";
 
-##	if(!defined $csv_data){
-##		dp::dp "somthing wrong at json, csv_data\n";
-##		$csv_data = {};
-##		$self->{csv_data} = $csv_data;
-##	}
-##	foreach my $k (@items){
-##		$key_items->{$k} = [$k];
-##		$csv_data->{$k} = [];
-##		#dp::dp "csv_data($k) :". $csv_data->{$k} . "\n";
-##	}	
 
-##	my $key_name = $self->{key_name} // "";			# set key name as "key" or $self->{key_name}
-##	$key_name = $config::MAIN_KEY if(! $key_name);
 	$self->add_key_items([$config::MAIN_KEY, @items]);
 	foreach my $master_key (@items){
 		$self->add_record($master_key, [$master_key], []);		# add record without data
 	}
 
-##	@{$self->{item_name_list}} = ($key_name);	# set item_name 
-##	$self->{item_name_hash}->{$key_name} = 0;
-##	dp::dp "item_name_list: (" . join(",", @{$self->{item_name_list}}). ") [$key_name]\n";
-##
-##	for(my $itn = 0; $itn <= $#items; $itn++){
-##		$load_order->[$itn] = $items[$itn];
-##	}
-
+	my $added_key = select::added_key($self);
 	for(my $rn = 0; $rn <= $#data0; $rn++){
 		my $datap = $data0[$rn];
 		my $date = $datap->{$date_key};
 		$date_list->[$rn] = $date;
 		for(my $itn = 0; $itn <= $#items; $itn++){
-			my $k = $items[$itn];
+			my $k = $items[$itn] . $added_key;
 			my $v = $datap->{$k} // 0;
 			$csv_data->{$k}->[$rn] = $v;
 			#dp::dp "$k:$itn: $v ($csv_data->{$k})\n" if($rn < 3);
@@ -461,6 +445,7 @@ sub	load_transaction
 	#dp::dp join(",", "# " , @key_list) . "\n";
 	dp::dp "load_transaction: " . join(", ", @items) . "\n";
 
+	my $added_key = select::added_key($self);
 	my $dt_end = -1;
 	while(<FD>){
 		#dp::dp $_;
@@ -494,15 +479,10 @@ sub	load_transaction
 		#
 		for(my $i = $data_start; $i <= $#items; $i++){
 			my $item_name = $items[$i];
-			my $master_key = join($key_dlm, @gen_key, $item_name);				# set key_name
+			my $master_key = join($key_dlm, @gen_key, $item_name) . $added_key;				# set key_name
 			if(! defined $csv_data->{$master_key}){
 				#dp::dp "load_transaction: assinge csv_data [$master_key]\n";
 
-##				$csv_data->{$master_key} = [];
-##				$key_items->{$master_key} = [];
-##				@{$key_items->{$master_key}} = (@vals[0..($data_start - 1)], $item_name);
-##
-##				push(@$load_order, $master_key);
 				$self->add_record($master_key,
 						 [$master_key, @vals[0..($data_start-1)], $item_name], []);		# add record without data
 			}

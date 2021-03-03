@@ -157,9 +157,10 @@ sub	calc_items
 		my @key_list = ();
 		for (my $i = 0 ; $i <= $#key_order; $i++){				# [0, 1] 
 			my $kn = $key_order[$i];
-			my $item_name = $src_kp->[$kn];				# ["Qbek", "Canada"]
+			my $item_name = "";
 			#dp::dp "itemnaem: $item_name [$i][$kn]($result_info[$kn])" . csvlib::join_array(",", @{$src_kp}) . "\n";# if($verbose);
-			if($result_info[$kn]){
+			if(!($kn =~ /\D/) && $result_info[$kn]){
+				$item_name = $src_kp->[$kn];				# ["Qbek", "Canada"]
 				my $rsi = $result_info[$kn];
 				if($rsi eq "null"){
 					$item_name = "";
@@ -180,9 +181,9 @@ sub	calc_items
 				}
 				$dst_keys[$kn] = $item_name;
 			}
-			else {
-				$item_name = "";						# ex. ""
-			}
+			#else {
+			#	$item_name = "";						# ex. ""
+			#}
 			push(@key_list, $item_name);
 		}
 
@@ -237,6 +238,7 @@ sub	rolling_average
 {
 	my $self = shift;
 	my($csvp) = @_;
+	$csvp = $csvp // $self->{csv_data};
 
 	my $avr_date = $self->{avr_date};
 	foreach my $key (keys %$csvp){
@@ -387,5 +389,22 @@ sub	ern
 	}
 	return $self;
 }	
+
+sub	max_val
+{
+	my $self = shift;
+	my $target_col = shift;
+
+	my $cdp = $self->reduce_cdp_target($target_col // ""); # Select Country
+	my $csvp = $cdp->{csv_data};
+	my $max = 0;
+	foreach my $k (keys %$csvp){
+		foreach my $v (@{$csvp->{$k}}){
+			$max = $v if($v > $max);
+		}
+	}
+	return $max;
+}
+
 
 1;

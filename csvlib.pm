@@ -460,15 +460,21 @@ sub	calc_max
 }
 sub	calc_max2
 {
-	my ($v, $log) = @_;
+	my ($v) = @_;
 
 	$v = 1 if($v < 1);
 
 	my $digit = int(log($v)/log(10));
 	$digit = $digit - 1 if($digit >= 3);
-	my $max = 0;
+	my $max = $v / (10**$digit);
+	dp::dp "$v: $max\n";
+	$max -= int($max);
+	if($max > 0.7){
+		$v += 3 * (10**($digit-1));
+	}
+
 	$max = int((($v / (10**$digit)) + 0.99999)) * (10**$digit);
-	#dp::dp "calc_max2[$v:$max:$digit]\n";
+	dp::dp "calc_max2[$v:$max:$digit]\n";
 
 	return $max;
 

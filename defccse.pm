@@ -13,7 +13,9 @@ use strict;
 use warnings;
 use utf8;
 use Encode 'decode';
+use Clone qw(clone);
 use config;
+use Data::Dumper;
 
 my $VERBOSE = 0;
 my $DOWN_LOAD = 0;
@@ -45,16 +47,39 @@ our $CCSE_DEF = {
 
 	src_dlm => ",",
 	key_dlm => "-",
-	keys => ["Country/Region", "Province/State"],		# 5, 1, 2
+#	keys => ["Country/Region", "Province/State"],		# 5, 1, 2
 	data_start => 4,
 
 	direct => "holizontal",		# vertical or holizontal(Default)
 	timefmt => '%m/%d/%y',		# comverbt to %Y-%m-%d
 	alias => {"subr" => "Province/State", "region" => "Country/Region"},
 };
+my @MAIN_KEYS = ("Country/Region", "Province/State"),	#
+
+our $CCSE_CONF_DEF = clone($CCSE_DEF);
+$CCSE_CONF_DEF->{id} = "ccse_conf";
+$CCSE_CONF_DEF->{src_file} = "$CCSE_BASE_DIR/time_series_covid19_confirmed_global.csv",
+$CCSE_CONF_DEF->{keys} = [@MAIN_KEYS, "=conf"];
+#print Dumper $CCSE_CONF_DEF;
+
+our $CCSE_DEATHS_DEF = clone($CCSE_CONF_DEF);
+$CCSE_DEATHS_DEF->{id} = "ccse_death";
+$CCSE_DEATHS_DEF->{src_file} = "$CCSE_BASE_DIR/time_series_covid19_deaths_global.csv",
+$CCSE_DEATHS_DEF->{keys} = [@MAIN_KEYS, "=death"];
+
+our $CCSE_US_CONF_DEF = clone($CCSE_CONF_DEF);
+$CCSE_US_CONF_DEF->{id} = "ccse_us_conf";
+$CCSE_US_CONF_DEF->{src_file} = "$CCSE_BASE_DIR/time_series_covid19_confirmed_US.csv",
+$CCSE_US_CONF_DEF->{keys} = [@MAIN_KEYS, "=conf_us"];
+
+our $CCSE_US_DEATHS_DEF = clone($CCSE_CONF_DEF);
+$CCSE_US_DEATHS_DEF->{id} = "ccse_us_death";
+$CCSE_US_DEATHS_DEF->{src_file} = "$CCSE_BASE_DIR/time_series_covid19_deaths_US.csv",
+$CCSE_US_DEATHS_DEF->{keys} = [@MAIN_KEYS, "=death_us"];
+
 #dp::dp $CCSE_DEF->{csv_file} . "\n";
 our $CCSE_GRAPH = {
-	html_title => $CCSE_DEF->{src_info},
+	html_title => $CCSE_CONF_DEF->{src_info},
 	png_path   => "$PNG_PATH",
 	png_rel_path => $PNG_REL_PATH,
 	html_file => "$HTML_PATH/ccse2.html",

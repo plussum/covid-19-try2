@@ -185,6 +185,20 @@ our $DEFAULT_GRAPHDEF_PARAMS = {
 	dst_dlm => "\t",
 };
 
+our	$line_thick = "#D#line_thick";
+our	$line_thin = "#D#line_thin";
+our	$line_thick_dot = "#D#line_thick_dot";
+our	$line_thin_dot = "#D#line_thin_dot";
+our	$box_fill = "#D#box_fill";
+
+our $GRAPH_KIND = {
+	$line_thick 	=> "line linewidth 2",
+	$line_thin 		=> "line linewidth 1" ,
+	$line_thick_dot => "line linewidth 2 dt(7,3)",
+	$line_thin_dot 	=> "line linewidth 1 dt(6,4)",
+	$box_fill  		=> "boxes fill",
+};
+
 #	data_start => "",	# Data start colum, ex, 4 : Province,Region, Lat, Long, 2021-01-23, 
 #	down_load => "", 	# Download function
 	
@@ -213,6 +227,7 @@ sub	rolling_average {return calc::rolling_average(@_);}
 sub	calc_rlavr{return calc::calc_rlavr(@_);}
 sub	calc_ern {return calc::calc_ern(@_);}
 sub	ern {return calc::ern(@_);}
+sub	max_val {return calc::max_val(@_);}
 
 # select
 sub	gen_record_key {return select::gen_record_key(@_);} 
@@ -531,7 +546,9 @@ sub gen_html_by_gp_list
 			print HTML "<tr>";
 			for(my $j = 0; $j < $lcount; $j++){
 				last if(($i + $j) > $#lbl);
-				print HTML "<td>" . $lbl[$i+$j] . "</td>";
+				my $l = $lbl[$i+$j];
+				$l =~ s/$LABEL_DLM.*//;
+				print HTML "<td>" . $l . "</td>";
 				#dp::dp "HTML LABEL: " . $lbl[$i+$j] . "\n";
 			}
 			print HTML "</tr>\n";
@@ -686,7 +703,7 @@ sub	csv2graph
 	#	select data and generate csv data
 	#
 	my $target_keys = [];
-	my $target_col = $gp->{target_col};
+	my $target_col = $gp->{target_col} // $gp->{item};
 	my $tn = -1;
 	if(defined $target_col){
 		$tn  = util::array_size($target_col);
@@ -791,9 +808,10 @@ sub	csv2graph_list_gpmix
 	#my $verbose = $verbose // "";
 
 	#dp::dp join(",", @gp_mix_list) . "\n";
+	my $n = 0;
 	foreach my $gp_mix (@gp_mix_list){
 		#dp::dp "$gp_mix\n";
-		&csv2graph_mix("csv2graph", $gp_mix);
+		&csv2graph_mix("csv2graph", $gp_mix, $n++);
 	}
 	return (@gp_mix_list);
 }
@@ -801,9 +819,11 @@ sub	csv2graph_list_gpmix
 sub	csv2graph_mix
 {
 	my $package = shift;
-	my($gp_mix, $verbose) = @_;
+	my($gp_mix, $number) = @_;
 	#dp::dp join(",", $gp_mix, $verbose // "") . "\n";
-	$verbose = $verbose // "";
+	$number = $number // "";
+	
+	my $verbose = "";
 	my $gdp = $gp_mix->{gdp};
 	my $dst_dlm = $gdp->{dst_dlm} // "\t";
 
@@ -816,15 +836,17 @@ sub	csv2graph_mix
 	#
 	#	Set File Name
 	#
-	my $fname = $gp_mix->{fname} // "";
+	#my $fname = $gp_mix->{fname} // "";
+	my $fname = "";#$gp_mix->{fname} // "";
 	if(! $fname){
 		#$fname = join(" ", ($gp_mix->{dsc}//"csvgraph"), ($gp_mix->{static}//""), $gp_mix->{start_date});
-		$fname = join(" ", ($gp_mix->{dsc}//"csvgraph"), $gp_mix->{start_date});
+		$fname = join(" ", ($gp_mix->{dsc}//"csvgraph"), $number, $gp_mix->{start_date});
 		$fname =~ s/[\/\.\*\ #]/_/g;
 		$fname =~ s/\W+/_/g;
 		$fname =~ s/__+/_/g;
 		$fname =~ s/^_//;
 		$gp_mix->{fname} = $fname;
+		dp::dp "$fname\n";
 	}
 	$gp_mix->{plot_png} = $gp_mix->{plot_png} // "$fname.png";
 	$gp_mix->{plot_csv} = $gp_mix->{plot_csv} // "$fname-plot.csv.txt";
@@ -840,6 +862,14 @@ sub	csv2graph_mix
 		push(@$gp_list, {%$gpp});
 	}
 	#dp::dp scalar(@$gp_list) . "\n";
+
+	#
+	#	Set CDP 
+	#
+	foreach my $gpp (@$gp_list){
+		my $cdp = $gpp->{cdp} // $gp_mix->{cdp} // dp::ABORT "no CDP defined\n";
+		$gpp->{cdp} = $cdp;
+	}
 
 	#
 	#	Calc Date 
@@ -898,8 +928,8 @@ sub	csv2graph_mix
 	my $graph_csv = [];
 	foreach my $gpp (@$gp_list){
 		#my $ccse_country = $ccse_cdp->reduce_cdp_target({"Province/State" => "NULL"});	# Select Country
-		my $cdp_org = $gpp->{cdp};
-		my $cdp = $cdp_org->reduce_cdp_target($gpp->{target_col});
+		my $cdp = clone($gpp->{cdp});
+		#my $cdp = $cdp_org->reduce_cdp_target($gpp->{target_col});
 		$cdp->dump({ok => 1, lines => 5, items => 10}) if($DEBUG);
 
 		my $csv_data = $cdp->{csv_data};
@@ -917,7 +947,7 @@ sub	csv2graph_mix
 		#	select data and generate csv data
 		#
 		my $target_keys = [];
-		my $target_col = $gpp->{target_col};
+		my $target_col = $gpp->{target_col} // $gpp->{item};
 		my $tn = -1;
 		if(defined $target_col){
 			$tn  = util::array_size($target_col);
@@ -985,16 +1015,19 @@ sub	csv2graph_mix
 			
 			#dp::dp "order: $key -> $order->{$key}\n";
 			my @csv_data = @{$cdp->{csv_data}->{$key}};
-			my $lbl = join($LABEL_DLM, (($static) ? "$key-$static" : $key), ($gpp->{axis}//""));
+			my $lbl = join($LABEL_DLM, (($static) ? "$key-$static" : $key), ($gpp->{axis}//""), ($gpp->{graph_def}//""));
 			push(@$graph_csv, [$lbl, @csv_data[$diff..($diff+$dates)]]);
 			#dp::dp "$diff, $dates , " . join(",", @{$graph_csv->[scalar(@$graph_csv) - 1]}). "\n";
 		}
 	}
-	#my $csv_for_plot = $self->gen_csv_file($gdp, $gpp, $work_csv, $output_keys);		# Generate CSV File
-	#dp::dp "$csv_for_plot\n";
+
+	#
+	#	Gen CSV File
+	#
 	dp::dp "PNG_PATH: " . $gdp->{png_path} . "\n";
 	my $csv_for_plot = $gdp->{png_path} . "/" . $gp_mix->{plot_csv}; #"/$fname-plot.csv.txt";
 	#dp::dp "### $csv_for_plot\n";
+
 	open(CSV, "> $csv_for_plot") || die "cannot create $csv_for_plot";
 	binmode(CSV, ":utf8");
 
@@ -1192,6 +1225,34 @@ sub	graph
 		$xtics = 2 * 60 * 60 * 24;
 	}
 
+
+	#
+	#	Gen Plot Param
+	#
+	my @p= ();
+	my $pn = 0;
+
+	#dp::dp "$csvf\n";
+	open(CSV, $csvf) || die "cannot open $csvf";
+	binmode(CSV, ":utf8");
+	my $l = <CSV>;
+	$l =~ s/[\r\n]+$//;
+	close(CSV);
+
+	my @label = split(/$dlm/, $l);
+	dp::dp "CSV: $csvf\n";
+	dp::dp "PLOT $plotf\n";
+	#dp::dp "### $csvf\n";
+
+	#my $src_csv = $self->{src_csv} // "";
+	#my $y2_source = $gp->{y2_source} // ($gdp->{y2_source} // "");
+	my $y2key = $gp->{y2key} // "";
+	#dp::dp "soruce_csv[$src_csv] $y2_source\n";
+	#$src_csv = "" if($y2_source eq "");
+	
+	#
+	#	Set yrange
+	#
 	#dp::dp "ymin: [$gdp->{ymin}]\n";
 	my $ymin = $gp->{ymin} // ($gdp->{ymin} // "");
 	my $ymax = $gp->{ymax} // ($gdp->{ymax} // "");
@@ -1244,35 +1305,19 @@ set output '$pngf'
 plot #PLOT_PARAM#
 exit
 _EOD_
-
-	#
-	#	Gen Plot Param
-	#
-	my @p= ();
-	my $pn = 0;
-
-	#dp::dp "$csvf\n";
-	open(CSV, $csvf) || die "cannot open $csvf";
-	binmode(CSV, ":utf8");
-	my $l = <CSV>;
-	close(CSV);
-	$l =~ s/[\r\n]+$//;
-	my @label = split(/$dlm/, $l);
-	dp::dp "CSV: $csvf\n";
-	dp::dp "PLOT $plotf\n";
-	#dp::dp "### $csvf\n";
-
-	#my $src_csv = $self->{src_csv} // "";
-	#my $y2_source = $gp->{y2_source} // ($gdp->{y2_source} // "");
-	my $y2key = $gp->{y2key} // "";
-	#dp::dp "soruce_csv[$src_csv] $y2_source\n";
-	#$src_csv = "" if($y2_source eq "");
-	
-
 	for(my $i = 1; $i <= $#label; $i++){
 		my $graph = $gp->{graph} // ($gdp->{graph} // $DEFAULT_GRAPH);
 		my $y2_graph = "";
-		my ($key, $axis_flag) = split($LABEL_DLM, $label[$i]);
+		my ($key, $axis_flag, $graph_def) = split($LABEL_DLM, $label[$i]);
+		if($graph_def =~ /^#D#/){
+			if(defined $GRAPH_KIND->{$graph_def}){
+				$graph_def = $GRAPH_KIND->{$graph_def} ;
+			}
+			else {
+				dp::WARNING "graph_def may wrong: $graph_def\n";
+			}
+		}
+
 		$axis_flag = $axis_flag // "y1";
 		#dp::dp join(",", $label[$i], $key, $axis_flag) . "\n";
 		$key =~ s/^[0-9]+://;
@@ -1292,17 +1337,24 @@ _EOD_
 		#dp::dp "axis:[$axis]\n";
 		#my $pl = sprintf("'%s' using 1:%d $axis with lines title '%d:%s' linewidth %d $dot", 
 		#				$csvf, $i + 1, $i, $label[$i], ($pn < 7) ? 2 : 1);
-		
-		if($graph =~ /line/){
-			$graph .= sprintf(" linewidth %d $dot ", ($pn < 7) ? 2 : 1);
+
+		my $pl = "";
+		if($graph_def){
+			$pl = sprintf("'%s' using 1:%d $axis with $graph_def title '%d:%s' ", $csvf, $i + 1, $i, $key);
 		}
-		elsif($graph =~ /box/){
-			#dp::dp "BOX\n";
-			$graph =~ s/box/box fill/ if(! ($graph =~ /fill/));
+		else {
+			if($graph =~ /line/){
+				$graph .= sprintf(" linewidth %d $dot ", ($pn < 7) ? 2 : 1);
+			}
+			elsif($graph =~ /box/){
+				#dp::dp "BOX\n";
+				$graph =~ s/box/box fill/ if(! ($graph =~ /fill/));
+			}
+			$pl = sprintf("'%s' using 1:%d $axis with $graph title '%d:%s' ", $csvf, $i + 1, $i, $key);
 		}
-		my $pl = sprintf("'%s' using 1:%d $axis with $graph title '%d:%s' ", $csvf, $i + 1, $i, $key);
 		push(@p, $pl);
 	}
+
 	#push(@p, "0 with lines dt '-' title 'base line'");
 	my $additional_plot = $gp->{additional_plot} // ($gdp->{additional_plot} // "");
     if($additional_plot){
@@ -1319,30 +1371,28 @@ _EOD_
 	my $dt_end = $gp->{dt_end};
 	#dp::dp join(",", @$date_list) . "\n";
 	#dp::dp "###" . join(",", $dt_start, $dt_end, $date_list->[$dt_start], $date_list->[$dt_end], scalar(@$date_list)) . "\n";
-	if(1){
-		my $RELATIVE_DATE = 7;
-		my @aw = ();
 
-		my $den = $gp->{dt_end};
-		#dp::dp "range: " . join(",", $den, scalar(@$date_list) ) . "\n"; 
-		my $last_date = csvlib::ymds2tm($date_list->[$den]) / (24 * 60 * 60);	# Draw arrow on sunday
-		my $s_date = ($last_date - 2) % 7;
-		$s_date = 7 if($s_date == 0);
-		#dp::dp "DATE: " . $DATES[$date] . "  " . "$date -> $s_date -> " . ($date - $s_date) . "\n";
+	my $RELATIVE_DATE = 7;
+	my @aw = ();
 
-		#for(my $dn = $gp->{dt_end} - $RELATIVE_DATE; $dn > $gp->{dt_start}; $dn -= $RELATIVE_DATE){
-		for(my $dn = $gp->{dt_end} - $s_date; $dn > $gp->{dt_start}; $dn -= $RELATIVE_DATE){
-			my $mark_date = $date_list->[$dn];
-			
-			#dp::dp "ARROW: $dn, [$mark_date]\n";
-			my $a = sprintf("set arrow from '%s',Y_MIN to '%s',Y_MAX nohead lw 1 dt (3,7) lc rgb \"dark-red\"",
-				$mark_date,  $mark_date);
-			push(@aw, $a);
-		}
-		my $arw = join("\n", @aw);
-		#dp::dp "ARROW: $arw\n";
-		$PARAMS =~ s/#ARROW#/$arw/;	
+	my $den = $gp->{dt_end};
+	#dp::dp "range: " . join(",", $den, scalar(@$date_list) ) . "\n"; 
+	my $last_date = csvlib::ymds2tm($date_list->[$den]) / (24 * 60 * 60);	# Draw arrow on sunday
+	my $s_date = ($last_date - 2) % 7;
+	$s_date = 7 if($s_date == 0);
+	#dp::dp "DATE: " . $DATES[$date] . "  " . "$date -> $s_date -> " . ($date - $s_date) . "\n";
+
+	for(my $dn = $gp->{dt_end} - $s_date; $dn > $gp->{dt_start}; $dn -= $RELATIVE_DATE){
+		my $mark_date = $date_list->[$dn];
+		
+		#dp::dp "ARROW: $dn, [$mark_date]\n";
+		my $a = sprintf("set arrow from '%s',Y_MIN to '%s',Y_MAX nohead lw 1 dt (3,7) lc rgb \"dark-red\"",
+			$mark_date,  $mark_date);
+		push(@aw, $a);
 	}
+	my $arw = join("\n", @aw);
+	#dp::dp "ARROW: $arw\n";
+	$PARAMS =~ s/#ARROW#/$arw/;	
 
 	dp::dp "$plotf\n";
 	open(PLOT, ">$plotf") || die "cannto create $plotf";

@@ -29,13 +29,31 @@ sub	gen_record_key
 
 	my @gen_key = ();
 	my $k = "";
+	#dp::dp "gen " . join(",", @$key_order) . "\n";
 	foreach my $n (@$key_order){		# @keys
-		my $itm = $items->[$n] // "";
+		my $itm = "";
+		if($n =~ /\D/) {
+			$n =~ s/^=//;
+			$itm = $n;
+		}
+		else {
+			$itm = $items->[$n] // "";
+		}
 		push(@gen_key, $itm);
-		$k .= $itm . $dlm if($itm);
 	}
-	$k =~ s/$dlm$//;
-	return $k;
+	return join($dlm, @gen_key);
+}
+
+sub	added_key
+{
+	my $self = shift;
+
+	my $key_dlm = $self->{key_dlm} // "#";
+	my @w = ();
+	foreach my $k (@$self->{keys}){
+		push(@w, $k) if($k =~ /^=/);
+	}
+	return ($#w < 0) ? "" : $key_dlm . join($key_dlm, @w);
 }
 
 #
@@ -54,7 +72,10 @@ sub	gen_key_order
 			dp::dp "$k\n";
 		}
 		my $itn = $k;
-		if($k =~ /\D/){
+		if($k =~ /^=/){
+			dp::dp "#" x 20 . $k . "\n";
+		}
+		elsif($k =~ /\D/){
 			$itn = $item_name_hash->{$k} // "UNDEF";
 			#dp::dp ">> $k: [$itn]\n"; #if($VERBOSE);
 			if($itn eq "UNDEF"){
