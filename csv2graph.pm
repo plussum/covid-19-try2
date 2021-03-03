@@ -243,7 +243,7 @@ sub	date_range {return select::date_range(@_);}
 #
 sub	new
 {
-	dp::dp "### NEW ####\n";
+	#dp::dp "### NEW ####\n";
 	my $class = shift;
 	my $def  = shift;
 	my $self = {};
@@ -252,7 +252,7 @@ sub	new
 	}
 	#dp::dp Dumper $self;
 
-	csvlib::disp_caller(1..4);
+	#csvlib::disp_caller(1..4);
 	&init_cdp($self);
 	return bless $self, $class;
 
@@ -846,7 +846,7 @@ sub	csv2graph_mix
 		$fname =~ s/__+/_/g;
 		$fname =~ s/^_//;
 		$gp_mix->{fname} = $fname;
-		dp::dp "$fname\n";
+		#dp::dp "$fname\n";
 	}
 	$gp_mix->{plot_png} = $gp_mix->{plot_png} // "$fname.png";
 	$gp_mix->{plot_csv} = $gp_mix->{plot_csv} // "$fname-plot.csv.txt";

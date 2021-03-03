@@ -219,35 +219,38 @@ if($golist{try}){
 	my $graph_kind = $csv2graph::GRAPH_KIND;
 	foreach my $region (@TARGET_REGION){
 		my $y2y1rate = 2.5;
-		my $conf_region = $ccse_country->reduce_cdp_target({$prov => "", $cntry => $region});
-		my $y0max = $conf_region->max_val();
+		foreach my $start_date (0, -93){
+			my $conf_region = $ccse_country->reduce_cdp_target({$prov => "", $cntry => $region});
+			my $y0max = $conf_region->max_val();
 
-		$conf_region->rolling_average();
-		my $y1max = $conf_region->max_val();
-		#my $y2max = csvlib::calc_max2(int($y1max * $y2y1rate / 100 + 0.9999999)); 
-		my $y2max = int($y1max * $y2y1rate / 100 + 0.9999999); 
-		my $ymax = csvlib::calc_max2($y1max);			# try to set reasonable max 
-	
-		my $death_region = $death_country->reduce_cdp_target({$prov => "", $cntry => $region});
-		$death_region->rolling_average();
-		my $death_max = $death_region->max_val();
+			$conf_region->rolling_average();
+			my $y1max = $conf_region->max_val();
+			#my $y2max = csvlib::calc_max2(int($y1max * $y2y1rate / 100 + 0.9999999)); 
+			my $y2max = int($y1max * $y2y1rate / 100 + 0.9999999); 
+			my $ymax = csvlib::calc_max2($y1max);			# try to set reasonable max 
+		
+			my $death_region = $death_country->reduce_cdp_target({$prov => "", $cntry => $region});
+			$death_region->rolling_average();
+			my $death_max = $death_region->max_val();
 
-		my $drate = sprintf("%.2f%%", 100 * $death_max / $y1max);
-		dp::dp "y0max:$y0max y1max:$y1max, ymax:$ymax, y2max:$y2max death_max:$death_max\n";
+			my $drate = sprintf("%.2f%%", 100 * $death_max / $y1max);
+			#dp::dp "y0max:$y0max y1max:$y1max, ymax:$ymax, y2max:$y2max death_max:$death_max\n";
 
-		push(@$gp_list, csv2graph->csv2graph_list_gpmix(
-		{gdp => $defccse::CCSE_GRAPH, dsc => "[$region] new cases and deaths [$drate]", start_date => 0, ymax => $ymax, y2max => $y2max, y2min => 0,
-			ylabel => "confermed", y2label => "deaths (max=$y2y1rate% of rlavr confermed)",
-			#additional_plot => $additional_plot_item{ern}, 
-			graph_items => [
-			{cdp => $ccse_country,  item => {$prov => "", $cntry => "$region",}, static => "rlavr", graph_def => $csv2graph::line_thick},
-			{cdp => $death_country, item => {$prov => "", $cntry => "$region",}, static => "rlavr", axis => "y2", graph_def => $csv2graph::box_fill},
-			{cdp => $ccse_country,  item => {$prov => "", $cntry => "$region",}, static => "", graph_def => $csv2graph::line_thin_dot,},
-			{cdp => $death_country, item => {$prov => "", $cntry => "$region",}, static => "", axis => "y2", graph_def => $csv2graph::line_thin_dot},
-			],
-		},
-		));
-		#last;
+			push(@$gp_list, csv2graph->csv2graph_list_gpmix(
+			{gdp => $defccse::CCSE_GRAPH, dsc => "[$region] new cases and deaths [$drate]", start_date => $start_date, 
+				ymax => $ymax, y2max => $y2max, y2min => 0,
+				ylabel => "confermed", y2label => "deaths (max=$y2y1rate% of rlavr confermed)",
+				#additional_plot => $additional_plot_item{ern}, 
+				graph_items => [
+				{cdp => $ccse_country,  item => {$cntry => "$region",}, static => "rlavr", graph_def => $csv2graph::line_thick},
+				{cdp => $death_country, item => {$cntry => "$region",}, static => "rlavr", axis => "y2", graph_def => $csv2graph::box_fill},
+				{cdp => $ccse_country,  item => {$cntry => "$region",}, static => "", graph_def => $csv2graph::line_thin_dot,},
+				{cdp => $death_country, item => {$cntry => "$region",}, static => "", axis => "y2", graph_def => $csv2graph::line_thin_dot},
+				],
+			},
+			));
+			#last;
+		}
 	}
 }
 
