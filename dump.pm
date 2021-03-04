@@ -20,11 +20,10 @@ use csv2graph;
 sub	dump_cdp
 {
 	my ($cdp, $p) = @_;
-
-	my $ok = $p->{ok} // 1;
-	my $lines = $p->{lines} // "";
-	my $items =$p->{items} // 5;
-	my $mess = $p->{message} // "";
+	my $ok = (!defined $p || !defined $p->{ok}) ? 5 : $p->{ok};
+	my $lines = (!defined $p || !defined $p->{lines}) ? 5 : $p->{lines};
+	my $items = (!defined $p || !defined $p->{items}) ? 5 : $p->{items};
+	my $mess = (!defined $p || !defined $p->{message}) ? 5 : $p->{message};
 
 
 	print "#" x 10 . "[$mess] CSV DUMP " . $cdp->{src_info} . " " . "#" x 10 ."\n";
@@ -46,8 +45,8 @@ sub	dump_cdp
 	}
 	print "##### HASH ######\n";
 	foreach my $k (@$csv2graph::cdp_hashs){
-		my $p = $cdp->{$k} // "";
-		if($p){
+		my $vals = $cdp->{$k} // "";
+		if($vals){
 			my $sc = scalar(keys %$p);
 			print "$k($sc)\t" . &print_hash($p, $items) . "\n";
 			#my @ar = %$p;
@@ -100,12 +99,13 @@ sub	print_hash
 sub dump_key_items
 {
 	my($key_items, $p, $cdp) = @_;
-	my $ok = $p->{ok} // 1;
-	my $lines = $p->{lines} // 5;
-	my $items = $p->{items} // 5;
-	my $mess = $p->{message} // "";
-	my $nohead = $p->{nohead} // "";
-	my $search_key = $p->{search_key} // "";
+	my $ok = (!defined $p || !defined $p->{ok}) ? 5 : $p->{ok};
+	my $lines = (!defined $p || !defined $p->{lines}) ? 5 : $p->{lines};
+	my $items = (!defined $p || !defined $p->{items}) ? 5 : $p->{items};
+	my $mess = (!defined $p || !defined $p->{message}) ? 5 : $p->{message};
+	my $nohead = (!defined $p || !defined $p->{nohead}) ? "" : $p->{message};
+	my $search_key = (!defined $p || !defined $p->{search_key}) ? "" : $p->{search_key};
+
 	my $src_csv = $cdp->{src_csv} // "";
 
 	$lines = 0 if($search_key && ! defined $p->{lines});
@@ -148,13 +148,14 @@ sub dump_key_items
 sub	dump_csv_data
 {
 	my($csv_data, $p, $cdp) = @_;
-	my $ok = $p->{ok} // 1;
-	my $lines = $p->{lines} // "";
-	my $items = $p->{items} // 5;
+	my $ok = (!defined $p || !defined $p->{ok}) ? 5 : $p->{ok};
+	my $lines = (!defined $p || !defined $p->{lines}) ? 5 : $p->{lines};
+	my $items = (!defined $p || !defined $p->{items}) ? 5 : $p->{items};
+	my $mess = (!defined $p || !defined $p->{message}) ? 5 : $p->{message};
+	my $nohead = (!defined $p || !defined $p->{nohead}) ? "" : $p->{message};
+	my $search_key = (!defined $p || !defined $p->{search_key}) ? "" : $p->{search_key};
+
 	my $src_csv = $cdp->{src_csv} // "";
-	my $mess = $p->{message} // "";
-	my $search_key = $p->{search_key} // "";
-	my $nohead = $p->{nohead} // "";
 	$lines = 0 if($search_key && ! defined $p->{lines});
 
 	$mess = " [$mess]" if($mess);

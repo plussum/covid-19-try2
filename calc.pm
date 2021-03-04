@@ -393,16 +393,36 @@ sub	ern
 sub	max_val
 {
 	my $self = shift;
-	my $target_col = shift;
+	my ($p) = @_;
+	my $date_list = $self->{date_list};
+	my $dates = $self->{dates};
 
-	my $cdp = $self->reduce_cdp_target($target_col // ""); # Select Country
-	my $csvp = $cdp->{csv_data};
+	my $target_col = (defined $p && (defined $p->{target_cols})) ? $p->{target_cols} : "";
+	my $start_date = (defined $p && (defined $p->{start_date})) ? $p->{start_date} : "";
+	my $end_date = (defined $p && (defined $p->{end_date})) ? $p->{end_date} : "";
+	#dp::dp "start_date:$start_date, end_date:$end_date " . "\n"; 
+
+	#$start_date = $date_list->[0] if(! $start_date);
+	##$end_date = $date_list->[$dates] if(! $end_date);
+	
+	my $dt_start = util::date_pos($start_date, $date_list->[0], $dates, $date_list);	# 2020-01-02 -> array pos
+	my $dt_end   = util::date_pos($end_date,   $date_list->[$dates], $dates, $date_list);		# 2021-01-02 -> array pos
+	#dp::dp "start_date: $start_date end_date:$end_date dt_start:$dt_start dt_end:$dt_end \n";
+
+	my $csvp = $self->{csv_data};
+	if($target_col){
+		my $cdp = $self->reduce_cdp_target($target_col // ""); # Select Country
+		$csvp = $cdp->{csv_data};
+	}
+
 	my $max = 0;
 	foreach my $k (keys %$csvp){
-		foreach my $v (@{$csvp->{$k}}){
+		for(my $i = $dt_start; $i <= $dt_end ; $i++){
+			my $v =$csvp->{$k}->[$i];
 			$max = $v if($v > $max);
 		}
 	}
+	#dp::dp "$max ($dt_start - $dt_end)" . "\n";
 	return $max;
 }
 

@@ -820,7 +820,7 @@ sub	csv2graph_mix
 {
 	my $package = shift;
 	my($gp_mix, $number) = @_;
-	#dp::dp join(",", $gp_mix, $verbose // "") . "\n";
+	#dp::dp join(",", $gp_mix, $number // "") . "\n";
 	$number = $number // "";
 	
 	my $verbose = "";
@@ -941,6 +941,8 @@ sub	csv2graph_mix
 		#
 		$gpp->{start_date} = $start_date;
 		$gpp->{end_date} = $end_date;
+		$gpp->{dt_start} = 0;
+		$gpp->{dt_end} = $dates;
 		$cdp->date_range($gdp, $gpp); 			# Data range (set dt_start, dt_end (position of array)
 
 		#
@@ -1115,11 +1117,13 @@ sub	gen_csv_file
 sub	sort_csv
 {
 	my $self = shift;
-	my ($cvdp, $gp, $target_keysp, $sorted_keysp) = @_;
+	my ($cvdp, $gp, $target_keysp, $sorted_keysp, $start_date, $end_date) = @_;
 	# $self->sort_csv($work_csv, $gp, $target_keys, $sorted_keys);
 	my $dt_start = $gp->{dt_start};
 	my $dt_end = $gp->{dt_end};
 
+
+	#dp::dp "sort: " . join(",", $gp->{start_date}, $gp->{end_date}, $gp->{dt_start}, $gp->{dt_end}) . "\n";
 	my %SORT_VAL = ();
 	my $src_csv = $self->{src_csv} // "";
 	my $src_csv_count = scalar(keys %$src_csv);
@@ -1167,10 +1171,6 @@ sub	sort_csv
 		@$sorted_keysp = (sort {$SORT_VAL{$b} <=> $SORT_VAL{$a}} keys %SORT_VAL);
 		#dp::dp "------------" . scalar(@$sorted_keysp) . "/" . keys(%SORT_VAL) . "\n";
 	}
-}
-sub	sort_val
-{
-	
 }
 
 

@@ -75,6 +75,14 @@ sub	array_size
 	return $tn;
 }
 
+#
+#	$date		date to calc yyyy-mm-dd or number 0, -91
+#	$default	use as date when date udenfined (0)
+#	$max		number of date list
+#	$list		date list, or start date by yyyy-mm-dd
+#
+#	return		yyyy-mm-dd
+#
 sub	date_calc
 {
 	my($date, $default, $max, $list) = @_;
@@ -98,6 +106,7 @@ sub	date_calc
 		}
 		#dp::dp "[[$date]]\n";
 		if(ref($list) eq "ARRAY"){
+			#dp::dp "$date <- " . $list->[$date] . "\n";
 			$date = $list->[$date];
 		}
 		else {
@@ -107,7 +116,24 @@ sub	date_calc
 			#dp::dp "[[$date]]\n";
 		}
 	}
+	#dp::dp $date . "\n";
 	return $date;
+}
+
+sub	date_pos
+{
+	my($date, $default, $max, $list) = @_;
+
+	my $date = &date_calc($date, $default, $max, $list);
+	my $start_date = (ref($list) eq "ARRAY") ? $list->[0] : $list;
+	#dp::dp "$start_date, $date\n";
+
+	my $start_ut = csvlib::ymds2tm($start_date);
+	my $ut = csvlib::ymds2tm($date);
+
+	my $pos = ($ut - $start_ut) / (24*60*60);
+	#dp::dp $pos . "\n";
+	return $pos;
 }
 
 1;

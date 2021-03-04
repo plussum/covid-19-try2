@@ -220,18 +220,18 @@ if($golist{try}){
 	foreach my $region (@TARGET_REGION){
 		my $y2y1rate = 2.5;
 		foreach my $start_date (0, -93){
+			my $p = {start_date => $start_date};
 			my $conf_region = $ccse_country->reduce_cdp_target({$prov => "", $cntry => $region});
-			my $y0max = $conf_region->max_val();
+			my $y0max = $conf_region->max_val($p);
 
 			$conf_region->rolling_average();
-			my $y1max = $conf_region->max_val();
-			#my $y2max = csvlib::calc_max2(int($y1max * $y2y1rate / 100 + 0.9999999)); 
+			my $y1max = $conf_region->max_val($p);
 			my $y2max = int($y1max * $y2y1rate / 100 + 0.9999999); 
 			my $ymax = csvlib::calc_max2($y1max);			# try to set reasonable max 
 		
 			my $death_region = $death_country->reduce_cdp_target({$prov => "", $cntry => $region});
 			$death_region->rolling_average();
-			my $death_max = $death_region->max_val();
+			my $death_max = $death_region->max_val($p);
 
 			my $drate = sprintf("%.2f%%", 100 * $death_max / $y1max);
 			#dp::dp "y0max:$y0max y1max:$y1max, ymax:$ymax, y2max:$y2max death_max:$death_max\n";
@@ -249,8 +249,8 @@ if($golist{try}){
 				],
 			},
 			));
-			#last;
 		}
+		#last;
 	}
 }
 

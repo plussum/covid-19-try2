@@ -357,9 +357,9 @@ sub	check_keys
 #
 sub	date_range
 {
-	my($cdp, $gdp, $gp) = @_;
+	my($cdp, $gp) = @_;
 
-	#dp::dp "date_range: " . join(",", $cdp, $gdp, $gp) . "\n";
+	#dp::dp "date_range: " . join(",", $cdp, $gp) . "\n";
 
 	my $id = $cdp->{id} // ($cdp->{src_info} // "no-id");
 	my $date_list = $cdp->{date_list};
