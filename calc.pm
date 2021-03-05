@@ -137,9 +137,12 @@ sub	calc_items
 		dp::dp "[$key]\n" if($verbose);
 		my $src_kp = $key_items->{$key};			# ["Qbek", "Canada"]
 		my $src_dp = $csv_data->{$key};	
-		my @dst_keys = @$src_kp;
 		my $src_csv = $src_csvp->{$key} // 0;
-	
+		my @dst_keys = ();
+		for(my $i = 0; $i < scalar(@$src_kp); $i++){
+			$dst_keys[$i] = "";
+		}
+
 		#
 		# key  			 1,2 (region, transportation_type)
 		#				         v      v
@@ -162,6 +165,7 @@ sub	calc_items
 			if(!($kn =~ /\D/) && $result_info[$kn]){
 				$item_name = $src_kp->[$kn];				# ["Qbek", "Canada"]
 				my $rsi = $result_info[$kn];
+				#dp::dp "calc: $kn: $item_name, $rsi\n" if($key =~ /Canada|China/);
 				if($rsi eq "null"){
 					$item_name = "";
 				}
@@ -179,6 +183,7 @@ sub	calc_items
 					dp::dp "$item_name -> $rsi\n" if($verbose);
 					$item_name = $rsi;
 				}
+				#dp::dp "calc: $kn: $item_name, $dst_keys[$kn]\n" if($item_name eq "");
 				$dst_keys[$kn] = $item_name;
 			}
 			#else {
@@ -188,7 +193,8 @@ sub	calc_items
 		}
 
 		my $record_key = select::gen_record_key($key_dlm, \@key_order, \@dst_keys);
-
+		#dp::dp "record_key: $record_key dst_keys: " . join(",", @dst_keys) . "\n";
+		
 		$record_key_list{$record_key}++;
 		#dp::dp "record_key [$record_key]" . join(",", @key_order, "##", @key_list) . "\n" ;#if($verbose && $record_key =~ /Japan/ );
 		
@@ -266,24 +272,23 @@ sub	population
 	
 	my $pop_list = {};
 	csvlib::cnt_pop($pop_list);
-	#csvlib::cnt_pop_jp($pop_list);
 	dp::dp "POP: " . join(",", scalar(keys %$pop_list), scalar(keys %$csvp)) . "\n";
 	foreach my $key (keys %$csvp){
 		my $dp = $csvp->{$key};
-		$key =~ s/-.*$//;
+		$key =~ s/[-#].*$//;
 		my $pop = $pop_list->{$key} // "";
-		dp::dp "POP: $key: $pop\n";
+		#dp::dp "POP: $key: $pop\n";
 		if(!$pop){
 			dp::WARNING "No population data [$key]\n";  
 			next;
 		}
 		$pop /= 100 * 1000;			# 0.1M 
-		dp::dp join(",", @$dp[100..110]) . "\n";
+		#dp::dp join(",", @$dp[100..110]) . "\n";
 		for(my $i = 0; $i < scalar(@$dp); $i++){
 			my $v = $dp->[$i] // 0;
 			$dp->[$i] = ($v =~ /^-?[\.\d]+$/) ? int((100 * $v) / $pop) / 100 : $v;
 		}
-		dp::dp join(",", @$dp[100..110]) . "\n";
+		#dp::dp join(",", @$dp[100..110]) . "\n";
 	}
 	return $csvp;
 }

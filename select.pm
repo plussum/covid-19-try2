@@ -50,7 +50,7 @@ sub	added_key
 
 	my $key_dlm = $self->{key_dlm} // "#";
 	my @w = ();
-	foreach my $k (@$self->{keys}){
+	foreach my $k (@{$self->{keys}}){
 		push(@w, $k) if($k =~ /^=/);
 	}
 	return ($#w < 0) ? "" : $key_dlm . join($key_dlm, @w);

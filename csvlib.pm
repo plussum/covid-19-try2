@@ -10,6 +10,7 @@ use Exporter;
 
 use strict;
 use warnings;
+use utf8;
 use Data::Dumper;
 use Time::Local 'timelocal';
 use dp;
@@ -339,7 +340,7 @@ sub search_listn
 		}
 		elsif($ntc =~ /^\~/){
 			$ntc =~ s/.//;
-			dp::dp "search_list:   [$sk] [$ntc]\n"; # if($sk =~ /Japan/);
+			#dp::dp "search_list:   [$sk] [$ntc]\n"; # if($sk =~ /Japan/);
         	if($sk =~ /$ntc/){
 			   #dp::dp "search_list: ~ [$sk] [$ntc]\n"; # if($sk =~ /Japan/);
 				return $i;
@@ -488,7 +489,9 @@ sub	cnt_pop
 	my ($cnt_pop) = @_;
 	my $popf = "$config::POPF";
 
-	open(FD, $popf) || die "cannot open $popf\n";
+	#system("nkf -w80 $popf >$popf.utf8");			# -w8 (with BOM) contain code ,,,so lead some trouble
+	open(FD, "$popf") || die "cannot open $popf\n";
+	binmode(FD, ":utf8");
 	<FD>;
 	while(<FD>){
 		chop;
@@ -497,6 +500,7 @@ sub	cnt_pop
 		next if(! $name);
 
 		$cnt_pop->{$name} = &num($pn);
+		#dp::dp "$name:$pn\n";# if($name =~ /山形/);
 	}
 	close(FD);
 }

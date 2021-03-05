@@ -738,6 +738,9 @@ sub	csv2graph
 	elsif($static eq "ern"){ 						# Rolling Average
 		$self->ern($work_csv, $gdp, $gp);
 	}
+	elsif($static eq "pop"){ 						# Rolling Average
+		$self->population($work_csv, $gdp, $gp);
+	}
 
 	#
 	#	Sort target record
@@ -922,6 +925,15 @@ sub	csv2graph_mix
 	$gp_mix->{dt_end} = $dates;
 	#$gp_mix->{dates} = $dates;
 
+	my @lank = (1,10);
+	dp::dp "LANK: " . join(",", @{$gp_mix->{lank}}) . "\n";
+	$lank[0] = $gp_mix->{lank}->[0]//1;	# if(defined $gpp->{lank});
+	$lank[0] = 1 if(! $lank[0]);
+	$lank[1] = $gp_mix->{lank}->[1]//10; 	#if
+	$lank[1] = 10 if(! $lank[1]);
+	dp::dp "LANK: $lank[0], $lank[1]\n";
+	my $lank_select = 1; #(defined $lank[0] && defined $lank[1] && $lank[0] && $lank[1]) ? 1 : "";
+
 	#
 	#	Gen each data 
 	#
@@ -951,19 +963,19 @@ sub	csv2graph_mix
 		#	select data and generate csv data
 		#
 		my $target_keys = [];
-		my $target_col = $gpp->{target_col} // $gpp->{item};
+		my $target_col = $gpp->{target_col} // $gpp->{item} ;
 		my $tn = -1;
-		if(defined $target_col){
+		if(defined $target_col && $target_col){
 			$tn  = util::array_size($target_col);
 			#dp::dp "target_col[$target_col)]($tn)[" . csvlib::join_array(",", $target_col) . "]\n";
+			if($tn < 0){
+				dp::dp "target_col is not array or hash ($target_col) all data will be selected\n";
+				csvlib::disp_caller(1..3);
+			}
 		}
 		else {
 			#dp::dp "target_col[undef]\n";
 			$target_col = "";
-		}
-		if($tn < 0){
-			dp::dp "target_col is not array or hash ($target_col) all data will be selected\n";
-			csvlib::disp_caller(1..3);
 		}
 
 		$cdp->select_keys($target_col, $target_keys, 0);	# select data for target_keys
@@ -985,13 +997,6 @@ sub	csv2graph_mix
 		#
 		#	Sort target record
 		#
-		my @lank = (1,10);
-		$lank[0] = $gpp->{lank}->[0]//1;	# if(defined $gpp->{lank});
-		$lank[0] = 1 if(! $lank[0]);
-		$lank[1] = $gpp->{lank}->[1]//10; 	#if
-		$lank[1] = 10 if(! $lank[1]);
-		#dp::dp "LANK: $lank[0], $lank[1]\n";
-		my $lank_select = 1; #(defined $lank[0] && defined $lank[1] && $lank[0] && $lank[1]) ? 1 : "";
 
 		my $sorted_keys = [];								# sort
 		if($lank_select){
