@@ -124,7 +124,7 @@ sub	date_pos
 {
 	my($date, $default, $max, $list) = @_;
 
-	my $date = &date_calc($date, $default, $max, $list);
+	$date = &date_calc($date, $default, $max, $list);
 	my $start_date = (ref($list) eq "ARRAY") ? $list->[0] : $list;
 	#dp::dp "$start_date, $date\n";
 

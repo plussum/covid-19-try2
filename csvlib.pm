@@ -339,7 +339,7 @@ sub search_listn
 		}
 		elsif($ntc =~ /^\~/){
 			$ntc =~ s/.//;
-			#dp::dp "search_list:   [$sk] [$ntc]\n"; # if($sk =~ /Japan/);
+			dp::dp "search_list:   [$sk] [$ntc]\n"; # if($sk =~ /Japan/);
         	if($sk =~ /$ntc/){
 			   #dp::dp "search_list: ~ [$sk] [$ntc]\n"; # if($sk =~ /Japan/);
 				return $i;

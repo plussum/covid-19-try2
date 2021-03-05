@@ -258,63 +258,123 @@ sub	rolling_average
 	return $csvp;
 }	
 
+sub	population
+{
+	my $self = shift;
+	my($csvp) = @_;
+	$csvp = $csvp // $self->{csv_data};
+	
+	my $pop_list = {};
+	csvlib::cnt_pop($pop_list);
+	#csvlib::cnt_pop_jp($pop_list);
+	dp::dp "POP: " . join(",", scalar(keys %$pop_list), scalar(keys %$csvp)) . "\n";
+	foreach my $key (keys %$csvp){
+		my $dp = $csvp->{$key};
+		$key =~ s/-.*$//;
+		my $pop = $pop_list->{$key} // "";
+		dp::dp "POP: $key: $pop\n";
+		if(!$pop){
+			dp::WARNING "No population data [$key]\n";  
+			next;
+		}
+		$pop /= 100 * 1000;			# 0.1M 
+		dp::dp join(",", @$dp[100..110]) . "\n";
+		for(my $i = 0; $i < scalar(@$dp); $i++){
+			my $v = $dp->[$i] // 0;
+			$dp->[$i] = ($v =~ /^-?[\.\d]+$/) ? int((100 * $v) / $pop) / 100 : $v;
+		}
+		dp::dp join(",", @$dp[100..110]) . "\n";
+	}
+	return $csvp;
+}
 #
 #	combert csv data to ERN
 #
-#			item_name_list , item_name_has <- "calc"
+#			item_name_list , item_name_hash <- "calc"
 #
 #
 sub	calc_rlavr
 {
 	my $self = shift;
-	my $csvp = shift;
+	my (@params) = @_;
 
-	return $self->calc_method("rlavr", $csvp);
+	return $self->calc_method("rlavr", @params);
 }
 
 sub	calc_ern
 {
 	my $self = shift;
-	my $csvp = shift;
+	my (@params) = @_;
 
-	return $self->calc_method("ern", $csvp);
+	return $self->calc_method("ern", @params);
+}
+
+sub	calc_pop
+{
+	my $self = shift;
+	my (@params) = @_;
+
+	return $self->calc_method("pop", @params);
 }
 
 sub	calc_method
 {
 	my $self = shift;
-	my($method, @params) = @_;
-
-
-	if(! defined $self->{item_name_hash}->{calc}){		# gen key item "calc"
-		#dp::dp "------ calc \n";
-		$self->add_key_items(["calc"], "RAW");		# set calc = RAW for exit rows
+	my($method, $way, @params) = @_;
+	$way = $way // "";
+	
+	my $add_calc = 0;
+	if($way =~ /add/){	# none overwrite, add col
+ 		$add_calc = 1;
 	}
-	my $calc_item = $self->{item_name_hash}->{calc};
 
-	my $work_csvp = clone($self->{csv_data});			# clone self
-	#&dump_csv_data($work_csvp, {ok => 1, lines => 5, message => "comver2rlavr:dup"}) if(1);
+	my $calc_item = "";
+	my $csvp = "";
+	my $cdp = "";
+	if($add_calc){			# add, add "calc" method to self 
+		dp::dp "add ";
+		$csvp = clone($self->{csv_data});
+		$cdp = $self;
+		if(! defined $self->{item_name_hash}->{calc}){		# gen key item "calc"
+			#dp::dp "------ calc \n";
+			$self->add_key_items(["calc"], "RAW");		# set calc = RAW for exit rows
+		}
+		$calc_item = $self->{item_name_hash}->{calc};
+	}
+	else {					# clone self and overwrite csv_data
+		$cdp = clone($self);
+		$csvp = $cdp->{csv_data};
+		#$cdp->dump();
+		$cdp->{id} .= " $method";
+	}
+		
+	#&dump_csv_data($csvp, {ok => 1, lines => 5, message => "comver2rlavr:dup"}) if(1);
 	if($method eq "rlavr"){
-		$self->rolling_average($work_csvp, @params);	# comber csv_data to rlavr
+		$cdp->rolling_average($csvp, @params);	# comber csv_data to rlavr
 	}
 	elsif($method eq "ern"){
-		$self->ern($work_csvp, @params);				# comber csv_data to ern
+		$cdp->ern($csvp, @params);				# comber csv_data to ern
+	}
+	elsif($method eq "pop"){
+		$cdp->population($csvp, @params);				# comber csv_data to ern
 	}
 	else {
 		dp::ABORT "undefined method [$method]\n";
 	}
 
-	my $key_items = $self->{key_items};
-	my $key_dlm = $self->{key_dlm} // $config::DEFAULT_KEY_DLM;
-	foreach my $kn (keys %$work_csvp){
-		my $ckn = join($key_dlm, $kn, $method);
-		my $items = [@{$key_items->{$kn}}];
-		$items->[$calc_item] = $method;
-		$self->add_record($ckn, $items, $work_csvp->{$kn});
+	if($add_calc){
+		my $key_items = $cdp->{key_items};
+		my $key_dlm = $cdp->{key_dlm} // $config::DEFAULT_KEY_DLM;
+		foreach my $kn (keys %$csvp){
+			my $ckn = join($key_dlm, $kn, $method);
+			my $items = [@{$key_items->{$kn}}];
+			$items->[$calc_item] = $method;
+			$cdp->add_record($ckn, $items, $csvp->{$kn});
+		}
 	}
-	dp::dp "calc_method[$method,csv_data]:" . dump::print_hash($self->{csv_data}) . "\n";
+	dp::dp "calc_method[$method,csv_data]:" . dump::print_hash($cdp->{csv_data}) . "\n";
 
-	return $self;
+	return $cdp;
 }
 
 #

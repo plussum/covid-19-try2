@@ -228,6 +228,8 @@ sub	calc_rlavr{return calc::calc_rlavr(@_);}
 sub	calc_ern {return calc::calc_ern(@_);}
 sub	ern {return calc::ern(@_);}
 sub	max_val {return calc::max_val(@_);}
+sub	calc_pop {return calc::calc_pop(@_);}
+sub	population {return calc::population(@_);}
 
 # select
 sub	gen_record_key {return select::gen_record_key(@_);} 

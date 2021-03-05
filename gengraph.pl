@@ -217,6 +217,24 @@ if($golist{try}){
 	my $prov = "Province/State";
 	my $cntry = "Country/Region";
 	my $graph_kind = $csv2graph::GRAPH_KIND;
+
+	foreach my $region (@TARGET_REGION){
+		my $ccse_region = $ccse_cdp->reduce_cdp_target({$prov => "NULL", $cntry => $region});
+		my $ccse_rlavr = $ccse_region->calc_rlavr();
+		#$ccse_rlavr->dump({items => 30});
+		my $ccse_pop  = $ccse_rlavr->calc_pop();
+		#$ccse_pop->dump({items => 30});
+		push(@$gp_list, csv2graph->csv2graph_list_gpmix(
+			{gdp => $defccse::CCSE_GRAPH, dsc => "[$region] per population", start_date => 0, ymin => 0, y2min => 0,
+				graph_items => [
+				{cdp => $ccse_pop,   item => {}, static => "", graph_def => $csv2graph::line_thin_dot,axis => "y2" },
+				{cdp => $ccse_rlavr, item => {}, static => "", graph_def => $csv2graph::line_thick, axis => ""},
+				#{cdp => $ccse_pop,  item => {$cntry => "$region"}, static => "rlavr", graph_def => $csv2graph::line_thin_dot, },
+				],
+			})
+		);
+	}
+if(0){
 	foreach my $region (@TARGET_REGION){
 		my $y2y1rate = 2.5;
 		foreach my $start_date (0, -93){
@@ -252,6 +270,7 @@ if($golist{try}){
 		}
 		#last;
 	}
+}
 }
 
 #		{gdp => $AMT_GRAPH, start_date => -92, end_date => "",
