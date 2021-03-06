@@ -101,12 +101,11 @@ sub	calc_items
 	#my $target_colp = $instruction->{target_col};
 	#my $result_colp = $instruction->{result_col};
 
-	my $target_keys = [];
-	my $target = $self->select_keys($target_colp // "", $target_keys);	# set target records
-	if($target < 0){
+	my $target_keys = [$self->select_keys($target_colp // "")];	# set target records
+	if(scalar(@$target_keys) <= 0){
 		return -1;
 	}
-	dp::dp "target items : $target " . csvlib::join_array(",", $target_colp) . "\n" if($verbose);
+	#dp::dp "target items : " . scalar(@$target_keys) .  "  " . csvlib::join_array(",", $target_colp) . "\n";# if($verbose);
 
 	my @key_order = $self->gen_key_order($self->{keys}); 		# keys to gen record key
 	my @riw = $self->gen_key_order([keys %$result_colp]); 	# keys order to gen record kee
@@ -267,21 +266,26 @@ sub	rolling_average
 sub	population
 {
 	my $self = shift;
-	my($csvp) = @_;
+	my($csvp, $thresh) = @_;
+	$thresh = $thresh // 100000;
 	$csvp = $csvp // $self->{csv_data};
 	
 	my $pop_list = {};
 	csvlib::cnt_pop($pop_list);
-	dp::dp "POP: " . join(",", scalar(keys %$pop_list), scalar(keys %$csvp)) . "\n";
+	#dp::dp "POP: number of pop_list, csvp" . join(",", scalar(keys %$pop_list), scalar(keys %$csvp)) . "\n";
 	foreach my $key (keys %$csvp){
 		my $dp = $csvp->{$key};
 		$key =~ s/[-#].*$//;
+		$key =~ s/"//g;
 		my $pop = $pop_list->{$key} // "";
 		#dp::dp "POP: $key: $pop\n";
 		if(!$pop){
 			dp::WARNING "No population data [$key]\n";  
-			next;
+			$pop = 0;
+			#next;
 		}
+		$pop = 10 ** 20 if($pop < $thresh);
+
 		$pop /= 100 * 1000;			# 0.1M 
 		#dp::dp join(",", @$dp[100..110]) . "\n";
 		for(my $i = 0; $i < scalar(@$dp); $i++){
@@ -377,7 +381,7 @@ sub	calc_method
 			$cdp->add_record($ckn, $items, $csvp->{$kn});
 		}
 	}
-	dp::dp "calc_method[$method,csv_data]:" . dump::print_hash($cdp->{csv_data}) . "\n";
+	#dp::dp "calc_method[$method,csv_data]:" . dump::print_hash($cdp->{csv_data}) . "\n";
 
 	return $cdp;
 }

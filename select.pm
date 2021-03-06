@@ -150,13 +150,16 @@ sub	gen_target_col
 	return (@target_col);
 }
 
+
 #
 #	Select CSV DATA
 #
 sub	select_keys
 {
 	my $self = shift;
-	my($target_colp, $target_keys, $verbose) = @_;
+	my($target_colp, $verbose) = @_;
+
+	my $target_keys = [];
 
 	$verbose = $verbose // "";
 	$verbose = 0 if($verbose eq "");
@@ -165,6 +168,21 @@ sub	select_keys
 	my @non_target_col_array = ();
 	my $condition = 0;
 	my $clm = 0;
+
+	##	Moved from csv2graph_mix / csv2graph
+	if(defined $target_colp && $target_colp){
+		my $tn  = util::array_size($target_colp);
+		#dp::dp "target_col[$target_colp)]($tn)[" . csvlib::join_array(",", $target_colp) . "]\n";
+		if($tn < 0){
+			dp::dp "target_col is not array or hash ($target_colp) all data will be selected\n";
+			csvlib::disp_caller(1..3);
+		}
+	}
+	else {
+		#dp::dp "target_col[undef]\n";
+		$target_colp = "";
+	}
+	##################
 
 	my @target_list =  ();
 	#dp::dp "[$target_colp]\n";
@@ -246,7 +264,7 @@ sub	select_keys
 		);
 		csvlib::disp_caller(1..3);
 	}
-	return(scalar(@$target_keys) - 1);
+	return(@$target_keys);
 }
 
 

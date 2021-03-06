@@ -121,6 +121,7 @@ our $cdp_arrays = [
 	"item_name_list",					# set by load csv ["Province","Region","Lat","Long"]
 	"defined_item_name_list",			# set by user (definition)
 	"marge_item_pos",					# Marged key positon
+	"order_list",						# sorted order (keys)
 ];
 
 our $cdp_hashs = [
@@ -720,7 +721,7 @@ sub	csv2graph
 		csvlib::disp_caller(1..3);
 	}
 
-	$self->select_keys($target_col, $target_keys, 0);	# select data for target_keys
+	@$target_keys = $self->select_keys($target_col, 0);	# select data for target_keys
 	#dp::dp "target_key: " . join(" : ", @$target_keys). "\n" ;
 	#dp::dp "target_col: " . join(" : ", @{$gp->{target_col}}) . "\n";
 	if(scalar(@$target_keys) <= 0){
@@ -752,7 +753,7 @@ sub	csv2graph
 
 	my $sorted_keys = [];								# sort
 	if($lank_select){
-		$self->sort_csv($work_csv, $gp, $target_keys, $sorted_keys);
+		@$sorted_keys = $self->sort_csv($work_csv, $target_keys, $gp->{dt_start}, $gp->{dt_end});
 	}
 	else {
 		my $load_order = $self->{load_order};
@@ -925,13 +926,13 @@ sub	csv2graph_mix
 	$gp_mix->{dt_end} = $dates;
 	#$gp_mix->{dates} = $dates;
 
-	my @lank = (1,10);
-	dp::dp "LANK: " . join(",", @{$gp_mix->{lank}}) . "\n";
+	my @lank = (defined $gp_mix->{lank}) ? @{$gp_mix->{lank}} : (1,10); 
+	#dp::dp "LANK: " . join(",", @lank) . "\n";
 	$lank[0] = $gp_mix->{lank}->[0]//1;	# if(defined $gpp->{lank});
 	$lank[0] = 1 if(! $lank[0]);
 	$lank[1] = $gp_mix->{lank}->[1]//10; 	#if
 	$lank[1] = 10 if(! $lank[1]);
-	dp::dp "LANK: $lank[0], $lank[1]\n";
+	#dp::dp "LANK: $lank[0], $lank[1]\n";
 	my $lank_select = 1; #(defined $lank[0] && defined $lank[1] && $lank[0] && $lank[1]) ? 1 : "";
 
 	#
@@ -964,21 +965,22 @@ sub	csv2graph_mix
 		#
 		my $target_keys = [];
 		my $target_col = $gpp->{target_col} // $gpp->{item} ;
-		my $tn = -1;
-		if(defined $target_col && $target_col){
-			$tn  = util::array_size($target_col);
-			#dp::dp "target_col[$target_col)]($tn)[" . csvlib::join_array(",", $target_col) . "]\n";
-			if($tn < 0){
-				dp::dp "target_col is not array or hash ($target_col) all data will be selected\n";
-				csvlib::disp_caller(1..3);
-			}
-		}
-		else {
-			#dp::dp "target_col[undef]\n";
-			$target_col = "";
-		}
+##		my $tn = -1;
+##		if(defined $target_col && $target_col){
+##			$tn  = util::array_size($target_col);
+##			#dp::dp "target_col[$target_col)]($tn)[" . csvlib::join_array(",", $target_col) . "]\n";
+##			if($tn < 0){
+##				dp::dp "target_col is not array or hash ($target_col) all data will be selected\n";
+##				csvlib::disp_caller(1..3);
+##			}
+##		}
+##		else {
+##			#dp::dp "target_col[undef]\n";
+##			$target_col = "";
+##		}
 
-		$cdp->select_keys($target_col, $target_keys, 0);	# select data for target_keys
+		@$target_keys = $cdp->select_keys($target_col, 0);	# select data for target_keys
+
 		#dp::dp "target_key: " . join(" : ", @$target_keys). "\n" ;
 		#dp::dp "target_col: " . join(" : ", @{$gpp->{target_col}}) . "\n";
 		if(scalar(@$target_keys) <= 0){
@@ -997,10 +999,9 @@ sub	csv2graph_mix
 		#
 		#	Sort target record
 		#
-
 		my $sorted_keys = [];								# sort
 		if($lank_select){
-			$cdp->sort_csv($cdp->{csv_data}, $gpp, $target_keys, $sorted_keys);
+			@$sorted_keys = $cdp->sort_csv($cdp->{csv_data}, $target_keys, 0, $dates);
 		}
 		else {
 			my $load_order = $cdp->{load_order};
@@ -1033,7 +1034,7 @@ sub	csv2graph_mix
 	#
 	#	Gen CSV File
 	#
-	dp::dp "PNG_PATH: " . $gdp->{png_path} . "\n";
+	#dp::dp "PNG_PATH: " . $gdp->{png_path} . "\n";
 	my $csv_for_plot = $gdp->{png_path} . "/" . $gp_mix->{plot_csv}; #"/$fname-plot.csv.txt";
 	#dp::dp "### $csv_for_plot\n";
 
@@ -1124,24 +1125,29 @@ sub	gen_csv_file
 sub	sort_csv
 {
 	my $self = shift;
-	my ($cvdp, $gp, $target_keysp, $sorted_keysp, $start_date, $end_date) = @_;
-	# $self->sort_csv($work_csv, $gp, $target_keys, $sorted_keys);
-	my $dt_start = $gp->{dt_start};
-	my $dt_end = $gp->{dt_end};
+	my ($csvp, $target_keysp, $dt_start, $dt_end) = @_;
+	
+	#csvlib::disp_caller(0..3);
+	#dp::dp "$csvp\n";
 
+	$dt_start = ($dt_start//"") ? $dt_start : 0;
+	$dt_end = ($dt_end//"") ? $dt_start : "";		# set in the loop
+	#my $dt_start = $gp->{dt_start};
+	#my $dt_end = $gp->{dt_end};
 
-	#dp::dp "sort: " . join(",", $gp->{start_date}, $gp->{end_date}, $gp->{dt_start}, $gp->{dt_end}) . "\n";
+	my $sorted_keysp = [];
 	my %SORT_VAL = ();
 	my $src_csv = $self->{src_csv} // "";
 	my $src_csv_count = scalar(keys %$src_csv);
 	#dp::dp "sort_csv: " . scalar(@$target_keysp) . "\n";
 	foreach my $key (@$target_keysp){
+		$dt_end = scalar(@{$csvp->{$key}} - 1) if(! $dt_end);
 		if(! $key){
 			dp::dp "WARING at sort_csv: empty key [$key]\n";
 			next;
 		}
 
-		my $csv = $cvdp->{$key};
+		my $csv = $csvp->{$key};
 		my $total = 0;
 		for(my $dt = $dt_start; $dt <= $dt_end; $dt++){
 			my $v = $csv->[$dt] // 0;
@@ -1178,6 +1184,19 @@ sub	sort_csv
 		@$sorted_keysp = (sort {$SORT_VAL{$b} <=> $SORT_VAL{$a}} keys %SORT_VAL);
 		#dp::dp "------------" . scalar(@$sorted_keysp) . "/" . keys(%SORT_VAL) . "\n";
 	}
+
+	#dp::dp "#" x 20 . "SORT ORDER \n";
+#	if(! defined $self->{order_list}){
+#		$self->{order_list} = [];
+#	}
+#	@{$self->{order_list}} = @$sorted_keysp;
+#
+#	my $orderp = $self->{order};
+#	my $lank = 0;
+#	foreach my $k (@$sorted_keysp){
+#		$orderp->{$k} = $lank++;
+#	}
+	return (@$sorted_keysp);
 }
 
 
@@ -1198,7 +1217,9 @@ sub	graph
 	if($src_info){
 		$src_info = "[$src_info]";
 	}
-	my $title = join(" ", ($gp->{dsc}//""), ($gp->{static}//""), "($end_date)") . "    $src_info";
+	my $dsc = $gp->{dsc} // "";
+	$dsc =~ s/~//;
+	my $title = join(" ", $dsc, ($gp->{static}//""), "($end_date)") . "    $src_info";
 	#dp::dp "[$title] $gp->{plot_png}\n";
 	#dp::dp "#### " . join(",", "[" . $p->{lank}[0] . "]", @lank) . "\n";
 
@@ -1401,7 +1422,7 @@ _EOD_
 	#dp::dp "ARROW: $arw\n";
 	$PARAMS =~ s/#ARROW#/$arw/;	
 
-	dp::dp "$plotf\n";
+	#dp::dp "$plotf\n";
 	open(PLOT, ">$plotf") || die "cannto create $plotf";
 	binmode(PLOT, ":utf8");
 	print PLOT $PARAMS;
