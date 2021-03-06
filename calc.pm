@@ -490,8 +490,8 @@ sub	max_val
 			my $v =$csvp->{$k}->[$i];
 			$max = $v if($v > $max);
 		}
+		#dp::dp "$max ($dt_start - $dt_end)" . join(",", @{$csvp->{$k}}) . "\n";
 	}
-	#dp::dp "$max ($dt_start - $dt_end)" . "\n";
 	return $max;
 }
 

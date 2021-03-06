@@ -466,17 +466,20 @@ sub	calc_max2
 
 	$v = 1 if($v < 1);
 
+	my $orv = $v;
 	my $digit = int(log($v)/log(10));
 	$digit = $digit - 1 if($digit >= 3);
 	my $max = $v / (10**$digit);
 	#dp::dp "$v: $max\n";
 	$max -= int($max);
-	if($max > 0.7){
-		$v += 3 * (10**($digit-1));
+	if($max > 0.8){
+		#dp::dp "calc_max2: $max: $v: $digit\n";
+		$v += 1 * (10**($digit-1));
+
 	}
 
 	$max = int((($v / (10**$digit)) + 0.99999)) * (10**$digit);
-	#dp::dp "calc_max2[$v:$max:$digit]\n";
+	#dp::dp "calc_max2[$orv:$v:$max:$digit]\n";
 
 	return $max;
 

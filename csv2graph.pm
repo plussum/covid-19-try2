@@ -1172,7 +1172,7 @@ sub	sort_csv
 		#dp::dp "------------" . scalar(@$sorted_keysp) . "/" . keys(%SORT_VAL) . "\n";
 	}
 	else {
-		#dp::dp "--- src_csv -- $gp->{dsc} " . ref($src_csv) . "\n";
+		#dp::dp "--- src_csv --  " . ref($src_csv) . "\n";
 		foreach my $k (keys %SORT_VAL){
 			#dp::dp "$k: $SORT_VAL{$k}\n";
 			next if((defined $src_csv->{$k}) && (defined $SORT_VAL{$k}));
@@ -1185,17 +1185,9 @@ sub	sort_csv
 		#dp::dp "------------" . scalar(@$sorted_keysp) . "/" . keys(%SORT_VAL) . "\n";
 	}
 
-	#dp::dp "#" x 20 . "SORT ORDER \n";
-#	if(! defined $self->{order_list}){
-#		$self->{order_list} = [];
-#	}
-#	@{$self->{order_list}} = @$sorted_keysp;
-#
-#	my $orderp = $self->{order};
-#	my $lank = 0;
-#	foreach my $k (@$sorted_keysp){
-#		$orderp->{$k} = $lank++;
-#	}
+##	foreach my $k (@$sorted_keysp){
+##		dp::dp sprintf("$k : %.2f\n", $SORT_VAL{$k});
+##	}
 	return (@$sorted_keysp);
 }
 

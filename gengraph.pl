@@ -30,6 +30,7 @@ use warnings;
 use utf8;
 use Encode 'decode';
 use Data::Dumper;
+use List::Util 'min';
 use config;
 use csvlib;
 use csv2graph;
@@ -63,6 +64,8 @@ my	$line_thin = $csv2graph::line_thin;
 my	$line_thick_dot = $csv2graph::line_thick_dot;
 my	$line_thin_dot = $csv2graph::line_thin_dot;
 my	$box_fill = $csv2graph::box_fill;
+
+my $y2y1rate = 2.5;
 
 #
 #	for APPLE Mobility Trends
@@ -246,7 +249,6 @@ if(1){
 }
 if(1){
 	foreach my $region (@TARGET_REGION){
-		my $y2y1rate = 2.5;
 		foreach my $start_date (0, -93){
 			my $p = {start_date => $start_date};
 			my $conf_region = $ccse_country->reduce_cdp_target({$prov => "", $cntry => $region});
@@ -394,16 +396,15 @@ if(1){
 	#
 	#
 if(1){
-	#foreach my $region (@TARGET_REGION){
 	my $target_keys = [$ccse_country->select_keys("", 0)];	# select data for target_keys
 	my $sort_keys = [$ccse_country->sort_csv(($ccse_country->{csv_data}), $target_keys)];
 	my $end = (scalar(@$sort_keys) < 10) ? scalar(@$sort_keys) : 10; 
 	dp::dp join(",", @$sort_keys[0..$end]) . "\n";
+
 	my @tgl = ("Japan");
-	foreach my $region (@tgl, @$sort_keys[0..$end]){
+	foreach my $region (@tgl, @$sort_keys[0..$end]){	 # (@TARGET_REGION)
 		#dp::dp "$region\n";
 		$region =~ s/-.*$//;
-		my $y2y1rate = 2.5;
 		foreach my $start_date (0) { # , -93){
 			my $p = {start_date => $start_date};
 			my $conf_region = $ccse_country->reduce_cdp_target({$prov => "NULL", $cntry => $region});
@@ -444,6 +445,7 @@ if(1){
 				],
 			},
 			));
+
 		}
 		#last;
 	}
@@ -766,22 +768,66 @@ if($golist{japan}){
 	my $jp_graph = [];
 	my $positive = "testedPositive";
 	my $deaths = "deaths";
-	foreach my $pref ("東京都"){
-		foreach my $item ($positive, $deaths){
+
+	my $target_keys = [$jp_rlavr->select_keys({item => $positive}, 0)];	# select data for target_keys
+	my $sorted_keys = [$jp_rlavr->sort_csv(($jp_rlavr->{csv_data}), $target_keys)];
+	my $end = min(10, scalar(@$sorted_keys) - 1); 
+	dp::dp join(",", @$sorted_keys[0..$end]) . "\n";
+
+	my $ymax = 0;
+	my $y2max = 3;
+	foreach my $pref (@$sorted_keys[0..$end]) { # "東京都"){		data is mainkey ex.東京#testedPositive--conf-rlavr
+		$pref =~ s/[-#].*$//;
+		foreach my $start_date(0){	#, -93
+			my $p = {start_date => $start_date};
+			my $jp_pref = $jp_rlavr->reduce_cdp_target({item => $positive, prefectureNameJ => $pref});
+			my $y1max = $jp_pref->max_val($p);
+			my $y2max = int($y1max * $y2y1rate / 100 + 0.9999999); 
+			my $ymax = csvlib::calc_max2($y1max);			# try to set reasonable max 
+			my $death_pref = $jp_rlavr->reduce_cdp_target({item => $deaths, prefectureNameJ => $pref});
+			# $death_region->rolling_average();
+			my $death_max = $death_pref->max_val($p);
+
+			my $drate = sprintf("%.2f%%", 100 * $death_max / $y1max);
+			dp::dp "y1max:$y1max, ymax:$ymax, y2max:$y2max death_max:$death_max\n";
+
 			push(@$jp_graph, 
-			{gdp => $defjapan::JAPAN_GRAPH, dsc => "Japan [$pref] $item ", start_date => 0, ymin => 0, y2max => 3, graph_items => [
-				{cdp => $jp_cdp, static => "rlavr", target_col => {item => "$item", prefectureNameJ => $pref}}, 
-				{cdp => $jp_cdp, static => "",      target_col => {item => "$item", prefectureNameJ => $pref}, graph_def => $line_thin_dot},
-				{cdp => $jp_cdp, static => "ern",   target_col => {item => "testedPositive", prefectureNameJ => $pref}, axis => "y2"}, 
-			]},
+			{gdp => $defjapan::JAPAN_GRAPH, dsc => "[$pref] new cases and deaths [$drate]", start_date => $start_date, 
+				ymax => $ymax, y2max => $y2max, ymin => 0, y2min => 0,
+				ylabel => "confermed", y2label => "deaths (max=$y2y1rate% of rlavr confermed)",
+				#additional_plot => $additional_plot_item{ern}, 
+				graph_items => [
+				{cdp => $jp_cdp, item => {item => $positive, prefectureNameJ => $pref}, static => "rlavr", graph_def => $line_thick},
+				{cdp => $jp_cdp, item => {item => $deaths,   prefectureNameJ => $pref}, static => "rlavr", axis => "y2", graph_def => $box_fill},
+				{cdp => $jp_cdp, item => {item => $positive, prefectureNameJ => $pref}, static => "", graph_def => $line_thin_dot,},
+				{cdp => $jp_cdp, item => {item => $deaths,   prefectureNameJ => $pref}, static => "", axis => "y2", graph_def => $line_thin_dot},
+				],
+			},
+			{gdp => $defjapan::JAPAN_GRAPH, dsc => "[$pref] new cases and ern", start_date => $start_date, 
+				ymax => $ymax, y2max => 3, ymin => 0, y2min => 0,
+				additional_plot => $additional_plot_item{ern}, 
+				graph_items => [
+				{cdp => $jp_cdp, item => {item => $positive, prefectureNameJ => $pref}, static => "rlavr"},
+				{cdp => $jp_cdp, item => {item => $positive, prefectureNameJ => $pref}, static => "ern",  axis => "y2"},
+				{cdp => $jp_cdp, item => {item => $positive, prefectureNameJ => $pref}, static => "",     graph_def => $line_thin_dot},
+				],
+			},
 			);
-			push(@$jp_graph, 
-			{gdp => $defjapan::JAPAN_GRAPH, dsc => "Japan [$pref] pop ", start_date => 0, ymin => 0, y2max => 3, graph_items => [
-				{cdp => $jp_pop, static => "rlavr", target_col => {item => "$item", prefectureNameJ => $pref}}, 
-				{cdp => $jp_pop, static => "",      target_col => {item => "$item", prefectureNameJ => $pref}, graph_def => $line_thin_dot},
-				{cdp => $jp_cdp, static => "ern",   target_col => {item => "testedPositive", prefectureNameJ => $pref}, axis => "y2"}, 
-			]},
-			);
+##		foreach my $item ($positive, $deaths){
+##			push(@$jp_graph, 
+##			{gdp => $defjapan::JAPAN_GRAPH, dsc => "Japan [$pref] $item ", start_date => 0, ymin => 0, y2max => 3, graph_items => [
+##				{cdp => $jp_cdp, static => "rlavr", target_col => {item => "$item", prefectureNameJ => $pref}}, 
+##				{cdp => $jp_cdp, static => "",      target_col => {item => "$item", prefectureNameJ => $pref}, graph_def => $line_thin_dot},
+##				{cdp => $jp_cdp, static => "ern",   target_col => {item => "testedPositive", prefectureNameJ => $pref}, axis => "y2"}, 
+##			]},
+##			);
+##			push(@$jp_graph, 
+##			{gdp => $defjapan::JAPAN_GRAPH, dsc => "Japan [$pref] pop ", start_date => 0, ymin => 0, y2max => 3, graph_items => [
+##				{cdp => $jp_pop, static => "rlavr", target_col => {item => "$item", prefectureNameJ => $pref}}, 
+##				{cdp => $jp_pop, static => "",      target_col => {item => "$item", prefectureNameJ => $pref}, graph_def => $line_thin_dot},
+##				{cdp => $jp_cdp, static => "ern",   target_col => {item => "testedPositive", prefectureNameJ => $pref}, axis => "y2"}, 
+##			]},
+##			);
 		}
 	}
 if(0){
