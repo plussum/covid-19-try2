@@ -231,6 +231,7 @@ sub	ern {return calc::ern(@_);}
 sub	max_val {return calc::max_val(@_);}
 sub	calc_pop {return calc::calc_pop(@_);}
 sub	population {return calc::population(@_);}
+sub	max_rlavr {return calc::max_rlavr(@_);}
 
 # select
 sub	gen_record_key {return select::gen_record_key(@_);} 
@@ -466,11 +467,13 @@ sub	set_alias
 				dp::WARNING "alias: $v is not defined in item_name_list, $k, $v\n";
 				next;
 			}
-			$v = $self->{item_name_hash};
+			$v = $self->{item_name_hash}->{$v};
 		}
 		$self->{item_name_hash}->{$k} = $v;
 		$self->{alias}->{$k} = $v;		# no plan for using, but ...
 	}
+	#dp::dp csvlib::join_array(",", $self->{item_name_hash}) . "\n";
+	#dp::dp csvlib::join_array(",", $self->{alias}) . "\n";
 }
 
 #
@@ -1425,4 +1428,5 @@ _EOD_
 	system("gnuplot $plotf");
 	#dp::dp "-- Done\n";
 }
+
 1;

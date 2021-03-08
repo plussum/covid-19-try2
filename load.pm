@@ -45,9 +45,11 @@ sub	load_csv
 	}
 	if(! -e $src_file){
 		dp::WARNING "load_csv: $src_file is not found\n";
+		disp_caller(1..3);
 		return "";
 	}
 	
+
 	#
 	#
 	#
@@ -92,7 +94,7 @@ sub	load_csv
 	#
 	#	set alias
 	#
-	$self->set_alias($self->{alias});
+	# $self->set_alias($self->{alias});		# move to load items
 
 	#
 	#	DEBUG: Dump data 
@@ -150,6 +152,7 @@ sub	load_csv_holizontal
 ##		$item_name_hash->{$kn} = $i;
 ##	}
 	$self->add_key_items([$config::MAIN_KEY, @item_name[0..($data_start - 1)]]);
+	$self->set_alias($self->{alias});		#
 
 	@$date_list = @item_name[$data_start..$#item_name];
 	for(my $i = 0; $i < scalar(@$date_list); $i++){
@@ -228,6 +231,7 @@ sub	load_csv_vertical
 	##my $key_name = $self->{key_name} // "";			# set key name as "key" or $self->{key_name}
 	##$key_name = $config::MAIN_KEY if(! $key_name);
 	$self->add_key_items([$config::MAIN_KEY]);
+	$self->set_alias($self->{alias});		#
 	#@{$self->{item_name_list}} = ($key_name);		# set item_name 
 	#$self->{item_name_hash}->{$key_name} = 0;
 
@@ -377,6 +381,7 @@ sub	load_json
 
 
 	$self->add_key_items([$config::MAIN_KEY, @items]);
+	$self->set_alias($self->{alias});		#
 	foreach my $master_key (@items){
 		$self->add_record($master_key, [$master_key], []);		# add record without data
 	}
@@ -441,6 +446,7 @@ sub	load_transaction
 ##	my $key_name = $self->{key_name} // "";			# set key name as "key" or $self->{key_name}
 ##	$key_name = $config::MAIN_KEY if(! $key_name);
 	$self->add_key_items([$config::MAIN_KEY, @items[0..($data_start-1)], "item"]);
+	$self->set_alias($self->{alias});		#
 
 	#dp::dp join(",", "# " , @key_list) . "\n";
 	dp::dp "load_transaction: " . join(", ", @items) . "\n";

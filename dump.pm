@@ -19,6 +19,7 @@ use csv2graph;
 #
 sub	dump_cdp
 {
+	csvlib::disp_caller(1..2);
 	my ($cdp, $p) = @_;
 	my $ok = (!defined $p || !defined $p->{ok}) ? 5 : $p->{ok};
 	my $lines = (!defined $p || !defined $p->{lines}) ? 5 : $p->{lines};

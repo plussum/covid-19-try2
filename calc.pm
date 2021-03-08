@@ -487,11 +487,28 @@ sub	max_val
 	my $max = 0;
 	foreach my $k (keys %$csvp){
 		for(my $i = $dt_start; $i <= $dt_end ; $i++){
-			my $v =$csvp->{$k}->[$i];
+			my $v = $csvp->{$k}->[$i];
+			$v = 0 if(! ($v =~ /^[\+\-]?\d*\.\d*$/));
 			$max = $v if($v > $max);
 		}
 		#dp::dp "$max ($dt_start - $dt_end)" . join(",", @{$csvp->{$k}}) . "\n";
 	}
+	#dp::dp "max: $max\n";
+	return $max;
+}
+
+sub	max_rlavr
+{
+	my $self = shift;
+	my ($p) = @_;
+	$p = {start_date => 0} if(! defined $p);
+
+	#$self->dump({items => 100});
+	my $target = $self->calc_rlavr($p);
+	#$target->dump({items => 100});
+	my $max = $target->max_val();
+
+	#dp::dp "$max\n";
 	return $max;
 }
 

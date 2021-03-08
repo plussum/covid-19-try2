@@ -24,7 +24,7 @@ my $WIN_PATH = "$config::WIN_PATH";
 my $HTML_PATH = "$WIN_PATH/HTML2",
 my $PNG_PATH  = "$WIN_PATH/PNG2",
 my $PNG_REL_PATH  = "../PNG2",
-my $CSV_PATH  = $config::WIN_PATH;
+my $CSV_PATH  = $config::CSV_PATH;
 
 my $DEFAULT_AVR_DATE = $config::DEFAULT_AVR_DATE;
 my $END_OF_DATA = $config::END_OF_DATA;
@@ -40,7 +40,7 @@ our $CCSE_DEF = {
 	id => "ccse",
 	src_info => "Johns Hopkins CSSE",
 	main_url =>  "https://covid19.apple.com/mobility",
-	src_file =>  "$CCSE_BASE_DIR/time_series_covid19_confirmed_global.csv",
+	src_file =>  "$CSV_PATH/time_series_covid19_confirmed_global.csv",
 	src_url => "https://github.com/beoutbreakprepared/nCoV2019",
 	cumrative => 1,
 	down_load => \&download,
@@ -58,23 +58,23 @@ my @MAIN_KEYS = ("Country/Region", "Province/State"),	#
 
 our $CCSE_CONF_DEF = clone($CCSE_DEF);
 $CCSE_CONF_DEF->{id} = "ccse_conf";
-$CCSE_CONF_DEF->{src_file} = "$CCSE_BASE_DIR/time_series_covid19_confirmed_global.csv",
+$CCSE_CONF_DEF->{src_file} = "$CSV_PATH/time_series_covid19_confirmed_global.csv",
 $CCSE_CONF_DEF->{keys} = [@MAIN_KEYS, "=conf"];
 #print Dumper $CCSE_CONF_DEF;
 
 our $CCSE_DEATHS_DEF = clone($CCSE_CONF_DEF);
 $CCSE_DEATHS_DEF->{id} = "ccse_death";
-$CCSE_DEATHS_DEF->{src_file} = "$CCSE_BASE_DIR/time_series_covid19_deaths_global.csv",
+$CCSE_DEATHS_DEF->{src_file} = "$CSV_PATH/time_series_covid19_deaths_global.csv",
 $CCSE_DEATHS_DEF->{keys} = [@MAIN_KEYS, "=death"];
 
 our $CCSE_US_CONF_DEF = clone($CCSE_CONF_DEF);
 $CCSE_US_CONF_DEF->{id} = "ccse_us_conf";
-$CCSE_US_CONF_DEF->{src_file} = "$CCSE_BASE_DIR/time_series_covid19_confirmed_US.csv",
+$CCSE_US_CONF_DEF->{src_file} = "$CSV_PATH/time_series_covid19_confirmed_US.csv",
 $CCSE_US_CONF_DEF->{keys} = [@MAIN_KEYS, "=conf_us"];
 
 our $CCSE_US_DEATHS_DEF = clone($CCSE_CONF_DEF);
 $CCSE_US_DEATHS_DEF->{id} = "ccse_us_death";
-$CCSE_US_DEATHS_DEF->{src_file} = "$CCSE_BASE_DIR/time_series_covid19_deaths_US.csv",
+$CCSE_US_DEATHS_DEF->{src_file} = "$CSV_PATH/time_series_covid19_deaths_US.csv",
 $CCSE_US_DEATHS_DEF->{keys} = [@MAIN_KEYS, "=death_us"];
 
 #dp::dp $CCSE_DEF->{csv_file} . "\n";
