@@ -1023,12 +1023,17 @@ sub	csv2graph_mix
 		#
 		my $start_date_tm = csvlib::ymds2tm($start_date) + $gpp->{date_diff};
 		my $diff = $gpp->{date_diff};
+		my $subs = $gp_mix->{label_subs} // "";
 		foreach my $key (@$sorted_keys){
-			next if($lank_select && ($order->{$key} < $lank[0] || $order->{$key} > $lank[1]));
+			my $order = $order->{$key};
+			next if($lank_select && ($order < $lank[0] || $order > $lank[1]));
 			
 			#dp::dp "order: $key -> $order->{$key}\n";
+			my $wk = ($static) ? "$key-$static" : $key;
+			$wk =~ s/$subs// if($subs);
+			#dp::dp "$wk <- $key $subs\n";
 			my @csv_data = @{$cdp->{csv_data}->{$key}};
-			my $lbl = join($LABEL_DLM, (($static) ? "$key-$static" : $key), ($gpp->{axis}//""), ($gpp->{graph_def}//""));
+			my $lbl = join($LABEL_DLM, ("$order:$wk"), ($gpp->{axis}//""), ($gpp->{graph_def}//""));
 			push(@$graph_csv, [$lbl, @csv_data[$diff..($diff+$dates)]]);
 			#dp::dp "$diff, $dates , " . join(",", @{$graph_csv->[scalar(@$graph_csv) - 1]}). "\n";
 		}
@@ -1332,6 +1337,7 @@ _EOD_
 		my $graph = $gp->{graph} // ($gdp->{graph} // $DEFAULT_GRAPH);
 		my $y2_graph = "";
 		my ($key, $axis_flag, $graph_def) = split($LABEL_DLM, $label[$i]);
+		#dp::dp "[$graph_def]\n";
 		if($graph_def =~ /^#D#/){
 			if(defined $GRAPH_KIND->{$graph_def}){
 				$graph_def = $GRAPH_KIND->{$graph_def} ;
@@ -1343,7 +1349,7 @@ _EOD_
 
 		$axis_flag = $axis_flag // "y1";
 		#dp::dp join(",", $label[$i], $key, $axis_flag) . "\n";
-		$key =~ s/^[0-9]+://;
+		#$key =~ s/^[0-9]+://;
 		$key =~ s/[']/_/g;	# avoid error at plot
 		#dp::dp "### $i: $key $src_csv, $y2key\n";
 		$pn++;
@@ -1363,7 +1369,7 @@ _EOD_
 
 		my $pl = "";
 		if($graph_def){
-			$pl = sprintf("'%s' using 1:%d $axis with $graph_def title '%d:%s' ", $csvf, $i + 1, $i, $key);
+			$pl = sprintf("'%s' using 1:%d $axis with $graph_def title '%s' ", $csvf, $i + 1, $key);
 		}
 		else {
 			if($graph =~ /line/){

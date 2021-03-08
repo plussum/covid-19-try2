@@ -223,10 +223,10 @@ if($golist{try})
 		foreach my $static ("", "rlavr"){
 			push(@$gp_list, , csv2graph->csv2graph_list_gpmix(
 				{gdp => $defdocomo::DOCOMO_GRAPH, dsc => "docmo $base $static", start_date => $start_date, 
-					ymin => "", ymax => "", ylabel => "number", lank => [1,5],
+					ymin => "", ymax => "", ylabel => "number", lank => [1,15], label_subs => '#.*$',
 					#additional_plot => $additional_plot_item{ern}, 
 					graph_items => [
-					{cdp => $docomo_cdp, item => {base => $base}, static => "$static", graph_def => $line_thick},
+					{cdp => $docomo_cdp, item => {base => $base}, static => "$static", graph_def => $line_thin,},
 					# {cdp => $docomo_cdp, item => {base => $base}, static => "", graph_def => $line_thin_dot},
 					],
 				},
@@ -236,16 +236,19 @@ if($golist{try})
 	#my $tokyo_cdp = $docomo_cdp->reduce_cdp_target({base => "~東京"});	# Select Country
 	foreach my $base (@docomo_base){
 		foreach my $static ("", "rlavr"){
-			push(@$gp_list, , csv2graph->csv2graph_list_gpmix(
-				{gdp => $defdocomo::DOCOMO_GRAPH, dsc => "Tokyo docmo $base $static", start_date => $start_date, 
-					ymin => "", ymax => "", ylabel => "number", lank => [1,5],
-					#additional_plot => $additional_plot_item{ern}, 
-					graph_items => [
-					{cdp => $docomo_cdp, item => {area => "~東京", base => $base}, static => "$static", graph_def => $line_thick},
-					# {cdp => $docomo_cdp, item => {base => $base}, static => "", graph_def => $line_thin_dot},
-					],
-				},
-			));
+			my $width = 6;
+			for(my $n = 1; $n < 12; $n += $width){
+				push(@$gp_list, , csv2graph->csv2graph_list_gpmix(
+					{gdp => $defdocomo::DOCOMO_GRAPH, dsc => "Tokyo docmo $base $static $n-" . ($n+$width-1), start_date => $start_date, 
+						ymin => "", ymax => "", ylabel => "number", lank => [$n, ($n+$width-1)], label_subs => '#.*$',
+						#additional_plot => $additional_plot_item{ern}, 
+						graph_items => [
+						{cdp => $docomo_cdp, item => {area => "~東京", base => $base}, static => "$static", graph_def => $line_thin,},
+						# {cdp => $docomo_cdp, item => {base => $base}, static => "", graph_def => $line_thin_dot},
+						],
+					},
+				));
+			}
 		}
 	}
 
