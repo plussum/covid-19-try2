@@ -117,6 +117,7 @@ my $MARGE_CSV_DEF = {
 my %additional_plot_item = (
 	amt => "100 axis x1y1 with lines title '100%' lw 1 lc 'blue' dt (3,7)",
 	ern => "1 axis x1y2 with lines title 'ern=1' lw 1 lc 'red' dt (3,7)",
+	docomo => "0 axis x1y1 with lines title '0' lw 1 lc 'red' dt (3,7)",
 );
 my $additional_plot = join(",", values %additional_plot_item);
 
@@ -214,45 +215,6 @@ my $ccse_country = {};
 #
 if($golist{try})
 {
-	my $docomo_cdp = csv2graph->new($defdocomo::DOCOMO_DEF); 						# Load Johns Hopkings University CCSE
-	$docomo_cdp->load_csv($defdocomo::DOCOMO_DEF);
-
-	my @docomo_base = ("感染拡大前比", "緊急事態宣言前比"); #, "前年同月比", "前日比"); 
-	my $start_date = 0;
-	foreach my $base (@docomo_base){
-		foreach my $static ("", "rlavr"){
-			push(@$gp_list, , csv2graph->csv2graph_list_gpmix(
-				{gdp => $defdocomo::DOCOMO_GRAPH, dsc => "docmo $base $static", start_date => $start_date, 
-					ymin => "", ymax => "", ylabel => "number", lank => [1,15], label_subs => '#.*$',
-					#additional_plot => $additional_plot_item{ern}, 
-					graph_items => [
-					{cdp => $docomo_cdp, item => {base => $base}, static => "$static", graph_def => $line_thin,},
-					# {cdp => $docomo_cdp, item => {base => $base}, static => "", graph_def => $line_thin_dot},
-					],
-				},
-			));
-		}
-	}
-	#my $tokyo_cdp = $docomo_cdp->reduce_cdp_target({base => "~東京"});	# Select Country
-	foreach my $base (@docomo_base){
-		foreach my $static ("", "rlavr"){
-			my $width = 6;
-			for(my $n = 1; $n < 12; $n += $width){
-				push(@$gp_list, , csv2graph->csv2graph_list_gpmix(
-					{gdp => $defdocomo::DOCOMO_GRAPH, dsc => "Tokyo docmo $base $static $n-" . ($n+$width-1), start_date => $start_date, 
-						ymin => "", ymax => "", ylabel => "number", lank => [$n, ($n+$width-1)], label_subs => '#.*$',
-						#additional_plot => $additional_plot_item{ern}, 
-						graph_items => [
-						{cdp => $docomo_cdp, item => {area => "~東京", base => $base}, static => "$static", graph_def => $line_thin,},
-						# {cdp => $docomo_cdp, item => {base => $base}, static => "", graph_def => $line_thin_dot},
-						],
-					},
-				));
-			}
-		}
-	}
-
-
 if(0){
 	my $ccse_cdp = csv2graph->new($defccse::CCSE_CONF_DEF); 						# Load Johns Hopkings University CCSE
 	$ccse_cdp->load_csv($defccse::CCSE_CONF_DEF);
@@ -287,8 +249,10 @@ if(0){
 	my $region = "Japan";
 	foreach my $start_date (0, -93){
 		push(@$gp_list, &ccse_positive_death($ccse_country, $death_country, $region, $start_date));
+		push(@$gp_list, &ccse_positive_ern($ccse_country, $region, 0));
 	}
-
+}
+if(1){
 	#
 	#	Japan Prefectures
 	#
@@ -304,24 +268,124 @@ if(0){
 	my $deaths = "deaths";
 
 	my $target_keys = [$jp_rlavr->select_keys({item => $positive}, 0)];	# select data for target_keys
-	my $sorted_keys = [$jp_rlavr->sort_csv(($jp_rlavr->{csv_data}), $target_keys)];
-	my $end = min(5, scalar(@$sorted_keys) - 1); 
-	dp::dp join(",", @$sorted_keys[0..$end]) . "\n";
-	foreach my $pref (@$sorted_keys[0..$end]){
-		$pref =~ s/[\#\-].*$//;
-		dp::dp $pref . "\n";
-		push(@$gp_list, &japan_positive_death($jp_cdp, $pref, 0));
-		push(@$gp_list, &japan_positive_ern($jp_cdp, $pref, 0));
+	foreach my $start_date (0){ # , -28){
+		#my $sorted_keys = [$jp_rlavr->sort_csv($jp_rlavr->{csv_data}, $target_keys, $start_date, -14)];
+		my $sorted_keys = [$jp_ern->sort_csv($jp_ern->{csv_data}, $target_keys, -7*5, -7*2)];
+		my $end = min(50, scalar(@$sorted_keys) - 1); 
+		#dp::dp join(",", @$sorted_keys[0..$end]) . "\n";
+		foreach my $pref (@$sorted_keys[0..$end]){
+		#	push(@$gp_list, &japan_positive_death($jp_cdp, $pref, $start_date));
+			my $csv_data = $jp_cdp->{csv_data};
+			my $csvp = $csv_data->{$pref};
+			#dp::dp join(", ", $pref, $csv_data, $csvp) . "\n";
+			#dp::dp Dumper $csv_data;
+			my $size = scalar(@$csvp);
+			my $term = 10;
+			my $total = 0;
+			for(my $i = $size - $term; $i < $size; $i++){
+				$total += $csvp->[$i];
+			}
+			my $avr = $total / $term;
+			#dp::dp "$pref: $avr, $total\n";
+			$pref =~ s/[\#\-].*$//;
+			my $thresh = 5;
+			if($avr < $thresh){
+				dp::dp "Skip $pref  avr($avr:$total) < $thresh\n";
+				next;
+			}
+			push(@$gp_list, &japan_positive_ern($jp_cdp, $pref, $start_date)) ;
+		}
 	}
-
+}
+if(0){
 	#
 	#	CCSE
 	#
-	foreach my $region (@TARGET_REGION[0..3]){
-		push(@$gp_list, &ccse_positive_death($ccse_country, $death_country, $region, 0));
-		push(@$gp_list, &ccse_positive_ern($ccse_country, $region, 0));
+##	foreach my $region (@TARGET_REGION[0..3]){
+##		push(@$gp_list, &ccse_positive_death($ccse_country, $death_country, $region, 0));
+##		push(@$gp_list, &ccse_positive_ern($ccse_country, $region, 0));
+##	}
+}
+
+my @docomo_base = ("感染拡大前比", "緊急事態宣言前比"); #, "前年同月比", "前日比"); 
+my $start_date = 0;
+my $docomo_cdp = csv2graph->new($defdocomo::DOCOMO_DEF); 						# Load Johns Hopkings University CCSE
+$docomo_cdp->load_csv($defdocomo::DOCOMO_DEF);
+if(0){
+	my @tokyo = (qw (東京都));
+	my @kanto = (qw (東京都 神奈川県 千葉県 埼玉県 茨木県 栃木県 群馬県));
+	my @kansai = (qw (大阪府 京都府 兵庫県 奈良県 和歌山県 滋賀県));
+	my @tokai = (qw (愛知県 岐阜県 三重県 静岡県));
+	my @touhoku = (qw (青森県 秋田県 岩手県 宮城県 山形県 福島県));
+	my @koushin = (qw (山梨県 長野県));
+	my @hokuriku = (qw (新潟県 富山県 石川県 福井県));
+	my @chugoku = (qw (鳥取県 島根県 岡山県 広島県 山口県));
+	my @shikoku = (qw (香川県 愛媛県 徳島県 高知県));
+	my @kyusyu = (qw (福岡県 佐賀県 長崎県 熊本県 大分県 宮崎県 鹿児島県 沖縄県));
+
+	my	@SUMMARY = (
+		{name => "全国", target => []},
+		{name => "関東", target => [@kanto]},
+		{name => "関西", target => [@kansai]},
+		{name => "東海", target => [@tokai]},
+		{name => "東京", target => ["東京都"]},
+		{name => "大阪", target => ["大阪府"]},
+	#	{name => "名古屋", target => ["愛知県"]},
+	);
+
+
+	foreach my $region ("~東京", "~大阪"){
+		foreach my $base (@docomo_base){
+			foreach my $static ("", "rlavr"){
+				push(@$gp_list, , csv2graph->csv2graph_list_gpmix(
+					{gdp => $defdocomo::DOCOMO_GRAPH, dsc => "Tokyo docmo $base $static $region", start_date => $start_date, 
+						ymin => "", ymax => "", ylabel => "number", lank => [1,20], label_subs => '#.*$',
+						additional_plot => $additional_plot_item{docomo}, 
+						graph_items => [
+						{cdp => $docomo_cdp, item => {area => $region, base => $base}, static => "$static", graph_def => $line_thin,},
+						],
+					},
+				));
+			}
+		}
 	}
 }
+if(0){
+	foreach my $base (@docomo_base){
+		foreach my $static ("", "rlavr"){
+			push(@$gp_list, , csv2graph->csv2graph_list_gpmix(
+				{gdp => $defdocomo::DOCOMO_GRAPH, dsc => "docmo $base $static", start_date => $start_date, 
+					ymin => "", ymax => "", ylabel => "number", lank => [1,15], label_subs => '#.*$',
+					additional_plot => $additional_plot_item{docomo}, 
+					graph_items => [
+					{cdp => $docomo_cdp, item => {base => $base}, static => "$static", graph_def => $line_thin,},
+					# {cdp => $docomo_cdp, item => {base => $base}, static => "", graph_def => $line_thin_dot},
+					],
+				},
+			));
+		}
+	}
+	#my $tokyo_cdp = $docomo_cdp->reduce_cdp_target({base => "~東京"});	# Select Country
+	foreach my $base (@docomo_base){
+		foreach my $static ("", "rlavr"){
+			my $width = 6;
+			for(my $n = 1; $n < 12; $n += $width){
+				push(@$gp_list, , csv2graph->csv2graph_list_gpmix(
+					{gdp => $defdocomo::DOCOMO_GRAPH, dsc => "Tokyo docmo $base $static $n-" . ($n+$width-1), start_date => $start_date, 
+						ymin => "", ymax => "", ylabel => "number", lank => [$n, ($n+$width-1)], label_subs => '#.*$',
+						additional_plot => $additional_plot_item{docomo}, 
+						graph_items => [
+						#{cdp => $docomo_cdp, item => {area => "~東京", base => $base}, static => "$static", graph_def => $line_thin,},
+						{cdp => $docomo_cdp, item => {base => $base}, static => "$static", graph_def => $line_thin,},
+						# {cdp => $docomo_cdp, item => {base => $base}, static => "", graph_def => $line_thin_dot},
+						],
+					},
+				));
+			}
+		}
+	}
+}
+
 }
 
 
@@ -411,8 +475,6 @@ sub	ccse_positive_ern
 	my $y1max = $conf_region->max_rlavr($p);
 	my $ymax = csvlib::calc_max2($y1max);			# try to set reasonable max 
 
-	dp::dp "################# ern: [$y1max, $ymax]\n";
-
 	my @list = ();
 	push(@list, csv2graph->csv2graph_list_gpmix(
 		{gdp => $defccse::CCSE_GRAPH, dsc => "[$region] new cases and ern", start_date => $start_date, 
@@ -440,8 +502,6 @@ sub	japan_positive_ern
 	my $y1max = $jp_pref->max_rlavr($p);
 	#$jp_pref->dump({items => 100});
 	my $ymax = csvlib::calc_max2($y1max);			# try to set reasonable max 
-
-	dp::dp "################# ern: [$y1max, $ymax]\n";
 
 	my @list = ();
 	push(@list, csv2graph->csv2graph_list_gpmix(

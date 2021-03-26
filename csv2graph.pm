@@ -1127,6 +1127,17 @@ sub	gen_csv_file
 	return $csv_for_plot;
 }
 
+sub	csv_size
+{
+	my ($csvp) = @_;
+
+	foreach my $k (keys %$csvp){
+		my $sz = scalar(@{$csvp->{$k}});
+		return $sz - 1;
+	}
+	return -1;
+}
+
 #
 #	SORT
 #
@@ -1135,11 +1146,18 @@ sub	sort_csv
 	my $self = shift;
 	my ($csvp, $target_keysp, $dt_start, $dt_end) = @_;
 	
+	#dp::dp "($dt_start, $dt_end)\n";
 	#csvlib::disp_caller(0..3);
 	#dp::dp "$csvp\n";
 
 	$dt_start = ($dt_start//"") ? $dt_start : 0;
-	$dt_end = ($dt_end//"") ? $dt_start : "";		# set in the loop
+	$dt_end = ($dt_end//"") ? $dt_end : &csv_size($csvp);		# 2021.03.15
+	if($dt_start < 0){											# 2021.03.15
+		$dt_start = &csv_size($csvp) + $dt_start;						# 2021.03.15
+	}															# 2021.03.15
+	if($dt_end < 0){											# 2021.03.15
+		$dt_end = &csv_size($csvp) + $dt_end;					# 2021.03.15
+	}															# 2021.03.15
 	#my $dt_start = $gp->{dt_start};
 	#my $dt_end = $gp->{dt_end};
 
@@ -1165,7 +1183,7 @@ sub	sort_csv
 		$total = 10 ** 20  - 1 if($total eq "Inf");		# for avoiding error at sort
 		$total = 0  if($total eq "NaN");				# for avoiding error at sort
 		$SORT_VAL{$key} = $total;
-		#dp::dp "$key: [$total]\n";
+		#dp::dp "$key:($dt_start - $dt_end) [$total]\n";
 		#if($src_csv && (! defined $src_csv->{$key})){
 		if(! defined $src_csv->{$key}){
 			$src_csv->{$key} = 0;
