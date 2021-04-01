@@ -138,7 +138,7 @@ my @TARGET_PREF = ("Tokyo", "Kanagawa", "Chiba", "Saitama", "Kyoto", "Osaka");
 my @cdp_list = ($defamt::AMT_DEF, $defccse::CCSE_DEF, $MARGE_CSV_DEF, 
 					$deftokyo::TOKYO_DEF, $defjapan::JAPAN_DEF, $deftkow::TKOW_DEF, $defdocomo::DOCOMO_DEF); 
 
-my $cmd_list = {"amt-jp" => 1, "amt-jp-pref" => 1, "tkow-ern" => 1, try => 1};
+my $cmd_list = {"amt-jp" => 1, "amt-jp-pref" => 1, "tkow-ern" => 1, try => 1, "pref-ern" => 1, pref => 1, docomo => 1};
 
 ####################################
 #
@@ -163,6 +163,12 @@ if($#ARGV >= 0){
 				system("rm $PNG_PATH/*");
 			}
 			exit;
+		}
+		if($_ eq "try"){
+			$golist{pref} = 1;
+			$golist{"pref-ern"} = 1;
+			$golist{docomo} = 1;
+			next;
 		}
 		if($cmd_list->{$_}){
 			$golist{$_} = 1;
@@ -213,9 +219,143 @@ my $ccse_country = {};
 #	Try for using 
 #
 #
-if($golist{try})
-{
-if(0){
+if($golist{"pref-ern"}) {
+	my $pref_gp_list = [];
+	#
+	#	ccse Japan
+	#
+	my $ccse_cdp = csv2graph->new($defccse::CCSE_CONF_DEF); 						# Load Johns Hopkings University CCSE
+	$ccse_cdp->load_csv($defccse::CCSE_CONF_DEF);
+	my $ccse_country = $ccse_cdp->reduce_cdp_target({"Province/State" => "NULL"});	# Select Country
+
+	my $death_cdp = csv2graph->new($defccse::CCSE_DEATHS_DEF); 						# Load Johns Hopkings University CCSE
+	$death_cdp->load_csv($defccse::CCSE_DEATHS_DEF);
+	my $death_country = $death_cdp->reduce_cdp_target({"Province/State" => "NULL"});	# Select Country
+	my $graph_kind = $csv2graph::GRAPH_KIND;
+
+	my $region = "Japan";
+	foreach my $start_date (0, -93){
+		#push(@$pref_gp_list, &ccse_positive_death($ccse_country, $death_country, $region, $start_date));
+		push(@$pref_gp_list, &ccse_positive_ern($ccse_country, $region, 0));
+	}
+
+	#
+	#	Japan Prefectures
+	#
+	my $jp_cdp = csv2graph->new($defjapan::JAPAN_DEF); 						# Load Apple Mobility Trends
+	$jp_cdp->load_csv($defjapan::JAPAN_DEF);
+
+	my $jp_rlavr = $jp_cdp->calc_rlavr($jp_cdp);
+	my $jp_ern   = $jp_cdp->calc_ern($jp_cdp);
+	my $jp_pop   = $jp_cdp->calc_pop($jp_cdp);
+
+	my $positive = "testedPositive";
+	my $deaths = "deaths";
+
+	my $target_keys = [$jp_rlavr->select_keys({item => $positive}, 0)];	# select data for target_keys
+	foreach my $start_date (0){ # , -28){
+		#my $sorted_keys = [$jp_rlavr->sort_csv($jp_rlavr->{csv_data}, $target_keys, $start_date, -14)];
+		my $sorted_keys = [$jp_ern->sort_csv($jp_ern->{csv_data}, $target_keys, -7*5, -7*2)];
+		my $end = min(50, scalar(@$sorted_keys) - 1); 
+		#dp::dp join(",", @$sorted_keys[0..$end]) . "\n";
+		foreach my $pref (@$sorted_keys[0..$end]){
+			my $csv_data = $jp_cdp->{csv_data};
+			my $csvp = $csv_data->{$pref};
+			#dp::dp join(", ", $pref, $csv_data, $csvp) . "\n";
+			#dp::dp Dumper $csv_data;
+			my $size = scalar(@$csvp);
+			my $term = 10;
+			my $total = 0;
+			for(my $i = $size - $term; $i < $size; $i++){
+				$total += $csvp->[$i];
+			}
+			my $avr = $total / $term;
+			#dp::dp "$pref: $avr, $total\n";
+			$pref =~ s/[\#\-].*$//;
+			my $thresh = 5;
+			if($avr < $thresh){
+				dp::dp "Skip $pref  avr($avr:$total) < $thresh\n";
+				next;
+			}
+			push(@$pref_gp_list, &japan_positive_ern($jp_cdp, $pref, $start_date)) ;
+		}
+	}
+
+	csv2graph->gen_html_by_gp_list($pref_gp_list, {						# Generate HTML file with graphs
+			html_tilte => "ERN/Positive COVID-19 Japan prefecture",
+			src_url => "src_url",
+			html_file => "$HTML_PATH/japanpref_ern.html",
+			png_path => $PNG_PATH // "png_path",
+			png_rel_path => $PNG_REL_PATH // "png_rel_path",
+			data_source => "data_source",
+		}
+	);
+}
+
+if($golist{pref}){
+	my $pd_list = [];
+
+	#
+	#	ccse Japan
+	#
+	my $ccse_cdp = csv2graph->new($defccse::CCSE_CONF_DEF); 						# Load Johns Hopkings University CCSE
+	$ccse_cdp->load_csv($defccse::CCSE_CONF_DEF);
+	my $ccse_country = $ccse_cdp->reduce_cdp_target({"Province/State" => "NULL"});	# Select Country
+
+	my $death_cdp = csv2graph->new($defccse::CCSE_DEATHS_DEF); 						# Load Johns Hopkings University CCSE
+	$death_cdp->load_csv($defccse::CCSE_DEATHS_DEF);
+	my $death_country = $death_cdp->reduce_cdp_target({"Province/State" => "NULL"});	# Select Country
+	my $graph_kind = $csv2graph::GRAPH_KIND;
+
+	my $region = "Japan";
+	foreach my $start_date (0, -93){
+		push(@$pd_list, &ccse_positive_death($ccse_country, $death_country, $region, $start_date));
+		#push(@$pd_list, &ccse_positive_ern($ccse_country, $region, 0));
+	}
+
+	#
+	#	Japan Prefectures
+	#
+	my $jp_cdp = csv2graph->new($defjapan::JAPAN_DEF); 						# Load Apple Mobility Trends
+	$jp_cdp->load_csv($defjapan::JAPAN_DEF);
+
+	my $jp_rlavr = $jp_cdp->calc_rlavr($jp_cdp);
+	my $jp_ern   = $jp_cdp->calc_ern($jp_cdp);
+	my $jp_pop   = $jp_cdp->calc_pop($jp_cdp);
+
+	my $positive = "testedPositive";
+	my $deaths = "deaths";
+	#
+	#	Generate HTML FILE
+	#
+	my $target_keys = [$jp_rlavr->select_keys({item => $positive}, 0)];	# select data for target_keys
+	foreach my $start_date (0){ # , -28){
+		my $sorted_keys = [$jp_rlavr->sort_csv($jp_rlavr->{csv_data}, $target_keys, $start_date, -14)];
+		my $end = min(50, scalar(@$sorted_keys) - 1); 
+		#dp::dp join(",", @$sorted_keys[0..$end]) . "\n";
+		foreach my $pref (@$sorted_keys[0..$end]){
+			$pref =~ s/[\#\-].*$//;
+			dp::dp "$pref\n";
+			push(@$pd_list, &japan_positive_death($jp_cdp, $pref, $start_date));
+		}
+	}
+	csv2graph->gen_html_by_gp_list($pd_list, {						# Generate HTML file with graphs
+			html_tilte => "Positve/Deaths COVID-19 Japan prefecture ",
+			src_url => "src_url",
+			html_file => "$HTML_PATH/japanpref.html",
+			png_path => $PNG_PATH // "png_path",
+			png_rel_path => $PNG_REL_PATH // "png_rel_path",
+			data_source => "data_source",
+		}
+	);
+
+}
+
+#
+#	CCSE
+#
+if($golist{ccse1}) {
+	my $ccse_gp_list = [];
 	my $ccse_cdp = csv2graph->new($defccse::CCSE_CONF_DEF); 						# Load Johns Hopkings University CCSE
 	$ccse_cdp->load_csv($defccse::CCSE_CONF_DEF);
 	$ccse_cdp->calc_items("sum", 
@@ -248,70 +388,36 @@ if(0){
 	#
 	my $region = "Japan";
 	foreach my $start_date (0, -93){
-		push(@$gp_list, &ccse_positive_death($ccse_country, $death_country, $region, $start_date));
-		push(@$gp_list, &ccse_positive_ern($ccse_country, $region, 0));
+		push(@$ccse_gp_list, &ccse_positive_death($ccse_country, $death_country, $region, $start_date));
+		push(@$ccse_gp_list, &ccse_positive_ern($ccse_country, $region, 0));
 	}
-}
-if(1){
-	#
-	#	Japan Prefectures
-	#
-	my $jp_cdp = csv2graph->new($defjapan::JAPAN_DEF); 						# Load Apple Mobility Trends
-	$jp_cdp->load_csv($defjapan::JAPAN_DEF);
 
-	my $jp_rlavr = $jp_cdp->calc_rlavr($jp_cdp);
-	my $jp_ern   = $jp_cdp->calc_ern($jp_cdp);
-	my $jp_pop   = $jp_cdp->calc_pop($jp_cdp);
-
-	my $jp_graph = [];
-	my $positive = "testedPositive";
-	my $deaths = "deaths";
-
-	my $target_keys = [$jp_rlavr->select_keys({item => $positive}, 0)];	# select data for target_keys
-	foreach my $start_date (0){ # , -28){
-		#my $sorted_keys = [$jp_rlavr->sort_csv($jp_rlavr->{csv_data}, $target_keys, $start_date, -14)];
-		my $sorted_keys = [$jp_ern->sort_csv($jp_ern->{csv_data}, $target_keys, -7*5, -7*2)];
-		my $end = min(50, scalar(@$sorted_keys) - 1); 
-		#dp::dp join(",", @$sorted_keys[0..$end]) . "\n";
-		foreach my $pref (@$sorted_keys[0..$end]){
-		#	push(@$gp_list, &japan_positive_death($jp_cdp, $pref, $start_date));
-			my $csv_data = $jp_cdp->{csv_data};
-			my $csvp = $csv_data->{$pref};
-			#dp::dp join(", ", $pref, $csv_data, $csvp) . "\n";
-			#dp::dp Dumper $csv_data;
-			my $size = scalar(@$csvp);
-			my $term = 10;
-			my $total = 0;
-			for(my $i = $size - $term; $i < $size; $i++){
-				$total += $csvp->[$i];
-			}
-			my $avr = $total / $term;
-			#dp::dp "$pref: $avr, $total\n";
-			$pref =~ s/[\#\-].*$//;
-			my $thresh = 5;
-			if($avr < $thresh){
-				dp::dp "Skip $pref  avr($avr:$total) < $thresh\n";
-				next;
-			}
-			push(@$gp_list, &japan_positive_ern($jp_cdp, $pref, $start_date)) ;
+	foreach my $region (@TARGET_REGION[0..3]){
+		push(@$ccse_gp_list, &ccse_positive_death($ccse_country, $death_country, $region, 0));
+		push(@$ccse_gp_list, &ccse_positive_ern($ccse_country, $region, 0));
+	}
+	csv2graph->gen_html_by_gp_list($ccse_gp_list, {						# Generate HTML file with graphs
+			html_tilte => "COVID-19 related data visualizer ",
+			src_url => "src_url",
+			html_file => "$HTML_PATH/ccse.html",
+			png_path => $PNG_PATH // "png_path",
+			png_rel_path => $PNG_REL_PATH // "png_rel_path",
+			data_source => "data_source",
 		}
-	}
-}
-if(0){
-	#
-	#	CCSE
-	#
-##	foreach my $region (@TARGET_REGION[0..3]){
-##		push(@$gp_list, &ccse_positive_death($ccse_country, $death_country, $region, 0));
-##		push(@$gp_list, &ccse_positive_ern($ccse_country, $region, 0));
-##	}
+	);
 }
 
-my @docomo_base = ("感染拡大前比", "緊急事態宣言前比"); #, "前年同月比", "前日比"); 
-my $start_date = 0;
-my $docomo_cdp = csv2graph->new($defdocomo::DOCOMO_DEF); 						# Load Johns Hopkings University CCSE
-$docomo_cdp->load_csv($defdocomo::DOCOMO_DEF);
-if(0){
+#
+#
+#
+if($golist{docomo}){
+	my $docomo_gp_list = [];
+	dp::dp "DOCOMO\n";
+	my @docomo_base = ("感染拡大前比", "緊急事態宣言前比"); #, "前年同月比", "前日比"); 
+	my $start_date = 0;
+	my $docomo_cdp = csv2graph->new($defdocomo::DOCOMO_DEF); 						# Load Johns Hopkings University CCSE
+	$docomo_cdp->load_csv($defdocomo::DOCOMO_DEF);
+
 	my @tokyo = (qw (東京都));
 	my @kanto = (qw (東京都 神奈川県 千葉県 埼玉県 茨木県 栃木県 群馬県));
 	my @kansai = (qw (大阪府 京都府 兵庫県 奈良県 和歌山県 滋賀県));
@@ -337,7 +443,7 @@ if(0){
 	foreach my $region ("~東京", "~大阪"){
 		foreach my $base (@docomo_base){
 			foreach my $static ("", "rlavr"){
-				push(@$gp_list, , csv2graph->csv2graph_list_gpmix(
+				push(@$docomo_gp_list, , csv2graph->csv2graph_list_gpmix(
 					{gdp => $defdocomo::DOCOMO_GRAPH, dsc => "Tokyo docmo $base $static $region", start_date => $start_date, 
 						ymin => "", ymax => "", ylabel => "number", lank => [1,20], label_subs => '#.*$',
 						additional_plot => $additional_plot_item{docomo}, 
@@ -349,11 +455,10 @@ if(0){
 			}
 		}
 	}
-}
 if(0){
 	foreach my $base (@docomo_base){
 		foreach my $static ("", "rlavr"){
-			push(@$gp_list, , csv2graph->csv2graph_list_gpmix(
+			push(@$docomo_gp_list, , csv2graph->csv2graph_list_gpmix(
 				{gdp => $defdocomo::DOCOMO_GRAPH, dsc => "docmo $base $static", start_date => $start_date, 
 					ymin => "", ymax => "", ylabel => "number", lank => [1,15], label_subs => '#.*$',
 					additional_plot => $additional_plot_item{docomo}, 
@@ -370,7 +475,7 @@ if(0){
 		foreach my $static ("", "rlavr"){
 			my $width = 6;
 			for(my $n = 1; $n < 12; $n += $width){
-				push(@$gp_list, , csv2graph->csv2graph_list_gpmix(
+				push(@$docomo_gp_list, , csv2graph->csv2graph_list_gpmix(
 					{gdp => $defdocomo::DOCOMO_GRAPH, dsc => "Tokyo docmo $base $static $n-" . ($n+$width-1), start_date => $start_date, 
 						ymin => "", ymax => "", ylabel => "number", lank => [$n, ($n+$width-1)], label_subs => '#.*$',
 						additional_plot => $additional_plot_item{docomo}, 
@@ -385,7 +490,15 @@ if(0){
 		}
 	}
 }
-
+	csv2graph->gen_html_by_gp_list($docomo_gp_list, {						# Generate HTML file with graphs
+			html_tilte => "COVID-19 related data visualizer ",
+			src_url => "src_url",
+			html_file => "$HTML_PATH/docomo.html",
+			png_path => $PNG_PATH // "png_path",
+			png_rel_path => $PNG_REL_PATH // "png_rel_path",
+			data_source => "data_source",
+		}
+	);
 }
 
 
