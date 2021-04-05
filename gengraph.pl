@@ -309,7 +309,8 @@ if($golist{pref}){
 
 	my $region = "Japan";
 	foreach my $start_date (0, -93){
-		push(@$pd_list, &ccse_positive_death($ccse_country, $death_country, $region, $start_date));
+		#push(@$pd_list, &ccse_positive_death($ccse_country, $death_country, $region, $start_date));
+		push(@$pd_list, &ccse_positive_death_ern($ccse_country, $death_country, $region, $start_date));
 		#push(@$pd_list, &ccse_positive_ern($ccse_country, $region, 0));
 	}
 
@@ -331,12 +332,13 @@ if($golist{pref}){
 	my $target_keys = [$jp_rlavr->select_keys({item => $positive}, 0)];	# select data for target_keys
 	foreach my $start_date (0){ # , -28){
 		my $sorted_keys = [$jp_rlavr->sort_csv($jp_rlavr->{csv_data}, $target_keys, $start_date, -14)];
-		my $end = min(50, scalar(@$sorted_keys) - 1); 
+		my $end = min(1, scalar(@$sorted_keys) - 1); 	# 50
 		#dp::dp join(",", @$sorted_keys[0..$end]) . "\n";
 		foreach my $pref (@$sorted_keys[0..$end]){
 			$pref =~ s/[\#\-].*$//;
 			dp::dp "$pref\n";
-			push(@$pd_list, &japan_positive_death($jp_cdp, $pref, $start_date));
+			#push(@$pd_list, &japan_positive_death($jp_cdp, $pref, $start_date));		# 2021.04.05 
+			push(@$pd_list, &japan_positive_death_ern($jp_cdp, $pref, $start_date));
 		}
 	}
 	csv2graph->gen_html_by_gp_list($pd_list, {						# Generate HTML file with graphs
@@ -522,6 +524,7 @@ sub	ccse_positive_death
 	my $drate = sprintf("%.2f%%", 100 * $death_max / $y1max);
 	#dp::dp "y0max:$y0max y1max:$y1max, ymax:$ymax, y2max:$y2max death_max:$death_max\n";
 
+
 	my @list = ();
 	push(@list, csv2graph->csv2graph_list_gpmix(
 		{gdp => $defccse::CCSE_GRAPH, dsc => "[$region] new cases and deaths [$drate]", start_date => $start_date, 
@@ -531,6 +534,72 @@ sub	ccse_positive_death
 			graph_items => [
 			{cdp => $conf_cdp,  item => {$cntry => "$region",}, static => "rlavr", graph_def => $line_thick},
 			{cdp => $death_cdp, item => {$cntry => "$region",}, static => "rlavr", axis => "y2", graph_def => $box_fill},
+			{cdp => $conf_cdp,  item => {$cntry => "$region",}, static => "", graph_def => $line_thin_dot,},
+			{cdp => $death_cdp, item => {$cntry => "$region",}, static => "", axis => "y2", graph_def => $line_thin_dot},
+			],
+		},
+	));
+	return (@list);
+}
+
+sub	ccse_positive_death_ern
+{
+	my($conf_cdp, $death_cdp, $region, $start_date) = @_;
+
+	my $p = {start_date => $start_date};
+	my $conf_region = $conf_cdp->reduce_cdp_target({$prov => "", $cntry => $region});
+	my $y1max = $conf_region->max_rlavr($p);
+	my $y2max = int($y1max * $y2y1rate / 100 + 0.9999999); 
+	my $ymax = csvlib::calc_max2($y1max);			# try to set reasonable max 
+
+	my $death_region = $death_cdp->reduce_cdp_target({$prov => "", $cntry => $region});
+	# $death_region->rolling_average();
+	my $death_max = $death_region->max_rlavr($p);
+
+	my $drate = sprintf("%.2f%%", 100 * $death_max / $y1max);
+	#dp::dp "y0max:$y0max y1max:$y1max, ymax:$ymax, y2max:$y2max death_max:$death_max\n";
+
+	my $ccse_ern = $conf_region->calc_ern();
+	$ccse_ern->dump();
+	my $csvp = $ccse_ern->{csv_data};
+	my $key = "$region--conf";
+	dp::dp "[$key]\n";
+	my $csv_region = $csvp->{$key};
+	my $size = scalar(@$csv_region);
+	for(my $i = 0; $i < $size; $i++){
+		$csv_region->[$i] = $csv_region->[$i] * $y2max / 3;
+		#printf("%.2f ", $csv_pref->[$i]);
+	}
+
+	my @adp = ();
+	for(my $i = 0; $i < 3; $i += 0.2){
+		next if($i == 0);
+
+		my $ern = sprintf("%.3f", $y2max * $i / 3);
+		my $dt = "lc 'royalblue' dt (3,7)";
+		my $title = "notitle";
+		my $f = int($i * 100) % 100;
+		$f = sprintf("%.2f", $i);
+		#dp::dp sprintf("ADP: %.5f: %.5f %d", $i,  int($i), $f)  . "\n";
+		if($f == int($f)){
+			#dp::dp "--> $i\n";
+			$dt = "lc 'red' dt (5,5)";
+			$title = "title 'ern=$i'";
+		}
+		push(@adp, "$ern axis x1y2 with lines $title lw 1 $dt");
+	}
+	my $add_plot = join(",", @adp);
+
+	my @list = ();
+	push(@list, csv2graph->csv2graph_list_gpmix(
+		{gdp => $defccse::CCSE_GRAPH, dsc => "[$region] new cases and deaths [$drate]", start_date => $start_date, 
+			ymax => $ymax, y2max => $y2max, y2min => 0,
+			ylabel => "confermed", y2label => "deaths (max=$y2y1rate% of rlavr confermed)",
+			additional_plot => $add_plot,
+			graph_items => [
+			{cdp => $conf_cdp,  item => {$cntry => "$region",}, static => "rlavr", graph_def => $line_thick},
+			{cdp => $death_cdp, item => {$cntry => "$region",}, static => "rlavr", axis => "y2", graph_def => $box_fill},
+			{cdp => $ccse_ern,  item => {}, static => "", axis => "y2", graph_def => $line_thick_dot},
 			{cdp => $conf_cdp,  item => {$cntry => "$region",}, static => "", graph_def => $line_thin_dot,},
 			{cdp => $death_cdp, item => {$cntry => "$region",}, static => "", axis => "y2", graph_def => $line_thin_dot},
 			],
@@ -576,6 +645,73 @@ sub	japan_positive_death
 	return (@list);
 }
 
+sub	japan_positive_death_ern
+{ 
+	my($jp_cdp, $pref, $start_date) = @_;
+
+
+	my $p = {start_date => $start_date};
+	my $jp_pref = $jp_cdp->reduce_cdp_target({item => $positive, prefectureNameJ => $pref});
+	my $y1max = $jp_pref->max_rlavr($p);
+	my $y2max = int($y1max * $y2y1rate / 100 + 0.9999999); 
+
+	my $ymax = csvlib::calc_max2($y1max);			# try to set reasonable max 
+	my $death_pref = $jp_cdp->reduce_cdp_target({item => $deaths, prefectureNameJ => $pref});
+	my $death_max = $death_pref->max_rlavr($p);
+
+	my $jp_ern   = $jp_pref->calc_ern();
+	$jp_ern->dump();
+	my $csvp = $jp_ern->{csv_data};
+	my $csv_pref = $csvp->{$pref. "#" . $positive};
+	dp::dp "jp_ern: " . $jp_ern . "\n";
+	dp::dp "csvp: " . $csvp . "\n";
+	dp::dp "csv_pref: " . $csv_pref . "\n";
+	dp::dp "ERN: $pref: " ;
+	my $size = scalar(@$csv_pref);
+	for(my $i = 0; $i < $size; $i++){
+		$csv_pref->[$i] = $csv_pref->[$i] * $y2max / 3;
+		#printf("%.2f ", $csv_pref->[$i]);
+	}
+
+	my $drate = sprintf("%.2f%%", 100 * $death_max / $y1max);
+	dp::dp "y1max:$y1max, ymax:$ymax, y2max:$y2max death_max:$death_max\n";
+
+	my @adp = ();
+	for(my $i = 0; $i < 3; $i += 0.2){
+		next if($i == 0);
+
+		my $ern = sprintf("%.3f", $y2max * $i / 3);
+		my $dt = "lc 'royalblue' dt (3,7)";
+		my $title = "notitle";
+		my $f = sprintf("%.2f", $i);
+		#dp::dp sprintf("ADP: %.5f: %.5f %d", $i,  int($i), $f)  . "\n";
+		if($f == int($f)){
+			#dp::dp "--> $i\n";
+			$dt = "lc 'red' dt (5,5)";
+			$title = "title 'ern=$i'";
+		}
+		push(@adp, "$ern axis x1y2 with lines $title lw 1 $dt");
+	}
+	my $add_plot = join(",", @adp);
+
+	my @list = ();
+	push(@list, csv2graph->csv2graph_list_gpmix(
+		{gdp => $defjapan::JAPAN_GRAPH, dsc => "Japan [$pref] new cases and deaths [$drate]", start_date => $start_date, 
+			ymax => $ymax, y2max => $y2max, ymin => 0, y2min => 0,
+			ylabel => "confermed", y2label => "deaths (max=$y2y1rate% of rlavr confermed)",
+			additional_plot => $add_plot,
+			graph_items => [
+			{cdp => $jp_cdp, item => {item => $positive, prefectureNameJ => $pref}, static => "rlavr", graph_def => $line_thick},
+			{cdp => $jp_cdp, item => {item => $deaths,   prefectureNameJ => $pref}, static => "rlavr", axis => "y2", graph_def => $box_fill},
+			#{cdp => $jp_ern, item => {item => $positive, prefectureName => $pref}, static => "ern",  axis => "y2", graph_def => $line_thick},
+			{cdp => $jp_ern, item => {}, static => "",  axis => "y2", graph_def => $line_thick_dot},
+			{cdp => $jp_cdp, item => {item => $positive, prefectureNameJ => $pref}, static => "", graph_def => $line_thin_dot,},
+			{cdp => $jp_cdp, item => {item => $deaths,   prefectureNameJ => $pref}, static => "", axis => "y2", graph_def => $line_thin_dot},
+			],
+		},
+	));
+	return (@list);
+}
 #
 #
 #

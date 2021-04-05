@@ -1355,7 +1355,7 @@ _EOD_
 		my $graph = $gp->{graph} // ($gdp->{graph} // $DEFAULT_GRAPH);
 		my $y2_graph = "";
 		my ($key, $axis_flag, $graph_def) = split($LABEL_DLM, $label[$i]);
-		#dp::dp "[$graph_def]\n";
+		dp::dp "[$graph_def]\n";
 		if($graph_def =~ /^#D#/){
 			if(defined $GRAPH_KIND->{$graph_def}){
 				$graph_def = $GRAPH_KIND->{$graph_def} ;
