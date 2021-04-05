@@ -560,7 +560,7 @@ sub	ccse_positive_death_ern
 	#dp::dp "y0max:$y0max y1max:$y1max, ymax:$ymax, y2max:$y2max death_max:$death_max\n";
 
 	my $ccse_ern = $conf_region->calc_ern();
-	$ccse_ern->dump();
+	#$ccse_ern->dump();
 	my $csvp = $ccse_ern->{csv_data};
 	my $key = "$region--conf";
 	dp::dp "[$key]\n";
@@ -570,6 +570,7 @@ sub	ccse_positive_death_ern
 		$csv_region->[$i] = $csv_region->[$i] * $y2max / 3;
 		#printf("%.2f ", $csv_pref->[$i]);
 	}
+	$ccse_ern->rename_key($key, "$region-ern");
 
 	my @adp = ();
 	for(my $i = 0; $i < 3; $i += 0.2){
@@ -672,6 +673,13 @@ sub	japan_positive_death_ern
 		$csv_pref->[$i] = $csv_pref->[$i] * $y2max / 3;
 		#printf("%.2f ", $csv_pref->[$i]);
 	}
+	foreach my $key (keys %$csvp){
+		my $new_key = $key;
+		$new_key =~ s/#.*$/#ern/;
+		dp::dp "rename $key -> $new_key\n";
+		$jp_ern->rename_key($key, $new_key);
+	}
+	$jp_ern->dump();
 
 	my $drate = sprintf("%.2f%%", 100 * $death_max / $y1max);
 	dp::dp "y1max:$y1max, ymax:$ymax, y2max:$y2max death_max:$death_max\n";

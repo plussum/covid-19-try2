@@ -360,8 +360,38 @@ sub	add_key_items
 	}
 	#dp::dp "add key : " . join(",", @$item_name_list) . "\n";
 
-
 	return 1;
+}
+
+sub	rename_key
+{
+	my $self = shift;
+	my ($key_name, $new_name) = @_;
+
+	my $csvp = $self->{csv_data};
+	foreach my $k (keys %$csvp){
+		dp::dp "[$k]\n";
+	}
+	if(! ($csvp->{$key_name} // "")){
+		dp::WARNING "$key_name is no in the data\n";
+		return 1;
+	}
+
+	foreach my $item_name ("key_items", "csv_data", "src_csv"){
+		dp::dp "$item_name: $key_name -> $new_name\n";
+		$self->{$item_name}->{$new_name} = $self->{$item_name}->{$key_name};
+		delete($self->{$item_name}->{$key_name});
+	}
+
+	my $load_order = $self->{load_order};
+	for(my $i = 0; $i < scalar(@$load_order); $i++){
+		if($load_order->[$i] eq $key_name){
+			$load_order->[$i] = $new_name;
+			last;
+		}
+	}
+
+	return 0;
 }
 
 #
