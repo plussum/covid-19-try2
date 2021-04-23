@@ -43,7 +43,7 @@ my $TKO_PATH = "$config::WIN_PATH/tokyokeizai/covid19/data";
 our $JAPAN_DEF = 
 {
 	id => "japan",
-	src_info => "Japan COVID-19 data (Tokyo Keizai)",
+	src_info => "Japan COVID-19 data (Toyo Keizai)",
 	main_url => "-- tokyo keizai data --- ",
 	src_file => "$TKO_PATH/prefectures.csv",
 	src_url => 	"--- src url ---",		# set

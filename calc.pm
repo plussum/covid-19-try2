@@ -248,6 +248,7 @@ sub	rolling_average
 	my $avr_date = $self->{avr_date};
 	foreach my $key (keys %$csvp){
 		my $dp = $csvp->{$key};
+		## dp::dp join(",", "rlavr before", $key, @$dp) . "\n" ;
 		for(my $i = scalar(@$dp) - 1; $i >= $avr_date; $i--){
 			my $tl = 0;
 			for(my $j = $i - $avr_date + 1; $j <= $i; $j++){
@@ -259,6 +260,7 @@ sub	rolling_average
 			my $avr = sprintf("%.3f", $tl / $avr_date);
 			$dp->[$i] = $avr;
 		}
+		## dp::dp join(",", "rlavr after", $key, @$dp) . "\n";
 	}
 	return $csvp;
 }	
@@ -432,11 +434,14 @@ sub	ern
 		my $dp = $csvp->{$key};
 		my @ern = ();
 		my $dt = 0;
+ 		## dp::dp join(",", "ern before", $key, @$dp) . "\n";
 		for($dt = 0; $dt < $rate_term; $dt++){
 			my $ppre = $ip * $dp->[$dt+$lp+$ip];
 			my $pat = 0;
+			my @db_dp = ();
 			for(my $d = $dt + 1; $d <= ($dt + $ip); $d++){
 				$pat += $dp->[$d];
+				push(@db_dp, $dp->[$d]);
 			}
 			# print "$country $dt: $ppre / $pat\n";
 			if($pat > 1){	# 0 -> 1
@@ -449,12 +454,14 @@ sub	ern
 				dp::WARNING "ern bigger than 100 : ern:$ern[$dt] = ppre($ppre) / pat($pat)\n" if($VERBOSE);
 			}
 			# print "$country $dt: $ppre / $pat\n";
+			#dp::dp join(",", $key, $dt, $lp, $ip, $ppre, $pat, $ern[$dt], @db_dp) . "\n";
 		}
 		$self->{NaN_start} = $dt;
 		for(; $dt <= $date_number; $dt++){
 			$ern[$dt] = "NaN";
 		}
 		@$dp = @ern;			# overwrite csv data by ern
+		## dp::dp join(",", "ern after", $key, @$dp) . "\n";
 	}
 	return $self;
 }	
@@ -506,11 +513,37 @@ sub	max_rlavr
 	#$self->dump({items => 100});
 	my $target = $self->calc_rlavr($p);
 	#$target->dump({items => 100});
-	my $max = $target->max_val();
+	my $max = $target->max_val($p);
 
 	#dp::dp "$max\n";
 	return $max;
 }
 
+sub	last_data
+{
+	my $self = shift;
+	my ($key, $p) = @_;
+	my $date_list = $self->{date_list};
+	my $dates = $self->{dates};
+
+	my $target_col = (defined $p && (defined $p->{target_cols})) ? $p->{target_cols} : "";
+	my $start_date = (defined $p && (defined $p->{start_date})) ? $p->{start_date} : "";
+	my $end_date = (defined $p && (defined $p->{end_date})) ? $p->{end_date} : "";
+	
+	my $dt_start = util::date_pos($start_date, $date_list->[0], $dates, $date_list);	# 2020-01-02 -> array pos
+	my $dt_end   = util::date_pos($end_date,   $date_list->[$dates], $dates, $date_list);		# 2021-01-02 -> array pos
+	#dp::dp "start_date: $start_date end_date:$end_date dt_start:$dt_start dt_end:$dt_end \n";
+
+	my $csvp = $self->{csv_data};
+	if($target_col){
+		my $cdp = $self->reduce_cdp_target($target_col // ""); # Select Country
+		$csvp = $cdp->{csv_data};
+	}
+
+	my $v = $csvp->{$key}->[$dt_end] // -1;
+	dp::dp "$dt_end: $v  $start_date - $end_date\n";
+
+	return $v;
+}
 
 1;

@@ -232,6 +232,7 @@ sub	max_val {return calc::max_val(@_);}
 sub	calc_pop {return calc::calc_pop(@_);}
 sub	population {return calc::population(@_);}
 sub	max_rlavr {return calc::max_rlavr(@_);}
+sub	last_data {return calc::last_data(@_);}
 
 # select
 sub	gen_record_key {return select::gen_record_key(@_);} 
@@ -370,7 +371,7 @@ sub	rename_key
 
 	my $csvp = $self->{csv_data};
 	foreach my $k (keys %$csvp){
-		dp::dp "[$k]\n";
+		#dp::dp "[$k]\n";
 	}
 	if(! ($csvp->{$key_name} // "")){
 		dp::WARNING "$key_name is no in the data\n";
@@ -378,7 +379,7 @@ sub	rename_key
 	}
 
 	foreach my $item_name ("key_items", "csv_data", "src_csv"){
-		dp::dp "$item_name: $key_name -> $new_name\n";
+		#dp::dp "$item_name: $key_name -> $new_name\n";
 		$self->{$item_name}->{$new_name} = $self->{$item_name}->{$key_name};
 		delete($self->{$item_name}->{$key_name});
 	}
@@ -557,6 +558,8 @@ sub gen_html_by_gp_list
 
 	#dp::dp  "Number of Graph Parameters: " .scalar(@$graph_params) . "\n";
 	foreach my $gp (@$graph_params){
+		next if(! ($gp//""));
+
 		print HTML "<span class=\"c\">$now</span><br>\n";
 		print HTML '<img src="' . $png_rel_path . "/" . $gp->{plot_png} . '">' . "\n";
 		print HTML "<br>\n";
@@ -1385,7 +1388,7 @@ _EOD_
 		my $graph = $gp->{graph} // ($gdp->{graph} // $DEFAULT_GRAPH);
 		my $y2_graph = "";
 		my ($key, $axis_flag, $graph_def) = split($LABEL_DLM, $label[$i]);
-		dp::dp "[$graph_def]\n";
+		#dp::dp "[$graph_def]\n";
 		if($graph_def =~ /^#D#/){
 			if(defined $GRAPH_KIND->{$graph_def}){
 				$graph_def = $GRAPH_KIND->{$graph_def} ;
