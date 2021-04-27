@@ -392,33 +392,6 @@ if($golist{ccse}) {
 
 	my $graph_kind = $csv2graph::GRAPH_KIND;
 
-	#
-	#	ccse Japan
-	#
-#	my $region = "Japan";
-#	foreach my $start_date (0, -93){
-#	}
-#	my $target_keys = [$jp_rlavr->select_keys({item => $positive}, 0)];	# select data for target_keys
-
-#	my $ccse_rlavr = $ccse_country->calc_rlavr($ccse_country);
-#	foreach my $start_date (0){ # , -28){
-#		my $sorted_keys = [$ccse->sort_csv($ccse_rlavr->{csv_data}, $ccse_rlavr->{key_items}, $start_date, -14)];
-#		my $end = min(2, scalar(@$sorted_keys) - 1); 	# 50
-#		#dp::dp join(",", @$sorted_keys[0..$end]) . "\n";
-#		foreach my $region (@$sorted_keys[0..$end]){
-#			$region =~ s/[\#\-].*$//;
-#			dp::dp "$region\n";
-#			push(@$ccse_gp_list, &ccse_positive_death_ern($ccse_country, $region, $start_date));
-#		}
-#	}
-#
-	##############
-#	my $region = "Japan";
-#	foreach my $start_date (0, -93){
-#		push(@$ccse_gp_list, &ccse_positive_death($ccse_country, $death_country, $region, $start_date));
-#		push(@$ccse_gp_list, &ccse_positive_ern($ccse_country, $region, 0));
-#	}
-
 	my $start_date = 0;
 	my $end_target = $#TARGET_REGION;
 	foreach my $region (@TARGET_REGION[0..$end_target]){
@@ -577,6 +550,9 @@ sub	search_cdp_key
 {
 	my($cdp, $key, $post) = @_;
 
+	#$cdp->dump();
+	#dp::dp "key:$key post:$post\n"; 
+
 	my $csvp = $cdp->{csv_data};
 	my @keys = ($key);
 	if($key =~ /,/){
@@ -598,31 +574,48 @@ sub	search_cdp_key
 	return ""; 
 }
 
-
 sub	ccse_positive_death_ern
 {
 	my($conf_cdp, $death_cdp, $region, $start_date) = @_;
 
-	my $p = {start_date => $start_date};
 	my $conf_region = $conf_cdp->reduce_cdp_target({$prov => "", $cntry => $region});
+	my $death_region = $death_cdp->reduce_cdp_target({$prov => "", $cntry => $region});
+	return &positive_death_ern($conf_region, $death_region, $region, $start_date, "--conf", "--death");
+}
+
+sub	japan_positive_death_ern
+{ 
+	my($jp_cdp, $pref, $start_date) = @_;
+
+	my $jp_pref = $jp_cdp->reduce_cdp_target({item => $positive, prefectureNameJ => $pref});
+	my $death_pref = $jp_cdp->reduce_cdp_target({item => $deaths, prefectureNameJ => $pref});
+
+	return &positive_death_ern($jp_pref, $death_pref, $pref, $start_date, "#testedPositive", "#deaths");
+}
+
+sub	positive_death_ern
+{
+	my($conf_region, $death_region, $region, $start_date, $conf_post_fix, $death_post_fix) = @_;
+
+	#$conf_region->dump();
+	#$death_region->dump();
+	my $p = {start_date => $start_date};
 	my $y1max = $conf_region->max_rlavr($p);
 	my $y2max = int($y1max * $y2y1rate / 100 + 0.9999999); 
 	my $ymax = csvlib::calc_max2($y1max);			# try to set reasonable max 
 
-	my $death_region = $death_cdp->reduce_cdp_target({$prov => "", $cntry => $region});
 	my $death_rlavr = $death_region->calc_rlavr();
 	my $death_max = $death_region->max_rlavr($p);
 
 	my $drate = sprintf("%.2f%%", 100 * $death_max / $y1max);
 	#dp::dp "y0max:$y0max y1max:$y1max, ymax:$ymax, y2max:$y2max death_max:$death_max\n";
 
-	my $ccse_rlavr = $conf_region->calc_rlavr();
-	my $ccse_ern = $conf_region->calc_ern();
-	#$ccse_rlavr->dump();
-	my $csvp = $ccse_ern->{csv_data};
+	my $rlavr = $conf_region->calc_rlavr();
+	my $ern = $conf_region->calc_ern();
+	#$rlavr->dump();
+	my $csvp = $ern->{csv_data};
 	#my $key = "$region--conf";
-	my $post_fix = "--conf";
-	my $key = &search_cdp_key($conf_region, $region, $post_fix);
+	my $key = &search_cdp_key($conf_region, $region, $conf_post_fix);
 	dp::dp "[$key]\n";
 	if(! $key || !($csvp->{$key}//"")){
 		dp::ABORT "$key undefined \n";
@@ -634,7 +627,7 @@ sub	ccse_positive_death_ern
 		$csv_region->[$i] = $csv_region->[$i] * $y2max / 3;
 		#printf("%.2f ", $csv_pref->[$i]);
 	}
-	$ccse_ern->rename_key($key, "$region-ern");
+	$ern->rename_key($key, "$region-ern");
 
 	my @adp = ();
 	for(my $i = 0; $i < 3; $i += 0.2){
@@ -658,7 +651,7 @@ sub	ccse_positive_death_ern
 	## POP
 	##
 	my $pop_key = $key; # $region;
-	$pop_key =~ s/$post_fix//;
+	$pop_key =~ s/$conf_post_fix//;
 	#$pop_key =~ s/[-#].*$//;
 	#$pop_key =~ s/"//g;
 	my $population = $POP{$pop_key};
@@ -668,7 +661,7 @@ sub	ccse_positive_death_ern
 	}
 	my $pop_100k = int($population / 100000);
 	my $pop_max = $ymax / $pop_100k;
-	my $pop_last = $ccse_rlavr->last_data($key);
+	my $pop_last = $rlavr->last_data($key);
 	#dp::dp "[$pop_last]\n";
 	$pop_last  = sprintf("%.1f", $pop_last / $pop_100k);
 	my $pop_dlt = 2.5;
@@ -739,7 +732,7 @@ sub	ccse_positive_death_ern
 	}
 
 	#dp::dp "death_max: $death_max, pop_100k: $pop_100k, dn_unit: $dn_unit, unit_no: $unit_no\n";
-	my $dkey = &search_cdp_key($death_region, $region, "--death");
+	my $dkey = &search_cdp_key($death_region, $region, $death_post_fix);
 	#dp::dp "region:$region dkey[$dkey]\n";
 	for(my $i = 0; $i < $unit_no; $i++){
 		$death_pop[$i] = $death_rlavr->dup();
@@ -779,34 +772,29 @@ sub	ccse_positive_death_ern
 			$death_pop[$i]->rename_key($dkey, sprintf("$dkey-%.1f/1M", $d100k * 10));
 		}
 		push(@$graph_items, 
-			{cdp => $death_pop[$i], item => {$cntry => "$region",}, static => "", axis => "y2", graph_def => $graph_type},
+			{cdp => $death_pop[$i], item => {}, static => "", axis => "y2", graph_def => $graph_type},
 		);
 	}
 	push(@$graph_items, 
-			{cdp => $conf_cdp,  item => {$cntry => "$region",}, static => "rlavr", graph_def => ("$line_thick lc rgb \"" . $gcl[3] . "\"")},
-			{cdp => $ccse_ern,  item => {}, static => "", axis => "y2", graph_def => ("$line_thick_dot lc rgb \"" . $gcl[0] . "\"")},
-			{cdp => $conf_cdp,  item => {$cntry => "$region",}, static => "", graph_def => ("$line_thin_dot lc rgb \"" . $gcl[3] . "\""),},
-			{cdp => $death_cdp, item => {$cntry => "$region",}, static => "", axis => "y2", graph_def => ("$line_thin_dot lc rgb \"" . $color[0] . "\"")},
+			{cdp => $conf_region, item => {}, static => "rlavr", graph_def => ("$line_thick lc rgb \"" . $gcl[3] . "\"")},
+			{cdp => $ern,  item => {}, static => "", axis => "y2", graph_def => ("$line_thick_dot lc rgb \"" . $gcl[0] . "\"")},
+			{cdp => $conf_region,  item => {}, static => "", graph_def => ("$line_thin_dot lc rgb \"" . $gcl[3] . "\""),},
+			{cdp => $death_region, item => {}, static => "", axis => "y2", graph_def => ("$line_thin_dot lc rgb \"" . $color[0] . "\"")},
 	);
 
 	my @list = ();
 	my $death_last = $death_rlavr->last_data($dkey);
-	my $dpop = sprintf("dp-mx:%.2f dp-lst:%.2f", $death_max / $pop_100k, $death_last / $pop_100k);
+	my $pop_dsc = sprintf("pp[%.1f,%.1f] dp[%.2f,%.2f](max,lst) pop:%d",
+		$pop_max, $pop_last, $death_max / $pop_100k, $death_last / $pop_100k, $pop_100k);
 	dp::dp "deaths: $death_last, $death_max\n";
 	my $rg = $key;
 	$rg =~ s/--.*$//;
 	push(@list, csv2graph->csv2graph_list_gpmix(
-		{gdp => $defccse::CCSE_GRAPH, dsc => "[$rg] dr:$drate pp-mx:$pop_max pp-lst:$pop_last $dpop ", start_date => $start_date, 
+		{gdp => $defccse::CCSE_GRAPH, dsc => "[$rg] $pop_dsc dr:$drate", start_date => $start_date, 
 			ymax => $ymax, y2max => $y2max, y2min => 0,
 			ylabel => "confermed", y2label => "deaths (max=$y2y1rate% of rlavr confermed)" ,
 			additional_plot => $add_plot,
-			graph_items => [@$graph_items
-#			{cdp => $conf_cdp,  item => {$cntry => "$region",}, static => "rlavr", graph_def => $line_thick},
-#			{cdp => $death_cdp, item => {$cntry => "$region",}, static => "rlavr", axis => "y2", graph_def => $box_fill},
-#			{cdp => $ccse_ern,  item => {}, static => "", axis => "y2", graph_def => $line_thick_dot},
-#			{cdp => $conf_cdp,  item => {$cntry => "$region",}, static => "", graph_def => $line_thin_dot,},
-#			{cdp => $death_cdp, item => {$cntry => "$region",}, static => "", axis => "y2", graph_def => $line_thin_dot},
-			],
+			graph_items => [@$graph_items],
 		},
 	));
 	return (@list);
@@ -849,10 +837,9 @@ sub	japan_positive_death
 	return (@list);
 }
 
-sub	japan_positive_death_ern
+sub	_japan_positive_death_ern
 { 
 	my($jp_cdp, $pref, $start_date) = @_;
-
 
 	my $p = {start_date => $start_date};
 	my $jp_pref = $jp_cdp->reduce_cdp_target({item => $positive, prefectureNameJ => $pref});
