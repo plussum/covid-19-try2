@@ -542,7 +542,7 @@ sub	last_data
 	}
 
 	my $v = $csvp->{$key}->[$dt_end] // -1;
-	dp::dp "$dt_end: $v  $start_date - $end_date\n";
+	#dp::dp "$dt_end: $v  $start_date - $end_date\n";
 
 	return $v;
 }
