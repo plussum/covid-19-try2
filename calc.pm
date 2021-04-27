@@ -241,6 +241,7 @@ sub	calc_items
 #
 sub	rolling_average
 {
+	#csvlib::disp_caller(1..3);
 	my $self = shift;
 	my($csvp) = @_;
 	$csvp = $csvp // $self->{csv_data};

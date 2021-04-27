@@ -138,7 +138,7 @@ my @TARGET_PREF = ("Tokyo", "Kanagawa", "Chiba", "Saitama", "Kyoto", "Osaka");
 my @cdp_list = ($defamt::AMT_DEF, $defccse::CCSE_DEF, $MARGE_CSV_DEF, 
 					$deftokyo::TOKYO_DEF, $defjapan::JAPAN_DEF, $deftkow::TKOW_DEF, $defdocomo::DOCOMO_DEF); 
 
-my $cmd_list = {"amt-jp" => 1, "amt-jp-pref" => 1, "tkow-ern" => 1, try => 1, "pref-ern" => 1, pref => 1, docomo => 1};
+my $cmd_list = {"amt-jp" => 1, "amt-jp-pref" => 1, "tkow-ern" => 1, try => 1, "pref-ern" => 1, pref => 1, docomo => 1, upload => 1};
 
 ####################################
 #
@@ -147,6 +147,7 @@ my $cmd_list = {"amt-jp" => 1, "amt-jp-pref" => 1, "tkow-ern" => 1, try => 1, "p
 ####################################
 my %golist = ();
 my $all = "";
+
 if($#ARGV >= 0){
 	for(@ARGV){
 		if(/-all/){
@@ -419,7 +420,7 @@ if($golist{ccse}) {
 #	}
 
 	my $start_date = 0;
-	my $end_target = $#TARGET_REGION;
+	my $end_target = 5;#$#TARGET_REGION;
 	foreach my $region (@TARGET_REGION[0..$end_target]){
 		dp::dp "$region\n";
 		foreach my $start_date(0, -62){
@@ -621,7 +622,7 @@ sub	ccse_positive_death_ern
 	my $csvp = $ccse_ern->{csv_data};
 	#my $key = "$region--conf";
 	my $post_fix = "--conf";
-	my $key = search_cdp_key($conf_region, $region, $post_fix);
+	my $key = &search_cdp_key($conf_region, $region, $post_fix);
 	dp::dp "[$key]\n";
 	if(! $key || !($csvp->{$key}//"")){
 		dp::ABORT "$key undefined \n";
@@ -653,7 +654,9 @@ sub	ccse_positive_death_ern
 		push(@adp, "$ern axis x1y2 with lines $title lw 1 $dt");
 	}
 
+	##
 	## POP
+	##
 	my $pop_key = $key; # $region;
 	$pop_key =~ s/$post_fix//;
 	#$pop_key =~ s/[-#].*$//;
@@ -663,11 +666,11 @@ sub	ccse_positive_death_ern
 		dp::ABORT "POP: $pop_key, not defined\n";
 		$population = 100000;
 	}
-	my $positive_per_100k = int($population / 100000);
-	my $pop_max = $ymax / $positive_per_100k;
+	my $pop_100k = int($population / 100000);
+	my $pop_max = $ymax / $pop_100k;
 	my $pop_last = $ccse_rlavr->last_data($key);
 	#dp::dp "[$pop_last]\n";
-	$pop_last  = sprintf("%.1f", $pop_last / $positive_per_100k);
+	$pop_last  = sprintf("%.1f", $pop_last / $pop_100k);
 	my $pop_dlt = 2.5;
 	#dp::dp "$pop_max\n";
 	if($pop_max > 15){
@@ -684,9 +687,9 @@ sub	ccse_positive_death_ern
 		}
 		#dp::dp "$pop_max, $pmx: $digit : $pop_dlt\n";
 	}
-	#dp::dp "POP/100k : $region: $positive_per_100k "  . sprintf("    %.2f", $pop_max) . "\n";
+	#dp::dp "POP/100k : $region: $pop_100k "  . sprintf("    %.2f", $pop_max) . "\n";
 	for(my $i = $pop_dlt; $i < $pop_max; $i +=  $pop_dlt){
-		my $pop = $i * $positive_per_100k;
+		my $pop = $i * $pop_100k;
 		my $dt = "lc 'navy' dt (5,5)";
 		my $lw = 1;
 		if($pop_dlt < 5 && (($i*10) % 10) == 0){
@@ -704,19 +707,92 @@ sub	ccse_positive_death_ern
 	}
 	my $add_plot = join(",", @adp);
 	$pop_max = sprintf("%.1f", $pop_max);
+
+	#
+	#	POP Death
+	#
+	#my $death_max = $death_region->max_rlavr($p);
+	my $d100k = 0.5;
+	my @death_pop = ();
+	my $dn_unit = $pop_100k * $d100k;		# 100deaths / 100K
+	my $death_max2 = csvlib::calc_max2($death_max);			# try to set reasonable max 
+	my $unit_no = int(0.99999999 + $death_max2 / $dn_unit);
+	my @color = ("forest-green", "web-green");
+	if($unit_no <= 1){
+		#$dn_unit = csvlib::calc_max2($death_max) / 2;			# try to set reasonable max 
+		$d100k = 0.1;
+		$dn_unit = $pop_100k * $d100k;		
+		$unit_no = int(0.99999999 + $death_max / $dn_unit);
+		#@color = ("web-blue", "dark-magenta");
+		@color = ("web-blue", "skyblue");
+	}
+
+	#dp::dp "death_max: $death_max, pop_100k: $pop_100k, dn_unit: $dn_unit, unit_no: $unit_no\n";
+	my $dkey = &search_cdp_key($death_region, $region, "--death");
+	#dp::dp "region:$region dkey[$dkey]\n";
+	for(my $i = 0; $i < $unit_no; $i++){
+		$death_pop[$i] = $death_region->dup();
+		my $du = int($dn_unit * ($i + 1));
+		$csvp = $death_pop[$i]->{csv_data}->{$dkey};
+		#dp::dp "[$csvp]\n";
+		#$death_pop[$i]->dump();
+		my $dmax = $death_pop[$i]->{dates};
+		#dp::dp "[$i] $du : $death_max:";
+		for(my $dt = 0; $dt < $dmax; $dt++){
+			my $v = $csvp->[$dt];
+			$csvp->[$dt] = ($v < $du) ? $v: $du;
+			#print "[$v:" . $csvp->[$dt] . "]";
+		}	
+		#print "\n";
+	}
 	
+	my $graph_items = [];
+	my @gtype = (
+		#'boxes fill solid border lc rgb "' . $color[1] . '" lc rgb "' . $color[0] . '"',
+		#'boxes fill solid border lc rgb "' . $color[0] . '" lc rgb "' . $color[1] . '"',
+		'boxes fill solid 0.25 border lc rgb "gray60" lc rgb "' . $color[0] . '"',
+		'boxes fill solid 0.25 border lc rgb "gray60" lc rgb "' . $color[1] . '"',
+	);
+	my @gcl = ("#0070f0", "#e36c09", "forest-green", "dark-violet", 
+					"dark-pink", "#00d0f0", "#60d008", "brown",  "gray50" );
+	my $line_thick 	= "line linewidth 2";
+	my $line_thin 		= "line linewidth 1" ;
+	my $line_thick_dot = "line linewidth 2 dt(7,3)";
+	my $line_thin_dot 	= "line linewidth 1 dt(6,4)";
+	my $box_fill  		= "boxes fill";
+
+	for(my $i = $unit_no - 1; $i >= 0; $i--){
+		my $gn = $i % ($#gtype + 1);
+		my $graph_type = $gtype[$gn];
+		$graph_type .= " notitle" if($i > 0);
+		#dp::dp "gn: $gn, type: " . ($graph_type // "--") . " static\n";
+		if($i => $unit_no){
+			$death_pop[$i]->rename_key($dkey, sprintf("$dkey-%.1f/1M", $d100k * 10));
+		}
+		push(@$graph_items, 
+			{cdp => $death_pop[$i], item => {$cntry => "$region",}, static => "", axis => "y2", graph_def => $graph_type},
+		);
+	}
+	push(@$graph_items, 
+			{cdp => $conf_cdp,  item => {$cntry => "$region",}, static => "rlavr", graph_def => ("$line_thick lc rgb \"" . $gcl[7] . "\"")},
+			{cdp => $ccse_ern,  item => {}, static => "", axis => "y2", graph_def => ("$line_thick_dot lc rgb \"" . $gcl[0] . "\"")},
+			{cdp => $conf_cdp,  item => {$cntry => "$region",}, static => "", graph_def => ("$line_thin_dot lc rgb \"" . $gcl[5] . "\""),},
+			{cdp => $death_cdp, item => {$cntry => "$region",}, static => "", axis => "y2", graph_def => ("$line_thin_dot lc rgb \"" . $gcl[6] . "\"")},
+	);
+
 	my @list = ();
+	my $dpop = sprintf("%.2f", $death_max / $pop_100k);
 	push(@list, csv2graph->csv2graph_list_gpmix(
-		{gdp => $defccse::CCSE_GRAPH, dsc => "[$region] new cases and deaths [$drate] pop:[max:$pop_max last:$pop_last]", start_date => $start_date, 
+		{gdp => $defccse::CCSE_GRAPH, dsc => "[$region] postive/death:$drate dpop mx:$dpop pop mx:$pop_max lst:$pop_last", start_date => $start_date, 
 			ymax => $ymax, y2max => $y2max, y2min => 0,
 			ylabel => "confermed", y2label => "deaths (max=$y2y1rate% of rlavr confermed)" ,
 			additional_plot => $add_plot,
-			graph_items => [
-			{cdp => $conf_cdp,  item => {$cntry => "$region",}, static => "rlavr", graph_def => $line_thick},
-			{cdp => $death_cdp, item => {$cntry => "$region",}, static => "rlavr", axis => "y2", graph_def => $box_fill},
-			{cdp => $ccse_ern,  item => {}, static => "", axis => "y2", graph_def => $line_thick_dot},
-			{cdp => $conf_cdp,  item => {$cntry => "$region",}, static => "", graph_def => $line_thin_dot,},
-			{cdp => $death_cdp, item => {$cntry => "$region",}, static => "", axis => "y2", graph_def => $line_thin_dot},
+			graph_items => [@$graph_items
+#			{cdp => $conf_cdp,  item => {$cntry => "$region",}, static => "rlavr", graph_def => $line_thick},
+#			{cdp => $death_cdp, item => {$cntry => "$region",}, static => "rlavr", axis => "y2", graph_def => $box_fill},
+#			{cdp => $ccse_ern,  item => {}, static => "", axis => "y2", graph_def => $line_thick_dot},
+#			{cdp => $conf_cdp,  item => {$cntry => "$region",}, static => "", graph_def => $line_thin_dot,},
+#			{cdp => $death_cdp, item => {$cntry => "$region",}, static => "", axis => "y2", graph_def => $line_thin_dot},
 			],
 		},
 	));
@@ -825,17 +901,17 @@ sub	japan_positive_death_ern
 		dp::WARNING "POP: $pop_key, not defined\n";
 		$population = 100000;
 	}
-	my $positive_per_100k = int($population / 100000);
-	my $pop_max = sprintf("%.1f", $y1max / $positive_per_100k);
+	my $pop_100k = int($population / 100000);
+	my $pop_max = sprintf("%.1f", $y1max / $pop_100k);
 	my $jp_rlavr = $jp_pref->calc_rlavr();
 	#$jp_rlavr->dump();
 	my $pop_last = $jp_rlavr->last_data($pref. "#testedPositive");
-	$pop_last = sprintf("%.1f", $pop_last / $positive_per_100k);
-	dp::dp "POP/100k : $pref: $positive_per_100k "  . sprintf("    %.2f", $pop_max) . "\n";
+	$pop_last = sprintf("%.1f", $pop_last / $pop_100k);
+	dp::dp "POP/100k : $pref: $pop_100k "  . sprintf("    %.2f", $pop_max) . "\n";
 	for(my $i = 0; $i < $pop_max; $i +=  2.5){
 		next if($i <= 0);
 
-		my $pop = $i * $positive_per_100k;
+		my $pop = $i * $pop_100k;
 		my $dt = "lc 'navy' dt (5,5)";
 		my $lw = 1;
 		if((($i*10) % 10) == 0){
@@ -1641,6 +1717,13 @@ csv2graph->gen_html_by_gp_list($gp_list, {						# Generate HTML file with graphs
 		data_source => "data_source",
 	}
 );
+
+#
+#	Upload to Sakura
+#
+if($golist{upload}) {
+	system("./uploadweb");
+}
 
 #
 #	Down Load CSV 

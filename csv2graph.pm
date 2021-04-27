@@ -191,6 +191,8 @@ our	$line_thin = "#D#line_thin";
 our	$line_thick_dot = "#D#line_thick_dot";
 our	$line_thin_dot = "#D#line_thin_dot";
 our	$box_fill = "#D#box_fill";
+our	$box_fill1 = "#D#box_fill1";
+our	$box_fill2 = "#D#box_fill2";
 
 our $GRAPH_KIND = {
 	$line_thick 	=> "line linewidth 2",
@@ -198,6 +200,8 @@ our $GRAPH_KIND = {
 	$line_thick_dot => "line linewidth 2 dt(7,3)",
 	$line_thin_dot 	=> "line linewidth 1 dt(6,4)",
 	$box_fill  		=> "boxes fill",
+	$box_fill1 		=> 'boxes fill lc rgb "dark-green"',
+	$box_fill2 		=> 'boxes fill lc rgb "brown"',
 };
 
 #	data_start => "",	# Data start colum, ex, 4 : Province,Region, Lat, Long, 2021-01-23, 
@@ -586,6 +590,8 @@ sub gen_html_by_gp_list
 			for(my $j = 0; $j < $lcount; $j++){
 				last if(($i + $j) > $#lbl);
 				my $l = $lbl[$i+$j];
+				next if($l =~ /notitle/);
+
 				$l =~ s/$LABEL_DLM.*//;
 				print HTML "<td>" . $l . "</td>";
 				#dp::dp "HTML LABEL: " . $lbl[$i+$j] . "\n";
@@ -1420,7 +1426,12 @@ _EOD_
 
 		my $pl = "";
 		if($graph_def){
-			$pl = sprintf("'%s' using 1:%d $axis with $graph_def title '%s' ", $csvf, $i + 1, $key);
+			if($graph_def =~ /notitle/){
+				$pl = sprintf("'%s' using 1:%d $axis with $graph_def ", $csvf, $i + 1);
+			}
+			else {
+				$pl = sprintf("'%s' using 1:%d $axis with $graph_def title '%s' ", $csvf, $i + 1, $key);
+			}
 		}
 		else {
 			if($graph =~ /line/){

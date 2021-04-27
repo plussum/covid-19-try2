@@ -1,6 +1,7 @@
 #!/bin/sh
 
 cd /mnt/f/_share/cov/plussum.github.io
+find PNG2 -ctime +3 -exec rm {} \;
 scp *.html plus-sum@lab:www/lab/cov19/
 #scp -r CSV plus-sum@lab:www/lab/cov19/
 scp -r PNG2 plus-sum@lab:www/lab/cov19/
