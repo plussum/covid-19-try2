@@ -67,6 +67,7 @@ my	$line_thin_dot = $csv2graph::line_thin_dot;
 my	$box_fill = $csv2graph::box_fill;
 
 my $y2y1rate = 2.5;
+my $end_target = 0;
 
 #
 #	for APPLE Mobility Trends
@@ -149,7 +150,8 @@ my %golist = ();
 my $all = "";
 
 if($#ARGV >= 0){
-	for(@ARGV){
+	for(my $i = 0; $i <= $#ARGV; $i++){
+		$_ = $ARGV[$i];
 		if(/-all/){
 			$all = 1;
 			last;
@@ -164,6 +166,11 @@ if($#ARGV >= 0){
 				system("rm $PNG_PATH/*");
 			}
 			exit;
+		}
+		if(/^-et/){
+			$end_target = $ARGV[++$i];
+			dp::dp "end_target: $end_target\n";
+			next;
 		}
 		if($_ eq "try"){
 			$golist{pref} = 1;
@@ -337,9 +344,10 @@ if($golist{pref}){
 	my $target_keys = [$jp_rlavr->select_keys({item => $positive}, 0)];	# select data for target_keys
 	foreach my $start_date (0){ # , -28){
 		my $sorted_keys = [$jp_rlavr->sort_csv($jp_rlavr->{csv_data}, $target_keys, $start_date, -14)];
-		my $end = min(50, scalar(@$sorted_keys) - 1); 	# 50
 		#dp::dp join(",", @$sorted_keys[0..$end]) . "\n";
-		foreach my $pref (@$sorted_keys[0..$end]){
+		my $endt = ($end_target <= 0) ? (scalar(@$sorted_keys) -1) : $end_target;
+		dp::dp "#######" . $endt . "\n";
+		foreach my $pref (@$sorted_keys[0..$endt]){
 			$pref =~ s/[\#\-].*$//;
 			dp::dp "$pref\n";
 			#push(@$pd_list, &japan_positive_death($jp_cdp, $pref, $start_date));		# 2021.04.05 
@@ -393,8 +401,9 @@ if($golist{ccse}) {
 	my $graph_kind = $csv2graph::GRAPH_KIND;
 
 	my $start_date = 0;
-	my $end_target = $#TARGET_REGION;
-	foreach my $region (@TARGET_REGION[0..$end_target]){
+	my $endt = ($end_target <= 0) ? $#TARGET_REGION : $end_target;
+	dp::dp "#######" . $endt . "\n";
+	foreach my $region (@TARGET_REGION[0..$endt]){
 		dp::dp "$region\n";
 		foreach my $start_date(0, -62){
 			push(@$ccse_gp_list, &ccse_positive_death_ern($ccse_country, $death_country, $region, $start_date));
@@ -709,10 +718,10 @@ sub	positive_death_ern
 #				"dark-pink", "#00d0f0", "#60d008", "brown",  "gray50", 
 #				);
 	my @gcl = ("royalblue", "#e36c09", "forest-green", "mediumpurple3", 			# https://mz-kb.com/blog/2018/10/31/gnuplot-graph-color/
-				"dark-pink", "#00d0f0", "#60d008", "brown",  "gray50", 
+				"dark-pink", "#00d0f0", "#60d008", "brown",  "gray20", 
 				"gray30");
-	my @bcl = ( "web-blue", "gray30",
-				"dark-green", "gray30");
+	my @bcl = ( "web-blue", "dark-orange",
+				"dark-green", "dark-orange");
 	my $d100k = 0.5;
 	my @death_pop = ();
 	my $dn_unit = $pop_100k * $d100k;		# 100deaths / 100K
@@ -721,17 +730,20 @@ sub	positive_death_ern
 	#my @color = ("forest-green", "web-green");
 	my @color = ($bcl[0], $bcl[1]);
 
-	if($unit_no <= 1){
+	for(my $i = 0; $unit_no <= 1 && $i < 1; $i++){
 		#$dn_unit = csvlib::calc_max2($death_max) / 2;			# try to set reasonable max 
-	my $rg = $region;
-	$rg =~ s/,*$//;
-		$d100k = 0.1;
+		my $rg = $region;
+		$rg =~ s/,*$//;
+		$d100k /= 5;
+		#$d100k = int(200 * $death_max / $pop_100k)/200 ;
+		#$d100k = $death_max2 / 2;
+		#dp::dp "d100k $d100k, pop100k death_max: $death_max $pop_100k\n";
 		$dn_unit = $pop_100k * $d100k;		
 		$unit_no = int(0.99999999 + $death_max / $dn_unit);
 		@color = ($bcl[2], $bcl[3]);
 	}
 
-	#dp::dp "death_max: $death_max, pop_100k: $pop_100k, dn_unit: $dn_unit, unit_no: $unit_no\n";
+	dp::dp "death_max: $death_max, pop_100k: $pop_100k, dn_unit: $dn_unit, unit_no: $unit_no\n";
 	my $dkey = &search_cdp_key($death_region, $region, $death_post_fix);
 	#dp::dp "region:$region dkey[$dkey]\n";
 	for(my $i = 0; $i < $unit_no; $i++){
@@ -742,7 +754,7 @@ sub	positive_death_ern
 		#$death_pop[$i]->dump();
 		my $dmax = $death_pop[$i]->{dates};
 		#dp::dp "[$i] $du : $death_max:";
-		for(my $dt = 0; $dt < $dmax; $dt++){
+		for(my $dt = 0; $dt <= $dmax; $dt++){
 			my $v = $csvp->[$dt];
 			$csvp->[$dt] = ($v < $du) ? $v: $du;
 			#print "[$v:" . $csvp->[$dt] . "]";
@@ -769,7 +781,8 @@ sub	positive_death_ern
 		$graph_type .= " notitle" if($i > 0);
 		#dp::dp "gn: $gn, type: " . ($graph_type // "--") . " static\n";
 		if($i => $unit_no){
-			$death_pop[$i]->rename_key($dkey, sprintf("$dkey-%.1f/1M", $d100k * 10));
+			$death_pop[$i]->rename_key($dkey, sprintf("$dkey-%.2f/100K", $d100k));
+			#dp::dp "#" x 40 . "\n";
 		}
 		push(@$graph_items, 
 			{cdp => $death_pop[$i], item => {}, static => "", axis => "y2", graph_def => $graph_type},
@@ -789,6 +802,7 @@ sub	positive_death_ern
 	dp::dp "deaths: $death_last, $death_max\n";
 	my $rg = $key;
 	$rg =~ s/--.*$//;
+	$rg =~ s/#.*$//;
 	push(@list, csv2graph->csv2graph_list_gpmix(
 		{gdp => $defccse::CCSE_GRAPH, dsc => "[$rg] $pop_dsc dr:$drate", start_date => $start_date, 
 			ymax => $ymax, y2max => $y2max, y2min => 0,
@@ -837,115 +851,6 @@ sub	japan_positive_death
 	return (@list);
 }
 
-sub	_japan_positive_death_ern
-{ 
-	my($jp_cdp, $pref, $start_date) = @_;
-
-	my $p = {start_date => $start_date};
-	my $jp_pref = $jp_cdp->reduce_cdp_target({item => $positive, prefectureNameJ => $pref});
-	my $y1max = $jp_pref->max_rlavr($p);
-	my $y2max = int($y1max * $y2y1rate / 100 + 0.9999999); 
-
-	my $ymax = csvlib::calc_max2($y1max);			# try to set reasonable max 
-	my $death_pref = $jp_cdp->reduce_cdp_target({item => $deaths, prefectureNameJ => $pref});
-	my $death_max = $death_pref->max_rlavr($p);
-
-	my $jp_ern   = $jp_pref->calc_ern();
-	#$jp_ern->dump();
-	my $csvp = $jp_ern->{csv_data};
-	my $csv_pref = $csvp->{$pref. "#" . $positive};
-	dp::dp "jp_ern: " . $jp_ern . "\n";
-	dp::dp "csvp: " . $csvp . "\n";
-	dp::dp "csv_pref: " . $csv_pref . "\n";
-	dp::dp "ERN: $pref: " ;
-	my $size = scalar(@$csv_pref);
-	for(my $i = 0; $i < $size; $i++){
-		$csv_pref->[$i] = $csv_pref->[$i] * $y2max / 3;
-		#printf("%.2f ", $csv_pref->[$i]);
-	}
-	foreach my $key (keys %$csvp){
-		my $new_key = $key;
-		$new_key =~ s/#.*$/#ern/;
-		dp::dp "rename $key -> $new_key\n";
-		$jp_ern->rename_key($key, $new_key);
-	}
-	#$jp_ern->dump();
-
-	my $drate = sprintf("%.2f%%", 100 * $death_max / $y1max);
-	dp::dp "y1max:$y1max, ymax:$ymax, y2max:$y2max death_max:$death_max\n";
-
-	my @adp = ();
-	for(my $i = 0; $i < 3; $i += 0.2){
-		next if($i == 0);
-
-		my $ern = sprintf("%.3f", $y2max * $i / 3);
-		my $dt = "lc 'royalblue' dt (3,7)";
-		my $title = "notitle";
-		my $f = sprintf("%.2f", $i);
-		#dp::dp sprintf("ADP: %.5f: %.5f %d", $i,  int($i), $f)  . "\n";
-		if($f == int($f)){
-			#dp::dp "--> $i\n";
-			$dt = "lc 'red' dt (5,5)";
-			$title = "title 'ern=$i'";
-		}
-		push(@adp, "$ern axis x1y2 with lines $title lw 1 $dt");
-	}
-
-	## POP
-	#dp::dp "[$pop_last]\n";
-	my $pop_key = $pref;
-	$pop_key =~ s/[-#].*$//;
-	$pop_key =~ s/"//g;
-	my $population = $POP{$pop_key};
-	if(! defined $POP{$pop_key}){
-		dp::WARNING "POP: $pop_key, not defined\n";
-		$population = 100000;
-	}
-	my $pop_100k = int($population / 100000);
-	my $pop_max = sprintf("%.1f", $y1max / $pop_100k);
-	my $jp_rlavr = $jp_pref->calc_rlavr();
-	#$jp_rlavr->dump();
-	my $pop_last = $jp_rlavr->last_data($pref. "#testedPositive");
-	$pop_last = sprintf("%.1f", $pop_last / $pop_100k);
-	dp::dp "POP/100k : $pref: $pop_100k "  . sprintf("    %.2f", $pop_max) . "\n";
-	for(my $i = 0; $i < $pop_max; $i +=  2.5){
-		next if($i <= 0);
-
-		my $pop = $i * $pop_100k;
-		my $dt = "lc 'navy' dt (5,5)";
-		my $lw = 1;
-		if((($i*10) % 10) == 0){
-			#$dt =~ s/\(.\)/(5,5)/;
-			$dt =~ s/dt.*$//;
-		}
-		if(($i % 10) == 0){
-			$dt =~ s/dt.*$//;
-			#$lw = 1.5;
-		}
-		my $title = sprintf("title 'POP=%.1f'", $i);
-		push(@adp, "$pop axis x1y1 with lines $title lw $lw $dt");
-	}
-
-	my $add_plot = join(",", @adp);
-
-	my @list = ();
-	push(@list, csv2graph->csv2graph_list_gpmix(
-		{gdp => $defjapan::JAPAN_GRAPH, dsc => "[$pref] new cases and deaths [$drate] pop[max:$pop_max last:$pop_last]", start_date => $start_date, 
-			ymax => $ymax, y2max => $y2max, ymin => 0, y2min => 0,
-			ylabel => "confermed", y2label => "deaths (max=$y2y1rate% of rlavr confermed)",
-			additional_plot => $add_plot,
-			graph_items => [
-			{cdp => $jp_cdp, item => {item => $positive, prefectureNameJ => $pref}, static => "rlavr", graph_def => $line_thick},
-			{cdp => $jp_cdp, item => {item => $deaths,   prefectureNameJ => $pref}, static => "rlavr", axis => "y2", graph_def => $box_fill},
-			#{cdp => $jp_ern, item => {item => $positive, prefectureName => $pref}, static => "ern",  axis => "y2", graph_def => $line_thick},
-			{cdp => $jp_ern, item => {}, static => "",  axis => "y2", graph_def => $line_thick_dot},
-			{cdp => $jp_cdp, item => {item => $positive, prefectureNameJ => $pref}, static => "", graph_def => $line_thin_dot,},
-			{cdp => $jp_cdp, item => {item => $deaths,   prefectureNameJ => $pref}, static => "", axis => "y2", graph_def => $line_thin_dot},
-			],
-		},
-	));
-	return (@list);
-}
 #
 #
 #
