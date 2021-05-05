@@ -651,7 +651,7 @@ sub	positive_death_ern
 		if($f == int($f)){
 			#dp::dp "--> $i\n";
 			$dt = "lc 'red' dt (5,5)";
-			$title = "title 'ern=$i'";
+			$title = "title 'ern=$i.0'";
 		}
 		push(@adp, "$ern axis x1y2 with lines $title lw 1 $dt");
 	}
@@ -704,7 +704,7 @@ sub	positive_death_ern
 			#$lw = 1.5;
 			#dp::dp "line: $i, $pop_dlt\n";
 		}
-		my $title = sprintf("title 'POP=%.1f'", $i);
+		my $title = sprintf("title 'Positive %.1f/100K'", $i);
 		push(@adp, "$pop axis x1y1 with lines $title lw $lw $dt");
 	}
 	my $add_plot = join(",", @adp);
@@ -809,6 +809,7 @@ sub	positive_death_ern
 			ylabel => "confermed", y2label => "deaths (max=$y2y1rate% of rlavr confermed)" ,
 			additional_plot => $add_plot,
 			graph_items => [@$graph_items],
+			no_label_no => 1,
 		},
 	));
 	return (@list);

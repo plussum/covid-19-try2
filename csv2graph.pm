@@ -1144,6 +1144,8 @@ sub	gen_csv_file
 	my @csv_label = ();
 	foreach my $k (@$output_keysp){
 		my $label = join(":", $order->{$k}, $k);
+		#my $label = $k;
+		#dp::dp $label . "\n";
 		push(@csv_label, $label);
 	}
 	print CSV join($dst_dlm, "#date", @csv_label) . "\n";
@@ -1403,10 +1405,11 @@ _EOD_
 				dp::WARNING "graph_def may wrong: $graph_def\n";
 			}
 		}
+		#dp::dp "[$key]\n";
 
 		$axis_flag = $axis_flag // "y1";
 		#dp::dp join(",", $label[$i], $key, $axis_flag) . "\n";
-		#$key =~ s/^[0-9]+://;
+		$key =~ s/^\d+:// if($gp->{no_label_no} // "");
 		$key =~ s/[']/_/g;	# avoid error at plot
 		#dp::dp "### $i: $key $src_csv, $y2key\n";
 		$pn++;
