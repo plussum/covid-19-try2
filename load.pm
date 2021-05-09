@@ -175,7 +175,7 @@ sub	load_csv_holizontal
 		my $line = $_;
 		my @items = (split(/$src_dlm/, $line));
 		my $master_key = select::gen_record_key($key_dlm, \@key_order, ["masterkey", @items]);
-		#dp::dp "MASTER_KEY: " .$master_key . "\n";
+		#dp::dp "MASTER_KEY: " .$master_key . ":" . ":" . join(",", @key_order) . "  : " .join(",", @items) . "\n";
 
 ##		$csv_data->{$k}= [@items[$data_start..$#items]];	# set csv data
 ##		$key_items->{$k} = [@items[0..($data_start - 1)]];	# set csv data

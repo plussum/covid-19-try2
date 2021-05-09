@@ -424,7 +424,7 @@ if($golist{ccse}) {
 }
 
 #
-#	MHLW
+#
 #
 if($golist{mhlw}){
 	dp::dp "MHLW\n";
@@ -432,25 +432,15 @@ if($golist{mhlw}){
 	my $mhlw_cdp = $defmhlw::MHLW_DEF;
 	&{$mhlw_cdp->{down_load}};
 
+	my $gp_list = [];
 	my $cdp = csv2graph->new($mhlw_cdp); 						# Load Johns Hopkings University CCSE
-	$cdp->load_csv($defmhlw::MHLW_DEF);
-	#$cdp->dump();
-
 	push(@$gp_list, csv2graph->csv2graph_list_gpmix(
-	{gdp => $defmhlw::MHLW_GRAPH, dsc => "MHLW open Data", start_date => 0, 
+	{gdp => $defmhlw::MHLW_DEF, dsc => "MHLW open Data", start_date => 0, 
 #		ymax => $ymax, y2max => $y2max, y2min => 0,
 #		ylabel => "confermed", y2label => "deaths (max=$y2y1rate% of rlavr confermed)",
 		#additional_plot => $additional_plot_item{ern}, 
 		graph_items => [
-			{cdp => $cdp,  item => {"item" => "cases",}, static => "", graph_def => $line_thin_dot},
-			{cdp => $cdp,  item => {"item" => "cases",}, static => "rlavr", graph_def => $line_thick},
-			{cdp => $cdp,  item => {"item" => "pcr_positive",}, static => "", graph_def => $line_thin_dot},
-			{cdp => $cdp,  item => {"item" => "pcr_positive",}, static => "rlavr", graph_def => $line_thick},
-			{cdp => $cdp,  item => {"item" => "deaths",}, static => "", graph_def => $line_thin_dot, axis => "y2"},
-			{cdp => $cdp,  item => {"item" => "deaths",}, static => "rlavr", graph_def => $line_thick, axis => "y2"},
-			{cdp => $cdp,  item => {"item" => "pcr_tested_people",}, static => "", graph_def => $line_thin_dot},
-			{cdp => $cdp,  item => {"item" => "pcr_tested_people",}, static => "rlavr", graph_def => $line_thin},
-
+			{cntrycdp => $cdp,  item => {"item" => "pcr_positive",}, static => "", graph_def => $line_thick},
 		],
 	}
 	));
@@ -548,7 +538,7 @@ if(0){
 			}
 		}
 	}
-}
+
 	csv2graph->gen_html_by_gp_list($docomo_gp_list, {						# Generate HTML file with graphs
 			html_tilte => "COVID-19 related data visualizer ",
 			src_url => "src_url",
@@ -952,96 +942,6 @@ sub	japan_positive_ern
 	return (@list);
 }
 
-#
-#
-#
-if($golist{try00}){
-	my $ccse_cdp = csv2graph->new($defccse::CCSE_CONF_DEF); 						# Load Johns Hopkings University CCSE
-	$ccse_cdp->load_csv($defccse::CCSE_CONF_DEF);
-	$ccse_cdp->calc_items("sum", 
-			{"Province/State" => "", "Country/Region" => "Canada"},				# All Province/State with Canada, ["*","Canada",]
-			{"Province/State" => "null", "Country/Region" => "="}				# total gos ["","Canada"] null = "", = keep
-	);
-	$ccse_cdp->calc_items("sum", 
-			{"Province/State" => "", "Country/Region" => "China"},				# All Province/State with Canada, ["*","Canada",]
-			{"Province/State" => "null", "Country/Region" => "="}				# total gos ["","Canada"] null = "", = keep
-	);
-	my $ccse_country = $ccse_cdp->reduce_cdp_target({"Province/State" => "NULL"});	# Select Country
-
-	my $death_cdp = csv2graph->new($defccse::CCSE_DEATHS_DEF); 						# Load Johns Hopkings University CCSE
-	$death_cdp->load_csv($defccse::CCSE_DEATHS_DEF);
-	$death_cdp->calc_items("sum", 
-			{"Province/State" => "", "Country/Region" => "Canada"},				# All Province/State with Canada, ["*","Canada",]
-			{"Province/State" => "null", "Country/Region" => "="}				# total gos ["","Canada"] null = "", = keep
-	); 
-	$death_cdp->calc_items("sum", 
-			{"Province/State" => "", "Country/Region" => "China"},				# All Province/State with Canada, ["*","Canada",]
-			{"Province/State" => "null", "Country/Region" => "="}				# total gos ["","Canada"] null = "", = keep
-	); 
-	my $death_country = $death_cdp->reduce_cdp_target({"Province/State" => "NULL"});	# Select Country
-
-
-
-if(1){
-
-	foreach my $region (@TARGET_REGION){
-		my $ccse_region = $ccse_cdp->reduce_cdp_target({$prov => "NULL", $cntry => $region});
-		my $ccse_rlavr = $ccse_region->calc_rlavr();
-
-		#$ccse_rlavr->dump({items => 30});
-		my $ccse_pop  = $ccse_rlavr->calc_pop();
-		#$ccse_pop->dump({items => 30});
-		push(@$gp_list, csv2graph->csv2graph_list_gpmix(
-			{gdp => $defccse::CCSE_GRAPH, dsc => "[$region] per population", start_date => 0, ymin => 0, y2min => 0,
-				graph_items => [
-				{cdp => $ccse_pop,   item => {}, static => "", graph_def => $line_thin_dot,axis => "y2" },
-				{cdp => $ccse_rlavr, item => {}, static => "", graph_def => $line_thick, axis => ""},
-				#{cdp => $ccse_pop,  item => {$cntry => "$region"}, static => "rlavr", graph_def => $line_thin_dot, },
-				],
-			})
-		);
-	}
-}
-if(1){
-	foreach my $region (@TARGET_REGION){
-		foreach my $start_date (0, -93){
-			my $p = {start_date => $start_date};
-			my $conf_region = $ccse_country->reduce_cdp_target({$prov => "", $cntry => $region});
-			my $y0max = $conf_region->max_val($p);
-
-			# $conf_region->rolling_average();
-			$conf_region = $conf_region->calc_rlavr();
-			my $y1max = $conf_region->max_val($p);
-			my $y2max = int($y1max * $y2y1rate / 100 + 0.9999999); 
-			my $ymax = csvlib::calc_max2($y1max);			# try to set reasonable max 
-
-			my $death_region = $death_country->reduce_cdp_target({$prov => "", $cntry => $region});
-			# $death_region->rolling_average();
-			$death_region = $death_region->calc_rlavr();
-			my $death_max = $death_region->max_val($p);
-
-			my $drate = sprintf("%.2f%%", 100 * $death_max / $y1max);
-			#dp::dp "y0max:$y0max y1max:$y1max, ymax:$ymax, y2max:$y2max death_max:$death_max\n";
-
-			push(@$gp_list, csv2graph->csv2graph_list_gpmix(
-			{gdp => $defccse::CCSE_GRAPH, dsc => "[$region] new cases and deaths [$drate]", start_date => $start_date, 
-				ymax => $ymax, y2max => $y2max, y2min => 0,
-				ylabel => "confermed", y2label => "deaths (max=$y2y1rate% of rlavr confermed)",
-				#additional_plot => $additional_plot_item{ern}, 
-				graph_items => [
-				{cdp => $ccse_country,  item => {$cntry => "$region",}, static => "rlavr", graph_def => $line_thick},
-				{cdp => $death_country, item => {$cntry => "$region",}, static => "rlavr", axis => "y2", graph_def => $box_fill},
-				{cdp => $ccse_country,  item => {$cntry => "$region",}, static => "", graph_def => $line_thin_dot,},
-				{cdp => $death_country, item => {$cntry => "$region",}, static => "", axis => "y2", graph_def => $line_thin_dot},
-				],
-			},
-			));
-		}
-		#last;
-	}
-}
-}
-
 #		{gdp => $AMT_GRAPH, start_date => -92, end_date => "",
 #	_mix
 #		{gdp => $AMT_GRAPH, start_date => -92, end_date => "",
@@ -1060,183 +960,9 @@ if(1){
 #
 #
 #
-if($golist{ccse0})
-{
-my $ccse_cdp = csv2graph->new($defccse::CCSE_CONF_DEF); 							# Load Johns Hopkings University CCSE
-$ccse_cdp->load_csv($defccse::CCSE_CONF_DEF);
-$ccse_cdp->calc_items("sum", 
-		{"Province/State" => "", "Country/Region" => "Canada"},		# All Province/State with Canada, ["*","Canada",]
-		{"Province/State" => "null", "Country/Region" => "="}		# total gos ["","Canada"] null = "", = keep
-);
-$ccse_cdp->calc_items("sum", 
-		{"Province/State" => "", "Country/Region" => "China"},		# All Province/State with Canada, ["*","Canada",]
-		{"Province/State" => "null", "Country/Region" => "="}		# total gos ["","Canada"] null = "", = keep
-);
-my $ccse_country = $ccse_cdp->reduce_cdp_target({"Province/State" => "NULL"});	# Select Country
-#$ccse_country->dump({lines => 5, search_key => "China"});
-my $ccse_ern = $ccse_country->calc_ern();
-my $ccse_pop = $ccse_country->calc_pop(100000);
-
-my $death_cdp = csv2graph->new($defccse::CCSE_DEATHS_DEF); 						# Load Johns Hopkings University CCSE
-$death_cdp->load_csv($defccse::CCSE_DEATHS_DEF);
-$death_cdp->calc_items("sum", 
-		{"Province/State" => "", "Country/Region" => "Canada"},				# All Province/State with Canada, ["*","Canada",]
-		{"Province/State" => "null", "Country/Region" => "="}				# total gos ["","Canada"] null = "", = keep
-);
-$death_cdp->calc_items("sum", 
-		{"Province/State" => "", "Country/Region" => "China"},				# All Province/State with Canada, ["*","Canada",]
-		{"Province/State" => "null", "Country/Region" => "="}				# total gos ["","Canada"] null = "", = keep
-);
-
-my $death_country = $death_cdp->reduce_cdp_target({"Province/State" => "NULL"});	# Select Country
-my $death_pop = $death_country->calc_pop(100000);
-
 
 #
 #
-#
-if(1){
-my $width = 5;
-my $max_lank = 5;
-my $start_date = 0;
-for(my $i = 1; $i < $max_lank; $i+= $width){
-	push(@$gp_list, csv2graph->csv2graph_list_gpmix(
-	{gdp => $defccse::CCSE_GRAPH, dsc => "New Cases $i-" . ($i+$width - 1), start_date => $start_date, 
-		lank => [$i, $i + $width -1],
-		graph_items => [
-		{cdp => $ccse_country,  item => {}, static => "rlavr", },
-		#{cdp => $ccse_country,  item => {}, static => "", graph_def => $line_thin_dot},
-		],
-	}
-	));
-}
-for(my $i = 1; $i <= $max_lank; $i+= $width){
-	push(@$gp_list, csv2graph->csv2graph_list_gpmix(
-	{gdp => $defccse::CCSE_GRAPH, dsc => "New Cases POP $i-" . ($i+$width - 1), start_date => $start_date, 
-		lank => [$i, $i + $width -1],
-		graph_items => [
-		{cdp => $ccse_pop,  item => {}, static => "rlavr", },
-		#{cdp => $ccse_country,  item => {}, static => "", graph_def => $line_thin_dot},
-		],
-	}
-	));
-}
-
-for(my $i = 1; $i <= $max_lank; $i+= $width){
-	push(@$gp_list, csv2graph->csv2graph_list_gpmix(
-	{gdp => $defccse::CCSE_GRAPH, dsc => "New Deaths $i-" . ($i+$width - 1), start_date => $start_date, 
-		lank => [$i, $i + $width -1],
-		graph_items => [
-		{cdp => $death_country,  item => {}, static => "rlavr", },
-		#{cdp => $ccse_country,  item => {}, static => "", graph_def => $line_thin_dot},
-		],
-	}
-	));
-}
-for(my $i = 1; $i <= $max_lank; $i+= $width){
-	push(@$gp_list, csv2graph->csv2graph_list_gpmix(
-	{gdp => $defccse::CCSE_GRAPH, dsc => "New Deaths POP $i-" . ($i+$width - 1), start_date => $start_date, 
-		lank => [$i, $i + $width -1],
-		graph_items => [
-		{cdp => $death_pop,  item => {}, static => "rlavr", },
-		#{cdp => $ccse_country,  item => {}, static => "", graph_def => $line_thin_dot},
-		],
-	}
-	));
-}
-}
-#
-#
-#
-if(1){
-my $target_keys = [$ccse_country->select_keys("", 0)];	# select data for target_keys
-my $sort_keys = [$ccse_country->sort_csv(($ccse_country->{csv_data}), $target_keys)];
-my $end = (scalar(@$sort_keys) < 10) ? scalar(@$sort_keys) : 10; 
-dp::dp join(",", @$sort_keys[0..$end]) . "\n";
-
-my @tgl = ("Japan");
-foreach my $region (@tgl, @$sort_keys[0..$end]){	 # (@TARGET_REGION)
-#dp::dp "$region\n";
-$region =~ s/-.*$//;
-foreach my $start_date (0) { # , -93){
-	my $p = {start_date => $start_date};
-	my $conf_region = $ccse_country->reduce_cdp_target({$prov => "NULL", $cntry => $region});
-
-	# $conf_region->rolling_average();
-	$conf_region = $conf_region->calc_rlavr();
-	my $y1max = $conf_region->max_val($p);
-	my $y2max = int($y1max * $y2y1rate / 100 + 0.9999999); 
-	my $ymax = csvlib::calc_max2($y1max);			# try to set reasonable max 
-
-	my $death_region = $death_country->reduce_cdp_target({$prov => "", $cntry => $region});
-	# $death_region->rolling_average();
-	$death_region = $death_region->calc_rlavr();
-	my $death_max = $death_region->max_val($p);
-
-	my $drate = sprintf("%.2f%%", 100 * $death_max / $y1max);
-	#dp::dp "y0max:$y0max y1max:$y1max, ymax:$ymax, y2max:$y2max death_max:$death_max\n";
-
-	push(@$gp_list, csv2graph->csv2graph_list_gpmix(
-	{gdp => $defccse::CCSE_GRAPH, dsc => "[$region] new cases and deaths [$drate]", start_date => $start_date, 
-		ymax => $ymax, y2max => $y2max, y2min => 0,
-		ylabel => "confermed", y2label => "deaths (max=$y2y1rate% of rlavr confermed)",
-		#additional_plot => $additional_plot_item{ern}, 
-		graph_items => [
-		{cdp => $ccse_country,  item => {$cntry => "$region",}, static => "rlavr", graph_def => $line_thick},
-		{cdp => $death_country, item => {$cntry => "$region",}, static => "rlavr", axis => "y2", graph_def => $box_fill},
-		{cdp => $ccse_country,  item => {$cntry => "$region",}, static => "", graph_def => $line_thin_dot,},
-		{cdp => $death_country, item => {$cntry => "$region",}, static => "", axis => "y2", graph_def => $line_thin_dot},
-		],
-	},
-	{gdp => $defccse::CCSE_GRAPH, dsc => "[$region] new cases and ern", start_date => 0, y2max => 3,
-		ymax => $ymax,
-		additional_plot => $additional_plot_item{ern}, 
-		graph_items => [
-		{cdp => $ccse_country, target_col => {$prov => "", $cntry => "$region"}, static => "rlavr"},
-		{cdp => $ccse_ern,     target_col => {$prov => "", $cntry => "$region"}, axis => "y2"},
-		{cdp => $ccse_country, target_col => {$prov => "", $cntry => "$region"}, static => "", graph_def => $line_thin_dot},
-		],
-	},
-	));
-
-}
-#last;
-}
-}
-##	push(@$gp_list, csv2graph->csv2graph_list_gpmix(
-##		{gdp => $defccse::CCSE_GRAPH, dsc => "Japan new cases and ern", start_date => 0, y2max => 3,
-##			additional_plot => $additional_plot_item{ern}, 
-##			graph_items => [
-##			{cdp => $ccse_country, target_col => {$prov => "", $cntry => "Japan"}, static => "rlavr"},
-##			{cdp => $ccse_ern, target_col => {$prov => "", $cntry => "Japan"}, axis => "y2"},
-##			{cdp => $ccse_country, target_col => {$prov => "", $cntry => "Japan"}, static => "", graph_def => $line_thin_dot},
-##			],
-##		},
-##
-##		{gdp => $defccse::CCSE_GRAPH, dsc => "Japan new cases and ern from prov", start_date => 0, y2max => 3,
-##			additional_plot => $additional_plot_item{ern}, 
-##			graph_items => [
-##			{cdp => $ccse_country, target_col => {$prov => "", $cntry => "Japan,US",}, static => "rlavr"},
-##			{cdp => $ccse_country, target_col => {$prov => "", $cntry => "Japan,US",}, static => "ern", axis => "y2"},
-##			{cdp => $ccse_country, target_col => {$prov => "", $cntry => "Japan,US",}, static => "", graph_def => $line_thin_dot},
-##			],
-##		},
-##		{gdp => $defccse::CCSE_GRAPH, dsc => "Japan new cases and ern from prov 3m", start_date => -91, y2max => 3,
-##			additional_plot => $additional_plot_item{ern}, 
-##			graph_items => [
-##			{cdp => $ccse_country, target_col => {$prov => "", $cntry => "Japan,US",}, static => "rlavr"},
-##			{cdp => $ccse_country, target_col => {$prov => "", $cntry => "Japan,US",}, static => "ern", axis => "y2"},
-##			{cdp => $ccse_country, target_col => {$prov => "", $cntry => "Japan,US",}, static => "", graph_def => $line_thin_dot},
-##			],
-##		},
-##		{gdp => $defccse::CCSE_GRAPH, dsc => "Japan new cases and ern from prov 3m", start_date => 0, y2max => 3,
-##			graph_items => [
-##			{cdp => $ccse_country, target_col => {$prov => "",}, static => "", lank => [0,5]},
-##			],
-##		},
-##	));
-}
-
 #
 # Load Apple Mobility Trends
 #
@@ -1247,8 +973,8 @@ my $amt_pref = {};
 my $EU = "United Kingdom,France,Germany,Italy,Belgium,Greece,Spain,Sweden";
 if($golist{amt}){
 
-my $AMT_DEF = $defamt::AMT_DEF;
-my $AMT_GRAPH = $defamt::AMT_GRAPH;
+	my $AMT_DEF = $defamt::AMT_DEF;
+	my $AMT_GRAPH = $defamt::AMT_GRAPH;
 
 	my $amt_cdp = csv2graph->new($AMT_DEF); 										# Init AMD_DEF
 	$amt_cdp->load_csv($AMT_DEF);									# Load to memory
@@ -1299,8 +1025,7 @@ my $AMT_GRAPH = $defamt::AMT_GRAPH;
 #
 #	geo_type,region,transportation_type,alternative_name,sub-region,country,2020-01-13,,,,
 #
-if($golist{"amt-jp"})
-{
+if($golist{"amt-jp"}) {
 
 	my $AMT_DEF = $defamt::AMT_DEF;
 	my $AMT_GRAPH = $defamt::AMT_GRAPH;
@@ -1341,8 +1066,7 @@ if($golist{"amt-jp"})
 #
 #	Generate Marged Graph of Apple Mobility Trends and CCSE-ERN
 #
-if($golist{"amt-ccse"})
-{
+if($golist{"amt-ccse"}) {
 	#
 	#	Apple Mobility Trends
 	#
@@ -1562,21 +1286,6 @@ if($golist{japan}){
 				],
 			},
 			);
-##		foreach my $item ($positive, $deaths){
-##			push(@$jp_graph, 
-##			{gdp => $defjapan::JAPAN_GRAPH, dsc => "Japan [$pref] $item ", start_date => 0, ymin => 0, y2max => 3, graph_items => [
-##				{cdp => $jp_cdp, static => "rlavr", target_col => {item => "$item", prefectureNameJ => $pref}}, 
-##				{cdp => $jp_cdp, static => "",      target_col => {item => "$item", prefectureNameJ => $pref}, graph_def => $line_thin_dot},
-##				{cdp => $jp_cdp, static => "ern",   target_col => {item => "testedPositive", prefectureNameJ => $pref}, axis => "y2"}, 
-##			]},
-##			);
-##			push(@$jp_graph, 
-##			{gdp => $defjapan::JAPAN_GRAPH, dsc => "Japan [$pref] pop ", start_date => 0, ymin => 0, y2max => 3, graph_items => [
-##				{cdp => $jp_pop, static => "rlavr", target_col => {item => "$item", prefectureNameJ => $pref}}, 
-##				{cdp => $jp_pop, static => "",      target_col => {item => "$item", prefectureNameJ => $pref}, graph_def => $line_thin_dot},
-##				{cdp => $jp_cdp, static => "ern",   target_col => {item => "testedPositive", prefectureNameJ => $pref}, axis => "y2"}, 
-##			]},
-##			);
 		}
 	}
 if(0){

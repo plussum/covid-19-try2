@@ -1156,6 +1156,7 @@ sub	gen_csv_file
 			my $csv = $work_csvp->{$key};
 			my $v = $csv->[$dt] // "";
 			$v = 0 if($v eq "");
+			$v = sprintf("%.2f", $v);
 			push(@w, $v);
 		}
 		if(! defined $date_list->[$dt]){
