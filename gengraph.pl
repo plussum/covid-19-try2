@@ -61,11 +61,18 @@ my $END_OF_DATA = "###EOD###";
 
 my $mainkey = $config::MAIN_KEY;
 
-my 	$line_thick = $csv2graph::line_thick;
-my	$line_thin = $csv2graph::line_thin;
-my	$line_thick_dot = $csv2graph::line_thick_dot;
-my	$line_thin_dot = $csv2graph::line_thin_dot;
-my	$box_fill = $csv2graph::box_fill;
+#my 	$line_thick = $csv2graph::line_thick;
+#my	$line_thin = $csv2graph::line_thin;
+#my	$line_thick_dot = $csv2graph::line_thick_dot;
+#my	$line_thin_dot = $csv2graph::line_thin_dot;
+#my	$box_fill = $csv2graph::box_fill;
+
+my $line_thick 	= "line linewidth 2";
+my $line_thin 		= "line linewidth 1" ;
+my $line_thick_dot = "line linewidth 2 dt(7,3)";
+my $line_thin_dot 	= "line linewidth 1 dt(6,4)";
+my $line_thin_dot2 	= "line linewidth 1 dt(2,6)";
+my $box_fill  		= "boxes fill";
 
 my $y2y1rate = 2.5;
 my $end_target = 0;
@@ -94,15 +101,15 @@ my $deaths = "deaths";
 #
 #	For CCSE, Johns holkins University
 #
-my @CCSE_TARGET_REGION = (
-		"Canada", "Japan", "US", # ,United States",
-		"United Kingdom", "France", #"Spain", "Italy", "Russia", 
+#my @CCSE_TARGET_REGION = (
+#		"Canada", "Japan", "US", # ,United States",
+#		"United Kingdom", "France", #"Spain", "Italy", "Russia", 
 #			"Germany", "Poland", "Ukraine", "Netherlands", "Czechia,Czech Republic", "Romania",
 #			"Belgium", "Portugal", "Sweden",
 #		"India",  "Indonesia", "Israel", # "Iran", "Iraq","Pakistan",
 #		"Brazil", "Colombia", "Argentina", "Chile", "Mexico", "Canada", 
 #		"South Africa", 
-);
+#);
 
 #
 #	Form Marge data (amt and ccse-ern)
@@ -125,14 +132,14 @@ my $additional_plot = join(",", values %additional_plot_item);
 
 
 my @TARGET_REGION = (
-		"Japan", "US,United States", "India", "Brazil", # ,United States",
+		"Japan", "US,United States", "India", "Brazil", 
 		"United Kingdom", "France", "Spain", "Italy", "Russia", 
 			"Germany", "Poland", "Ukraine", "Netherlands", "Czechia,Czech Republic", "Romania",
 			"Belgium", "Portugal", "Sweden",
 		"China", #"Korea- South", 
 		"Indonesia", "Israel", # "Iran", "Iraq","Pakistan", different name between amt and ccse  
 		"Colombia", "Argentina", "Chile", "Mexico", "Canada", 
-		"South Africa", 
+		"South Africa", "Seychelles", # ,United States",
 );
 
 my @TARGET_PREF = ("Tokyo", "Kanagawa", "Chiba", "Saitama", "Kyoto", "Osaka");
@@ -173,6 +180,12 @@ if($#ARGV >= 0){
 			dp::dp "end_target: $end_target\n";
 			next;
 		}
+		if(/^-poplist/){
+			print "$config::POPF\n";
+			system("cat $config::POPF");
+			print "$config::POPF\n";
+			exit;
+		}
 		if($_ eq "try"){
 			$golist{pref} = 1;
 			$golist{"pref-ern"} = 1;
@@ -199,7 +212,7 @@ else {
 		my $id = $cdp->{id};
 		push(@ids, $id);
 	}
-	dp::dp "usage:$0 " . join(" | ", "-all", @ids, keys %$cmd_list) ."\n";
+	dp::dp "usage:$0 " . join(" | ", "-all", @ids, keys %$cmd_list, "-et") ."\n";
 	exit;
 }
 #if($golist{"amt-ccse"}){
@@ -343,14 +356,17 @@ if($golist{pref}){
 	#	Generate HTML FILE
 	#
 	my $target_keys = [$jp_rlavr->select_keys({item => $positive}, 0)];	# select data for target_keys
-	foreach my $start_date (0){ # , -28){
-		my $sorted_keys = [$jp_rlavr->sort_csv($jp_rlavr->{csv_data}, $target_keys, $start_date, -14)];
-		#dp::dp join(",", @$sorted_keys[0..$end]) . "\n";
-		my $endt = ($end_target <= 0) ? (scalar(@$sorted_keys) -1) : $end_target;
-		dp::dp "#######" . $endt . "\n";
-		foreach my $pref (@$sorted_keys[0..$endt]){
-			$pref =~ s/[\#\-].*$//;
-			dp::dp "$pref\n";
+	my $sorted_keys = [$jp_rlavr->sort_csv($jp_rlavr->{csv_data}, $target_keys, -28, 0)];
+	my $endt = ($end_target <= 0) ? (scalar(@$sorted_keys) -1) : $end_target;
+	foreach my $pref (@$sorted_keys[0..$endt]){
+		$pref =~ s/[\#\-].*$//;
+		dp::dp "$pref\n";
+		# next if(! ($pref =~ /和歌山/));
+
+		foreach my $start_date (0, -28){ # , -28){
+			#my $sorted_keys = [$jp_rlavr->sort_csv($jp_rlavr->{csv_data}, $target_keys, $start_date, -14)];
+			#dp::dp join(",", @$sorted_keys[0..$end]) . "\n";
+			dp::dp "####### $pref $start_date " . $endt . "\n";
 			#push(@$pd_list, &japan_positive_death($jp_cdp, $pref, $start_date));		# 2021.04.05 
 			push(@$pd_list, &japan_positive_death_ern($jp_cdp, $pref, $start_date));
 		}
@@ -669,7 +685,7 @@ sub	positive_death_ern
 	my $csvp = $ern->{csv_data};
 	#my $key = "$region--conf";
 	my $key = &search_cdp_key($conf_region, $region, $conf_post_fix);
-	dp::dp "[$key]\n";
+	#dp::dp "[$key]\n";
 	if(! $key || !($csvp->{$key}//"")){
 		dp::ABORT "$key undefined \n";
 		return "";
@@ -707,12 +723,14 @@ sub	positive_death_ern
 	$pop_key =~ s/$conf_post_fix//;
 	#$pop_key =~ s/[-#].*$//;
 	#$pop_key =~ s/"//g;
-	my $population = $POP{$pop_key};
+	my $population = $POP{$pop_key} // 100000;
+	#dp::dp "$population\n";
 	if(! defined $POP{$pop_key}){
 		dp::ABORT "POP: $pop_key, not defined\n";
 		$population = 100000;
 	}
-	my $pop_100k = int($population / 100000);
+	my $pop_100k = $population / 100000;
+	#dp::dp "[$pop_key]: $pop_100k\n";
 	my $pop_max = $ymax / $pop_100k;
 	my $pop_last = $rlavr->last_data($key);
 	#dp::dp "[$pop_last]\n";
@@ -786,6 +804,7 @@ sub	positive_death_ern
 		$unit_no = int(0.99999999 + $death_max / $dn_unit);
 		@color = ($bcl[2], $bcl[3]);
 	}
+	$dn_unit = 1 if($dn_unit < 1);
 
 	dp::dp "death_max: $death_max, pop_100k: $pop_100k, dn_unit: $dn_unit, unit_no: $unit_no\n";
 	my $dkey = &search_cdp_key($death_region, $region, $death_post_fix);
@@ -813,11 +832,6 @@ sub	positive_death_ern
 		'boxes fill solid 0.25 border lc rgb "gray60" lc rgb "' . $color[0] . '"',
 		'boxes fill solid 0.25 border lc rgb "gray60" lc rgb "' . $color[1] . '"',
 	);
-	my $line_thick 	= "line linewidth 2";
-	my $line_thin 		= "line linewidth 1" ;
-	my $line_thick_dot = "line linewidth 2 dt(7,3)";
-	my $line_thin_dot 	= "line linewidth 1 dt(6,4)";
-	my $box_fill  		= "boxes fill";
 
 	for(my $i = $unit_no - 1; $i >= 0; $i--){
 		my $gn = $i % ($#gtype + 1);
@@ -835,8 +849,8 @@ sub	positive_death_ern
 	push(@$graph_items, 
 			{cdp => $conf_region, item => {}, static => "rlavr", graph_def => ("$line_thick lc rgb \"" . $gcl[3] . "\"")},
 			{cdp => $ern,  item => {}, static => "", axis => "y2", graph_def => ("$line_thick_dot lc rgb \"" . $gcl[0] . "\"")},
-			{cdp => $conf_region,  item => {}, static => "", graph_def => ("$line_thin_dot lc rgb \"" . $gcl[3] . "\""),},
-			{cdp => $death_region, item => {}, static => "", axis => "y2", graph_def => ("$line_thin_dot lc rgb \"" . $color[0] . "\"")},
+			{cdp => $conf_region,  item => {}, static => "", graph_def => ("$line_thin_dot2 lc rgb \"" . $gcl[3] . "\""),},
+			{cdp => $death_region, item => {}, static => "", axis => "y2", graph_def => ("$line_thin_dot2 lc rgb \"" . $color[0] . "\"")},
 	);
 
 	my @list = ();

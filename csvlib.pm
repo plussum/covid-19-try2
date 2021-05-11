@@ -503,7 +503,7 @@ sub	cnt_pop
 		next if(! $name);
 
 		$cnt_pop->{$name} = &num($pn);
-		#dp::dp "$name:$pn\n";# if($name =~ /山形/);
+		dp::dp "$name:$pn\n" if($name =~ /Seychelles/);
 	}
 	close(FD);
 }

@@ -21,6 +21,7 @@ my $CSV_PATH  = $config::CSV_PATH;
 
 my $DEFAULT_AVR_DATE = $config::DEFAULT_AVR_DATE;
 my $END_OF_DATA = $config::END_OF_DATA;
+my $MLW_DL_FLAG_FILE = "$CSV_PATH/mhlw_flag";
 
 
 ####################################################################
@@ -89,12 +90,28 @@ sub	download
 	my $file_no = 0;
 	my $col_no = 0;
 	my @header = ();
+	my $download = 1;
+
+	dp::dp "DOWNLOAD  $MLW_DL_FLAG_FILE\n";
+	if(-f $MLW_DL_FLAG_FILE){
+		my $now = time;
+		my ($dev,$ino,$mode,$nlink,$uid,$gid,$rdev,$size, $atime,$mtime,$ctime,$blksize,$blocks) = stat($MLW_DL_FLAG_FILE);	
+		my $elpt = $now - $mtime;
+		dp::dp "$now $mtime $elpt " .sprintf("%.2f", $elpt / (60 * 60)) . "\n";
+		if($elpt < (2 * 60 * 60 )){
+			$download = 0;
+		}
+	}
+	dp::dp "Donwload: $download\n";
+	if($download){
+		system("touch $MLW_DL_FLAG_FILE");
+	}
 	foreach my $items (@$urls){
 		foreach my $item (keys %$items){
 			my $csvf = "$CSV_PATH/mhlw_" . "$item.csv";
 			my $csvf_txt = "$csvf.txt";
 			my $cmd = "wget " . $items->{$item} . " -O $csvf";
-			#&do($cmd);
+			&do($cmd) if($download);
 			&do("nkf -w80 $csvf > $csvf_txt");
 
 			dp::dp $csvf . "\n";
