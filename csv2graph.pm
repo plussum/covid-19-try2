@@ -1382,6 +1382,8 @@ $yrange
 $y2range
 $y2tics
 
+CSV_FILE = '#CSV_FILE#'
+
 set terminal pngcairo size $term_x_size, $term_y_size font "IPAexゴシック,8" enhanced
 set output '/dev/null'
 plot #PLOT_PARAM#
@@ -1431,10 +1433,10 @@ _EOD_
 		my $pl = "";
 		if($graph_def){
 			if($graph_def =~ /notitle/){
-				$pl = sprintf("'%s' using 1:%d $axis with $graph_def ", $csvf, $i + 1);
+				$pl = sprintf("CSV_FILE using 1:%d $axis with $graph_def ", $i + 1);
 			}
 			else {
-				$pl = sprintf("'%s' using 1:%d $axis with $graph_def title '%s' ", $csvf, $i + 1, $key);
+				$pl = sprintf("CSV_FILE using 1:%d $axis with $graph_def title '%s' ", $i + 1, $key);
 			}
 		}
 		else {
@@ -1445,7 +1447,7 @@ _EOD_
 				#dp::dp "BOX\n";
 				$graph =~ s/box/box fill/ if(! ($graph =~ /fill/));
 			}
-			$pl = sprintf("'%s' using 1:%d $axis with $graph title '%d:%s' ", $csvf, $i + 1, $i, $key);
+			$pl = sprintf("CSV_FILE using 1:%d $axis with $graph title '%d:%s' ", $i + 1, $i, $key);
 		}
 		push(@p, $pl);
 	}
@@ -1455,9 +1457,13 @@ _EOD_
     if($additional_plot){
         #dp::dp "additional_plot: " . $additional_plot . "\n";
 		push(@p, $additional_plot);
+		#my @w = split(/,/, $additional_plot);
+		#push(@p, @w);
     }
 
-	my $plot = join(",", @p);
+	$PARAMS =~ s/#CSV_FILE#/$csvf/g;
+	#my $plot = join(",", @p);
+	my $plot = join(",\\\n", @p);
 	$PARAMS =~ s/#PLOT_PARAM#/$plot/g;
 	dp::dp $plot . "\n" if($VERBOSE);
 

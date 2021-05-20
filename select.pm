@@ -253,6 +253,7 @@ sub	select_keys
 			dp::dp "## TARGET_KEYS no data" . csvlib::join_array(",", $target_colp) . join(",", @target_list) . "\n";
 		}
 	}
+	#dp::dp "target_keys: " . scalar(@$target_keys) . "\n";
 	if(scalar(@$target_keys) <= 0){
 		my $dkey = "item_name_list"; # "load_order";
 		dp::WARNING (

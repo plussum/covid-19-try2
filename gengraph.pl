@@ -136,7 +136,7 @@ my @TARGET_REGION = (
 		"United Kingdom", "France", "Spain", "Italy", "Russia", 
 			"Germany", "Poland", "Ukraine", "Netherlands", "Czechia,Czech Republic", "Romania",
 			"Belgium", "Portugal", "Sweden",
-		"China", #"Korea- South", 
+		"China", "Taiwan*", "Singapore", "Vietnam", #"Korea", 
 		"Indonesia", "Israel", # "Iran", "Iraq","Pakistan", different name between amt and ccse  
 		"Colombia", "Argentina", "Chile", "Mexico", "Canada", 
 		"South Africa", "Seychelles", # ,United States",
@@ -147,7 +147,8 @@ my @TARGET_PREF = ("Tokyo", "Kanagawa", "Chiba", "Saitama", "Kyoto", "Osaka");
 my @cdp_list = ($defamt::AMT_DEF, $defccse::CCSE_DEF, $MARGE_CSV_DEF, 
 					$deftokyo::TOKYO_DEF, $defjapan::JAPAN_DEF, $deftkow::TKOW_DEF, $defdocomo::DOCOMO_DEF, $defmhlw::MHLW_DEF); 
 
-my $cmd_list = {"amt-jp" => 1, "amt-jp-pref" => 1, "tkow-ern" => 1, try => 1, "pref-ern" => 1, pref => 1, docomo => 1, upload => 1};
+my $cmd_list = {"amt-jp" => 1, "amt-jp-pref" => 1, "tkow-ern" => 1, try => 1, "pref-ern" => 1, pref => 1, docomo => 1, upload => 1, "ccse-tgt" => 1};
+my %REG_INFO = ();
 
 ####################################
 #
@@ -212,7 +213,7 @@ else {
 		my $id = $cdp->{id};
 		push(@ids, $id);
 	}
-	dp::dp "usage:$0 " . join(" | ", "-all", @ids, keys %$cmd_list, "-et") ."\n";
+	dp::dp "usage:$0 " . join(" | ", "-all", @ids, keys %$cmd_list, "-et -poplist") ."\n";
 	exit;
 }
 #if($golist{"amt-ccse"}){
@@ -321,6 +322,7 @@ if($golist{"pref-ern"}) {
 if($golist{pref}){
 	my $pd_list = [];
 
+	%REG_INFO = ();
 	#
 	#	ccse Japan
 	#
@@ -336,7 +338,7 @@ if($golist{pref}){
 	my $region = "Japan";
 	foreach my $start_date (0, -93){
 		#push(@$pd_list, &ccse_positive_death($ccse_country, $death_country, $region, $start_date));
-		push(@$pd_list, &ccse_positive_death_ern($ccse_country, $death_country, $region, $start_date));
+##		push(@$pd_list, &ccse_positive_death_ern($ccse_country, $death_country, $region, $start_date));
 		#push(@$pd_list, &ccse_positive_ern($ccse_country, $region, 0));
 	}
 
@@ -359,9 +361,10 @@ if($golist{pref}){
 	my $sorted_keys = [$jp_rlavr->sort_csv($jp_rlavr->{csv_data}, $target_keys, -28, 0)];
 	my $endt = ($end_target <= 0) ? (scalar(@$sorted_keys) -1) : $end_target;
 	foreach my $pref (@$sorted_keys[0..$endt]){
+		#next if(! ($pref =~ /愛知|東京/));
+		#next if(! ($pref =~ /愛知/));
 		$pref =~ s/[\#\-].*$//;
 		dp::dp "$pref\n";
-		# next if(! ($pref =~ /和歌山/));
 
 		foreach my $start_date (0, -28){ # , -28){
 			#my $sorted_keys = [$jp_rlavr->sort_csv($jp_rlavr->{csv_data}, $target_keys, $start_date, -14)];
@@ -382,12 +385,61 @@ if($golist{pref}){
 		}
 	);
 
+	&gen_reginfo("$HTML_PATH/japanpref_ri_", "nc_pop_last", "nc_pop_max");
+	&gen_reginfo("$HTML_PATH/japanpref_ri_", "nc_pop_max", "nc_pop_last");
+	&gen_reginfo("$HTML_PATH/japanpref_ri_", "nd_pop_last", "nd_pop_max");
+	&gen_reginfo("$HTML_PATH/japanpref_ri_", "nd_pop_max", "nd_pop_last");
+	&gen_reginfo("$HTML_PATH/japanpref_ri_", "drate");
+
+}
+
+#
+#
+#
+sub	gen_reginfo
+{
+	my ($outf, $sort_key, @sub) = @_;
+
+	$outf .= $sort_key . ".txt";
+	open(OUT, ">$outf") || die "Cannot create $outf";
+	binmode(OUT, ":utf8");
+
+	print OUT "## $sort_key\n";
+	my @keys = ($sort_key, @sub, "nc_pop_max", "nc_pop_last", "nd_pop_max", "nd_pop_last", "drate", "nc_max", "nd_max", "pop_100k");
+	print OUT join("\t", "#", "region", @keys) . "\n";
+	my $n = 1;
+	foreach my $region (sort {$REG_INFO{$b}->{$sort_key} <=> $REG_INFO{$a}->{$sort_key}} keys %REG_INFO){
+		next if($region =~ /#-/);
+		my $r = $REG_INFO{$region};
+		$region =~ s/#.*$//;
+		$region =~ s/,.*$//;
+		$region =~ s/"//;
+		my @w = (sprintf("%3d\t%-10s", $n++, $region));
+		foreach my $k (@keys){
+			my $fmt = "%7.3f";
+			$fmt = "%7.1f"  if($k eq "pop_100k");
+			$fmt = "%9.2f"  if($k eq "nd_max");
+			$fmt = "%11.2f" if($k eq "nc_max");
+			push(@w, sprintf($fmt, $r->{$k}));
+		}
+		print OUT join("\t", @w) . "\n";
+	}
+	close(OUT);
 }
 
 #
 #	CCSE
 #
+if($golist{"ccse-tgt"}){
+	&ccse("ccse-tgt");
+}
 if($golist{ccse}) {
+	&ccse("ccse");
+}
+
+sub	ccse
+{
+	my ($param) = @_;
 	dp::dp "CCSE\n";
 	my $ccse_gp_list = [];
 	my $ccse_cdp = csv2graph->new($defccse::CCSE_CONF_DEF); 						# Load Johns Hopkings University CCSE
@@ -417,10 +469,18 @@ if($golist{ccse}) {
 
 	my $graph_kind = $csv2graph::GRAPH_KIND;
 
+	my $ccse_rlavr = $ccse_country->calc_rlavr($ccse_country);
+	my $target_keys = [$ccse_rlavr->select_keys("", 0)];	# select data for target_keys
+	my $sorted_keys = [$ccse_rlavr->sort_csv($ccse_rlavr->{csv_data}, $target_keys, -28, 0)];
+	my $target_region = ($param ne "ccse-tgt") ? $sorted_keys  : \@TARGET_REGION;
+	my $endt = ($end_target <= 0) ? (scalar(@$target_region) -1) : $end_target;
+	$endt = 100 if($endt > 100);
+	#my $endt = ($end_target <= 0) ? $#TARGET_REGION : $end_target;
+
 	my $start_date = 0;
-	my $endt = ($end_target <= 0) ? $#TARGET_REGION : $end_target;
 	dp::dp "#######" . $endt . "\n";
-	foreach my $region (@TARGET_REGION[0..$endt]){
+	foreach my $region (@$target_region[0..$endt]){
+		$region =~ s/-.*//;
 		dp::dp "$region\n";
 		foreach my $start_date(0, -62){
 			push(@$ccse_gp_list, &ccse_positive_death_ern($ccse_country, $death_country, $region, $start_date));
@@ -431,12 +491,18 @@ if($golist{ccse}) {
 	csv2graph->gen_html_by_gp_list($ccse_gp_list, {						# Generate HTML file with graphs
 			html_tilte => "COVID-19 related data visualizer ",
 			src_url => "src_url",
-			html_file => "$HTML_PATH/ccse.html",
+			html_file => "$HTML_PATH/$param.html",
 			png_path => $PNG_PATH // "png_path",
 			png_rel_path => $PNG_REL_PATH // "png_rel_path",
 			data_source => $ccse_cdp->{src_info},
 		}
 	);
+	my $outf = "$param" . "_ri_";
+	&gen_reginfo("$HTML_PATH/$outf", "nc_pop_last", "nc_pop_max");
+	&gen_reginfo("$HTML_PATH/$outf", "nc_pop_max", "nc_pop_last");
+	&gen_reginfo("$HTML_PATH/$outf", "nd_pop_last", "nd_pop_max");
+	&gen_reginfo("$HTML_PATH/$outf", "nd_pop_max", "nd_pop_last");
+	&gen_reginfo("$HTML_PATH/$outf", "drate");
 }
 
 #
@@ -676,7 +742,9 @@ sub	positive_death_ern
 	my $death_rlavr = $death_region->calc_rlavr();
 	my $death_max = $death_region->max_rlavr($p);
 
-	my $drate = sprintf("%.2f%%", 100 * $death_max / $y1max);
+	#my $drate = sprintf("%.2f%%", 100 * $death_max / $y1max);
+	my $drate = 100 * $death_max / $y1max;
+
 	#dp::dp "y0max:$y0max y1max:$y1max, ymax:$ymax, y2max:$y2max death_max:$death_max\n";
 
 	my $rlavr = $conf_region->calc_rlavr();
@@ -710,7 +778,8 @@ sub	positive_death_ern
 		#dp::dp sprintf("ADP: %.5f: %.5f %d", $i,  int($i), $f)  . "\n";
 		if($f == int($f)){
 			#dp::dp "--> $i\n";
-			$dt = "lc 'red' dt (5,5)";
+			#$dt = ($i == 1) ? "lc 'red' dt (5,5)" : "lc 'red'";
+			$dt = ($i == 1) ? "lc 'red' dt (6,4)" : "lc 'red' dt (3,7)";
 			$title = "title 'ern=$i.0'";
 		}
 		push(@adp, "$ern axis x1y2 with lines $title lw 1 $dt");
@@ -723,8 +792,13 @@ sub	positive_death_ern
 	$pop_key =~ s/$conf_post_fix//;
 	#$pop_key =~ s/[-#].*$//;
 	#$pop_key =~ s/"//g;
-	my $population = $POP{$pop_key} // 100000;
 	#dp::dp "$population\n";
+	if($pop_key =~ /Korea/){
+		$pop_key = "Korea" ;
+		dp::dp "$pop_key: $POP{$pop_key}\n";
+	}
+	my $population = $POP{$pop_key} // 100000;
+
 	if(! defined $POP{$pop_key}){
 		dp::ABORT "POP: $pop_key, not defined\n";
 		$population = 100000;
@@ -734,7 +808,7 @@ sub	positive_death_ern
 	my $pop_max = $ymax / $pop_100k;
 	my $pop_last = $rlavr->last_data($key);
 	#dp::dp "[$pop_last]\n";
-	$pop_last  = sprintf("%.1f", $pop_last / $pop_100k);
+	$pop_last  = $pop_last / $pop_100k;
 	my $pop_dlt = 2.5;
 	#dp::dp "$pop_max\n";
 	if($pop_max > 15){
@@ -769,8 +843,8 @@ sub	positive_death_ern
 		my $title = sprintf("title 'Positive %.1f/100K'", $i);
 		push(@adp, "$pop axis x1y1 with lines $title lw $lw $dt");
 	}
-	my $add_plot = join(",", @adp);
-	$pop_max = sprintf("%.1f", $pop_max);
+	my $add_plot = join(",\\\n", @adp);
+	#$pop_max = sprintf("%.1f", $pop_max);
 
 	#
 	#	POP Death
@@ -782,44 +856,63 @@ sub	positive_death_ern
 	my @gcl = ("royalblue", "#e36c09", "forest-green", "mediumpurple3", 			# https://mz-kb.com/blog/2018/10/31/gnuplot-graph-color/
 				"dark-pink", "#00d0f0", "#60d008", "brown",  "gray20", 
 				"gray30");
-	my @bcl = ( "web-blue", "dark-orange",
-				"dark-green", "dark-orange");
-	my $d100k = 0.5;
+	my @bcl = ( "navy", "dark-orange",		# 0.5
+				"web-blue", "dark-orange",		# 0.2
+				"dark-green", "dark-orange",	# 0.1
+			#	"sea-green", "dark-orange",		# 0.1
+				"light-green", "dark-orange",	# 0.05
+				"gray70", "dark-orange",		# 0.02
+				"gray80", "dark-orange",		# 0.01
+				"gray90", "dark-orange",
+			);
 	my @death_pop = ();
-	my $dn_unit = $pop_100k * $d100k;		# 100deaths / 100K
+	my ($d100k, $dn_unit, $unit_no) = ();
 	my $death_max2 = csvlib::calc_max2($death_max);			# try to set reasonable max 
-	my $unit_no = int(0.99999999 + $death_max2 / $dn_unit);
-	#my @color = ("forest-green", "web-green");
-	my @color = ($bcl[0], $bcl[1]);
-
-	for(my $i = 0; $unit_no <= 1 && $i < 1; $i++){
+	my @color = ();
+	my @d100k_list = (0.5, 0.2, 0.1, 0.05, 0.02, 0.01);
+	my $rg = $region;
+	$rg =~ s/,*$//;
+	for(my $i = 0; $i <= $#d100k_list; $i++){
 		#$dn_unit = csvlib::calc_max2($death_max) / 2;			# try to set reasonable max 
-		my $rg = $region;
-		$rg =~ s/,*$//;
-		$d100k /= 5;
-		#$d100k = int(200 * $death_max / $pop_100k)/200 ;
-		#$d100k = $death_max2 / 2;
-		#dp::dp "d100k $d100k, pop100k death_max: $death_max $pop_100k\n";
+		$d100k = $d100k_list[$i];
 		$dn_unit = $pop_100k * $d100k;		
 		$unit_no = int(0.99999999 + $death_max / $dn_unit);
-		@color = ($bcl[2], $bcl[3]);
+		@color = ($bcl[$i*2], $bcl[$i*2+1]);
+		#dp::dp "$rg: $d100k : $unit_no $death_max / $dn_unit " . sprintf("%.2f", $death_max / $dn_unit) . "\n";
+		if(($death_max / $dn_unit) >= 2.5){
+			dp::dp "LAST\n";
+			last;
+		}
 	}
-	$dn_unit = 1 if($dn_unit < 1);
+	if($dn_unit < 1){
+		$dn_unit = 1 ;
+		$unit_no = int(0.99999999 + $death_max / $dn_unit);
+	}
+
 
 	dp::dp "death_max: $death_max, pop_100k: $pop_100k, dn_unit: $dn_unit, unit_no: $unit_no\n";
 	my $dkey = &search_cdp_key($death_region, $region, $death_post_fix);
 	#dp::dp "region:$region dkey[$dkey]\n";
 	for(my $i = 0; $i < $unit_no; $i++){
 		$death_pop[$i] = $death_rlavr->dup();
-		my $du = int($dn_unit * ($i + 1));
+		my $du = $dn_unit * $i;
+
+		#dp::dp "$i: $du  $dn_unit\n";
 		$csvp = $death_pop[$i]->{csv_data}->{$dkey};
 		#dp::dp "[$csvp]\n";
 		#$death_pop[$i]->dump();
 		my $dmax = $death_pop[$i]->{dates};
-		#dp::dp "[$i] $du : $death_max:";
+		#dp::dp "[$i] $du0 : $death_max:";
 		for(my $dt = 0; $dt <= $dmax; $dt++){
 			my $v = $csvp->[$dt];
-			$csvp->[$dt] = ($v < $du) ? $v: $du;
+			if($v < $du){
+				$v = 0; #"NaN";
+			}
+			elsif($v > ($du + $dn_unit)) {
+				$v = $du + $dn_unit;
+			}
+			$csvp->[$dt] = $v;
+			#$csvp->[$dt] = ($v < $du) ? $v: $du;
 			#print "[$v:" . $csvp->[$dt] . "]";
 		}	
 		#print "\n";
@@ -855,14 +948,16 @@ sub	positive_death_ern
 
 	my @list = ();
 	my $death_last = $death_rlavr->last_data($dkey);
+	my $dmax_pop = $death_max / $pop_100k;
+	my $dlst_pop = $death_last / $pop_100k;
 	my $pop_dsc = sprintf("pp[%.1f,%.1f] dp[%.2f,%.2f](max,lst) pop:%d",
 		$pop_max, $pop_last, $death_max / $pop_100k, $death_last / $pop_100k, $pop_100k);
 	dp::dp "deaths: $death_last, $death_max\n";
-	my $rg = $key;
-	$rg =~ s/--.*$//;
-	$rg =~ s/#.*$//;
+	#my $rg = $key;
+	#$rg =~ s/--.*$//;
+	#$rg =~ s/#.*$//;
 	push(@list, csv2graph->csv2graph_list_gpmix(
-		{gdp => $defccse::CCSE_GRAPH, dsc => "[$rg] $pop_dsc dr:$drate", start_date => $start_date, 
+		{gdp => $defccse::CCSE_GRAPH, dsc => sprintf("[$rg] $pop_dsc dr:%.2f%%", $drate), start_date => $start_date, 
 			ymax => $ymax, y2max => $y2max, y2min => 0,
 			ylabel => "confermed", y2label => "deaths (max=$y2y1rate% of rlavr confermed)" ,
 			additional_plot => $add_plot,
@@ -870,6 +965,12 @@ sub	positive_death_ern
 			no_label_no => 1,
 		},
 	));
+
+	my $reg = "$region#$start_date";
+	$REG_INFO{$reg} = {	nc_max => sprintf("%.3f", $y1max), nd_max => sprintf("%.3f", $death_max), 
+							nc_pop_max => sprintf("%.3f", $pop_max), nc_pop_last => sprintf("%.3f", $pop_last), 
+							nd_pop_max => sprintf("%.3f", $dmax_pop), nd_pop_last => sprintf("%.3f", $dlst_pop),
+							pop_100k => sprintf("%.1f", $pop_100k), drate => sprintf("%.3f", $drate),}; 
 	return (@list);
 }
 
