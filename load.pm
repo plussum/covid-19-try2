@@ -172,6 +172,12 @@ sub	load_csv_holizontal
 	while(<FD>){
 		s/[\r\n]+$//;
 		#my $line = decode('utf-8', $_);
+        if(/"/){
+            s/"([^",]+), *([^",]+), *([^",]+)"/$1;$2;$3/g;  # ,"aa,bb,cc", -> aa-bb-cc
+            s/"([^",]+), *([^"]+)"/$1-$2/g; # ,"aa,bb", -> aa-bb
+            dp::dp "[$_]\n" if(/Korea/);
+        }
+
 		my $line = $_;
 		my @items = (split(/$src_dlm/, $line));
 		my $master_key = select::gen_record_key($key_dlm, \@key_order, ["masterkey", @items]);
@@ -257,6 +263,11 @@ sub	load_csv_vertical
 
 	#dp::dp "$line\n";
 
+	if($line =~ /"/){
+		$line =~ s/"([^",]+), *([^",]+), *([^",]+)"/$1;$2;$3/g;  # ,"aa,bb,cc", -> aa-bb-cc
+		$line =~ s/"([^",]+), *([^"]+)"/$1-$2/g; # ,"aa,bb", -> aa-bb
+		#dp::dp "[[[[[[[$_]]]]]]]]]]\n";
+	}
 	my @item_names = split(/$src_dlm/, $line);
 	if($#item_names <= 1){
 		dp::WARNING "may be wrong delimitter [$src_dlm]\n\n";

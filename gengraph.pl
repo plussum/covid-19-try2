@@ -132,7 +132,7 @@ my $additional_plot = join(",", values %additional_plot_item);
 
 
 my @TARGET_REGION = (
-		"Japan", "US,United States", "India", "Brazil", 
+		"Korea", "Japan", "US,United States", "India", "Brazil", 
 		"United Kingdom", "France", "Spain", "Italy", "Russia", 
 			"Germany", "Poland", "Ukraine", "Netherlands", "Czechia,Czech Republic", "Romania",
 			"Belgium", "Portugal", "Sweden",
@@ -414,6 +414,11 @@ sub	gen_reginfo
 		$region =~ s/#.*$//;
 		$region =~ s/,.*$//;
 		$region =~ s/"//;
+		$region =~ s/ and /\&/;
+		$region =~ s/Republic/Rep./;
+		$region =~ s/Herzegovina/Herz./;
+		$region =~ s/United Arab Emirates/UAE/;
+
 		my @w = (sprintf("%3d\t%-10s", $n++, $region));
 		foreach my $k (@keys){
 			my $fmt = "%7.3f";
@@ -440,6 +445,7 @@ if($golist{ccse}) {
 sub	ccse
 {
 	my ($param) = @_;
+	%REG_INFO = ();
 	dp::dp "CCSE\n";
 	my $ccse_gp_list = [];
 	my $ccse_cdp = csv2graph->new($defccse::CCSE_CONF_DEF); 						# Load Johns Hopkings University CCSE
@@ -470,6 +476,7 @@ sub	ccse
 	my $graph_kind = $csv2graph::GRAPH_KIND;
 
 	my $ccse_rlavr = $ccse_country->calc_rlavr($ccse_country);
+	#$ccse_rlavr->dump({search_key => "Korea"});
 	my $target_keys = [$ccse_rlavr->select_keys("", 0)];	# select data for target_keys
 	my $sorted_keys = [$ccse_rlavr->sort_csv($ccse_rlavr->{csv_data}, $target_keys, -28, 0)];
 	my $target_region = ($param ne "ccse-tgt") ? $sorted_keys  : \@TARGET_REGION;
@@ -480,7 +487,7 @@ sub	ccse
 	my $start_date = 0;
 	dp::dp "#######" . $endt . "\n";
 	foreach my $region (@$target_region[0..$endt]){
-		$region =~ s/-.*//;
+		$region =~ s/--.*//;
 		dp::dp "$region\n";
 		foreach my $start_date(0, -62){
 			push(@$ccse_gp_list, &ccse_positive_death_ern($ccse_country, $death_country, $region, $start_date));
@@ -794,12 +801,13 @@ sub	positive_death_ern
 	#$pop_key =~ s/"//g;
 	#dp::dp "$population\n";
 	if($pop_key =~ /Korea/){
-		$pop_key = "Korea" ;
+		#$pop_key = "Korea" ;
 		dp::dp "$pop_key: $POP{$pop_key}\n";
 	}
 	my $population = $POP{$pop_key} // 100000;
 
 	if(! defined $POP{$pop_key}){
+		$conf_region->dump({search_key => "$pop_key"});
 		dp::ABORT "POP: $pop_key, not defined\n";
 		$population = 100000;
 	}
@@ -857,13 +865,16 @@ sub	positive_death_ern
 				"dark-pink", "#00d0f0", "#60d008", "brown",  "gray20", 
 				"gray30");
 	my @bcl = ( "navy", "dark-orange",		# 0.5
-				"web-blue", "dark-orange",		# 0.2
+			#	"web-blue", "dark-orange",		# 0.2
 				"dark-green", "dark-orange",	# 0.1
 			#	"sea-green", "dark-orange",		# 0.1
-				"light-green", "dark-orange",	# 0.05
-				"gray70", "dark-orange",		# 0.02
-				"gray80", "dark-orange",		# 0.01
-				"gray90", "dark-orange",
+			#	"light-green", "dark-orange",	# 0.05
+				"gray70", "dark-orange",		# 0.05
+				"gray80", "dark-orange",		# 0.02
+				"gray90", "dark-orange",		# 0.01
+				"white", "dark-orange",
+				"white", "dark-orange",
+
 			);
 	my @death_pop = ();
 	my ($d100k, $dn_unit, $unit_no) = ();
