@@ -27,6 +27,7 @@
 #
 use strict;
 use warnings;
+#use encoding "cp932";
 use utf8;
 use Encode 'decode';
 use Data::Dumper;
@@ -132,11 +133,11 @@ my $additional_plot = join(",", values %additional_plot_item);
 
 
 my @TARGET_REGION = (
-		"Korea", "Japan", "US,United States", "India", "Brazil", 
+		"France", "Cameroon", "Japan", "US,United States", "India", "Brazil", 
 		"United Kingdom", "France", "Spain", "Italy", "Russia", 
 			"Germany", "Poland", "Ukraine", "Netherlands", "Czechia,Czech Republic", "Romania",
 			"Belgium", "Portugal", "Sweden",
-		"China", "Taiwan*", "Singapore", "Vietnam", #"Korea", 
+		"China", "Taiwan*", "Singapore", "Vietnam", "Korea-South", 
 		"Indonesia", "Israel", # "Iran", "Iraq","Pakistan", different name between amt and ccse  
 		"Colombia", "Argentina", "Chile", "Mexico", "Canada", 
 		"South Africa", "Seychelles", # ,United States",
@@ -359,7 +360,7 @@ if($golist{pref}){
 	#
 	my $target_keys = [$jp_rlavr->select_keys({item => $positive}, 0)];	# select data for target_keys
 	my $sorted_keys = [$jp_rlavr->sort_csv($jp_rlavr->{csv_data}, $target_keys, -28, 0)];
-	my $endt = ($end_target <= 0) ? (scalar(@$sorted_keys) -1) : $end_target;
+	my $endt = ($end_target <= 0) ? (scalar(@$sorted_keys) -1) : ($end_target - 1);
 	foreach my $pref (@$sorted_keys[0..$endt]){
 		#next if(! ($pref =~ /愛知|東京/));
 		#next if(! ($pref =~ /愛知/));
@@ -389,7 +390,10 @@ if($golist{pref}){
 	&gen_reginfo("$HTML_PATH/japanpref_ri_", "nc_pop_max", "nc_pop_last");
 	&gen_reginfo("$HTML_PATH/japanpref_ri_", "nd_pop_last", "nd_pop_max");
 	&gen_reginfo("$HTML_PATH/japanpref_ri_", "nd_pop_max", "nd_pop_last");
-	&gen_reginfo("$HTML_PATH/japanpref_ri_", "drate");
+	&gen_reginfo("$HTML_PATH/japanpref_ri_", "drate_max");
+	&gen_reginfo("$HTML_PATH/japanpref_ri_", "drate_last");
+	&gen_reginfo("$HTML_PATH/japanpref_ri_", "nc_week_diff", "nd_week_diff");
+	&gen_reginfo("$HTML_PATH/japanpref_ri_", "nd_week_diff", "nc_week_diff");
 
 }
 
@@ -401,12 +405,25 @@ sub	gen_reginfo
 	my ($outf, $sort_key, @sub) = @_;
 
 	$outf .= $sort_key . ".txt";
-	open(OUT, ">$outf") || die "Cannot create $outf";
+	open(OUT, "| nkf -s >$outf") || die "Cannot create $outf";
 	binmode(OUT, ":utf8");
-
+	#binmode(OUT, ':encoding(cp932)');
 	print OUT "## $sort_key\n";
-	my @keys = ($sort_key, @sub, "nc_pop_max", "nc_pop_last", "nd_pop_max", "nd_pop_last", "drate", "nc_max", "nd_max", "pop_100k");
-	print OUT join("\t", "#", "region", @keys) . "\n";
+	my %DISPF = ();
+	my @keys_list = ("nc_pop_max", "nc_pop_last", "nd_pop_max", "nd_pop_last", 
+					"drate_max", "drate_last", "nc_max", "nd_max", 
+					"nc_week_diff", "nd_week_diff",
+					"pop_100k",
+					);
+	my @keys = ();
+	foreach my $k ($sort_key, @sub, @keys_list){
+		next if(defined $DISPF{$k});
+
+		$DISPF{$k} = 1;
+		push(@keys, $k);
+	}
+	
+	print OUT join("\t", "# region", @keys) . "\n";
 	my $n = 1;
 	foreach my $region (sort {$REG_INFO{$b}->{$sort_key} <=> $REG_INFO{$a}->{$sort_key}} keys %REG_INFO){
 		next if($region =~ /#-/);
@@ -427,6 +444,7 @@ sub	gen_reginfo
 			$fmt = "%11.2f" if($k eq "nc_max");
 			push(@w, sprintf($fmt, $r->{$k}));
 		}
+		$w[0] = "# $w[0]";
 		print OUT join("\t", @w) . "\n";
 	}
 	close(OUT);
@@ -480,12 +498,12 @@ sub	ccse
 	my $target_keys = [$ccse_rlavr->select_keys("", 0)];	# select data for target_keys
 	my $sorted_keys = [$ccse_rlavr->sort_csv($ccse_rlavr->{csv_data}, $target_keys, -28, 0)];
 	my $target_region = ($param ne "ccse-tgt") ? $sorted_keys  : \@TARGET_REGION;
-	my $endt = ($end_target <= 0) ? (scalar(@$target_region) -1) : $end_target;
-	$endt = 100 if($endt > 100);
+	my $endt = ($end_target <= 0) ? (scalar(@$target_region) -1) : ($end_target - 1);
+	$endt = 99 if($endt > 99);
 	#my $endt = ($end_target <= 0) ? $#TARGET_REGION : $end_target;
 
 	my $start_date = 0;
-	dp::dp "#######" . $endt . "\n";
+	#dp::dp "####### " . $endt . "\n";
 	foreach my $region (@$target_region[0..$endt]){
 		$region =~ s/--.*//;
 		dp::dp "$region\n";
@@ -509,7 +527,10 @@ sub	ccse
 	&gen_reginfo("$HTML_PATH/$outf", "nc_pop_max", "nc_pop_last");
 	&gen_reginfo("$HTML_PATH/$outf", "nd_pop_last", "nd_pop_max");
 	&gen_reginfo("$HTML_PATH/$outf", "nd_pop_max", "nd_pop_last");
-	&gen_reginfo("$HTML_PATH/$outf", "drate");
+	&gen_reginfo("$HTML_PATH/$outf", "drate_max");
+	&gen_reginfo("$HTML_PATH/$outf", "drate_last");
+	&gen_reginfo("$HTML_PATH/$outf", "nc_week_diff");
+	&gen_reginfo("$HTML_PATH/$outf", "nd_week_diff");
 }
 
 #
@@ -742,17 +763,18 @@ sub	positive_death_ern
 	#$conf_region->dump();
 	#$death_region->dump();
 	my $p = {start_date => $start_date};
-	my $y1max = $conf_region->max_rlavr($p);
-	my $y2max = int($y1max * $y2y1rate / 100 + 0.9999999); 
-	my $ymax = csvlib::calc_max2($y1max);			# try to set reasonable max 
+	my $nc_max = $conf_region->max_rlavr($p);
+	my $nc_max_week = $conf_region->max_rlavr($p);
+	my $y2max = int($nc_max * $y2y1rate / 100 + 0.9999999); 
+	my $ymax = csvlib::calc_max2($nc_max);			# try to set reasonable max 
 
 	my $death_rlavr = $death_region->calc_rlavr();
-	my $death_max = $death_region->max_rlavr($p);
+	my $nd_max = $death_region->max_rlavr($p);
 
-	#my $drate = sprintf("%.2f%%", 100 * $death_max / $y1max);
-	my $drate = 100 * $death_max / $y1max;
+	#my $drate = sprintf("%.2f%%", 100 * $death_max / $nc_max);
+	#my $drate = 100 * $death_max / $nc_max;
 
-	#dp::dp "y0max:$y0max y1max:$y1max, ymax:$ymax, y2max:$y2max death_max:$death_max\n";
+	#dp::dp "y0max:$y0max nc_max:$nc_max, ymax:$ymax, y2max:$y2max death_max:$nd_max\n";
 
 	my $rlavr = $conf_region->calc_rlavr();
 	my $ern = $conf_region->calc_ern();
@@ -807,16 +829,27 @@ sub	positive_death_ern
 	my $population = $POP{$pop_key} // 100000;
 
 	if(! defined $POP{$pop_key}){
-		$conf_region->dump({search_key => "$pop_key"});
 		dp::ABORT "POP: $pop_key, not defined\n";
 		$population = 100000;
 	}
 	my $pop_100k = $population / 100000;
 	#dp::dp "[$pop_key]: $pop_100k\n";
 	my $pop_max = $ymax / $pop_100k;
-	my $pop_last = $rlavr->last_data($key);
+	my $nc_last = $rlavr->last_data($key);
+	my $week_pos = -7;
+#	if($nc_last <= 0){
+#		$week_pos--;
+#		dp::WARNING "nc_last [$nc_last] $key\n";
+#		$nc_last = $rlavr->last_data($key, {end_date => -1});
+#		dp::dp "nc_last [$nc_last] $key\n";
+#		$nc_last = ; # 1 / ($population * 2));
+#	}
+	my $nc_last_week = $rlavr->last_data($key, {end_date => ($week_pos)});
+	#my $nc_last_week = $nc_last;
+	#dp::dp "===== nc_last_week: $nc_last_week, $nc_last\n";
+
 	#dp::dp "[$pop_last]\n";
-	$pop_last  = $pop_last / $pop_100k;
+	my $pop_last  = $nc_last / $pop_100k;
 	my $pop_dlt = 2.5;
 	#dp::dp "$pop_max\n";
 	if($pop_max > 15){
@@ -857,20 +890,20 @@ sub	positive_death_ern
 	#
 	#	POP Death
 	#
-	#my $death_max = $death_region->max_rlavr($p);
+	#my $nd_max = $death_region->max_rlavr($p);
 #	my @gcl = ("#0070f0", "#e36c09", "forest-green", "dark-violet", 			# https://mz-kb.com/blog/2018/10/31/gnuplot-graph-color/
 #				"dark-pink", "#00d0f0", "#60d008", "brown",  "gray50", 
 #				);
 	my @gcl = ("royalblue", "#e36c09", "forest-green", "mediumpurple3", 			# https://mz-kb.com/blog/2018/10/31/gnuplot-graph-color/
 				"dark-pink", "#00d0f0", "#60d008", "brown",  "gray20", 
 				"gray30");
-	my @bcl = ( "navy", "dark-orange",		# 0.5
-			#	"web-blue", "dark-orange",		# 0.2
-				"dark-green", "dark-orange",	# 0.1
-			#	"sea-green", "dark-orange",		# 0.1
-			#	"light-green", "dark-orange",	# 0.05
-				"gray70", "dark-orange",		# 0.05
-				"gray80", "dark-orange",		# 0.02
+	my @bcl = ( "gray10", "dark-orange",		# 0.5
+				"midnight-blue", "dark-orange",			# 0.2
+				"steelblue", "dark-orange",		# 0.1
+				"dark-green", "dark-orange",	# 0.05
+				"seagreen", "dark-orange",		# 0.02
+				"gray70", "dark-orange",		# 0.01
+				"gray80", "dark-orange",		# 0.01
 				"gray90", "dark-orange",		# 0.01
 				"white", "dark-orange",
 				"white", "dark-orange",
@@ -878,31 +911,34 @@ sub	positive_death_ern
 			);
 	my @death_pop = ();
 	my ($d100k, $dn_unit, $unit_no) = ();
-	my $death_max2 = csvlib::calc_max2($death_max);			# try to set reasonable max 
 	my @color = ();
 	my @d100k_list = (0.5, 0.2, 0.1, 0.05, 0.02, 0.01);
 	my $rg = $region;
 	$rg =~ s/,*$//;
 	for(my $i = 0; $i <= $#d100k_list; $i++){
-		#$dn_unit = csvlib::calc_max2($death_max) / 2;			# try to set reasonable max 
+		#$dn_unit = csvlib::calc_max2($nd_max) / 2;			# try to set reasonable max 
 		$d100k = $d100k_list[$i];
 		$dn_unit = $pop_100k * $d100k;		
-		$unit_no = int(0.99999999 + $death_max / $dn_unit);
+		$unit_no = int(0.99999999 + $nd_max / $dn_unit);
 		@color = ($bcl[$i*2], $bcl[$i*2+1]);
-		#dp::dp "$rg: $d100k : $unit_no $death_max / $dn_unit " . sprintf("%.2f", $death_max / $dn_unit) . "\n";
-		if(($death_max / $dn_unit) >= 2.5){
+		#dp::dp "$rg: $d100k : $unit_no $nd_max / $dn_unit " . sprintf("%.2f", $nd_max / $dn_unit) . "\n";
+		if(($nd_max / $dn_unit) >= 2.5){
 			dp::dp "LAST\n";
 			last;
 		}
 	}
 	if($dn_unit < 1){
 		$dn_unit = 1 ;
-		$unit_no = int(0.99999999 + $death_max / $dn_unit);
+		$unit_no = int(0.99999999 + $nd_max / $dn_unit);
 	}
 
 
-	dp::dp "death_max: $death_max, pop_100k: $pop_100k, dn_unit: $dn_unit, unit_no: $unit_no\n";
+	dp::dp "nd_max: $nd_max, pop_100k: $pop_100k, dn_unit: $dn_unit, unit_no: $unit_no\n";
 	my $dkey = &search_cdp_key($death_region, $region, $death_post_fix);
+	my $nd_last 	 = $death_rlavr->last_data($dkey);
+	my $nd_last_week = $death_rlavr->last_data($dkey, {end_date => ($week_pos)});
+	#my $nd_last_week = $nd_last;
+	#dp::dp "===== nd_last_week: $nd_last_week, $nd_last\n";
 	#dp::dp "region:$region dkey[$dkey]\n";
 	for(my $i = 0; $i < $unit_no; $i++){
 		$death_pop[$i] = $death_rlavr->dup();
@@ -913,7 +949,7 @@ sub	positive_death_ern
 		#dp::dp "[$csvp]\n";
 		#$death_pop[$i]->dump();
 		my $dmax = $death_pop[$i]->{dates};
-		#dp::dp "[$i] $du0 : $death_max:";
+		#dp::dp "[$i] $du0 : $nd_max:";
 		for(my $dt = 0; $dt <= $dmax; $dt++){
 			my $v = $csvp->[$dt];
 			if($v < $du){
@@ -958,17 +994,32 @@ sub	positive_death_ern
 	);
 
 	my @list = ();
-	my $death_last = $death_rlavr->last_data($dkey);
-	my $dmax_pop = $death_max / $pop_100k;
-	my $dlst_pop = $death_last / $pop_100k;
+	my $dmax_pop = $nd_max / $pop_100k;
+	my $dlst_pop = $nd_last / $pop_100k;
+	my $drate_max = 100 * $nd_max / $nc_max;
+	my $drate_last = 100 * $nd_last / $nc_last;
 	my $pop_dsc = sprintf("pp[%.1f,%.1f] dp[%.2f,%.2f](max,lst) pop:%d",
-		$pop_max, $pop_last, $death_max / $pop_100k, $death_last / $pop_100k, $pop_100k);
-	dp::dp "deaths: $death_last, $death_max\n";
+		$pop_max, $pop_last, $nd_max / $pop_100k, $nd_last / $pop_100k, $pop_100k);
+	#dp::dp "===== " .join(",", $region, $nc_last, $nc_last_week,  $nc_last / $nc_last_week) . "\n";
+	#dp::dp "===== " .join(",", $region, $nd_last, $nd_last_week,  $nd_last / $nd_last_week) . "\n";
+	if($nc_last_week <= 0){
+		$nc_last_week = $nc_last / 999;
+		dp::dp "====++ " .join(",", $region, $nc_last, $nc_last_week,  $nc_last / $nc_last_week) . "\n";
+	}
+	if($nd_last_week <= 0){
+		$nd_last = 1 if($nd_last == 0);
+		$nd_last_week = $nd_last / 999 ;
+
+		dp::dp "====++ " .join(",", $region, $nd_last, $nd_last_week,  $nd_last / $nd_last_week) . "\n";
+	}
+	my $nc_week_diff = $nc_last / $nc_last_week;
+	my $nd_week_diff = $nd_last / $nd_last_week;
+	dp::dp "deaths: $nd_last, $nd_max\n";
 	#my $rg = $key;
 	#$rg =~ s/--.*$//;
 	#$rg =~ s/#.*$//;
 	push(@list, csv2graph->csv2graph_list_gpmix(
-		{gdp => $defccse::CCSE_GRAPH, dsc => sprintf("[$rg] $pop_dsc dr:%.2f%%", $drate), start_date => $start_date, 
+		{gdp => $defccse::CCSE_GRAPH, dsc => sprintf("[$rg] $pop_dsc dr:%.2f%%", $drate_max), start_date => $start_date, 
 			ymax => $ymax, y2max => $y2max, y2min => 0,
 			ylabel => "confermed", y2label => "deaths (max=$y2y1rate% of rlavr confermed)" ,
 			additional_plot => $add_plot,
@@ -978,10 +1029,15 @@ sub	positive_death_ern
 	));
 
 	my $reg = "$region#$start_date";
-	$REG_INFO{$reg} = {	nc_max => sprintf("%.3f", $y1max), nd_max => sprintf("%.3f", $death_max), 
-							nc_pop_max => sprintf("%.3f", $pop_max), nc_pop_last => sprintf("%.3f", $pop_last), 
-							nd_pop_max => sprintf("%.3f", $dmax_pop), nd_pop_last => sprintf("%.3f", $dlst_pop),
-							pop_100k => sprintf("%.1f", $pop_100k), drate => sprintf("%.3f", $drate),}; 
+	$REG_INFO{$reg} = {	
+			nc_max => sprintf("%.3f", $nc_max), nd_max => sprintf("%.3f", $nd_max), 
+			nc_week_diff => sprintf("%.3f", $nc_week_diff), nd_week_diff => sprintf("%.3f", $nd_week_diff), 
+			nc_last => sprintf("%.3f", $nc_last), nd_last => sprintf("%.3f", $nd_last), 
+			nc_pop_max => sprintf("%.3f", $pop_max), nc_pop_last => sprintf("%.3f", $pop_last), 
+			nd_pop_max => sprintf("%.3f", $dmax_pop), nd_pop_last => sprintf("%.3f", $dlst_pop),
+			drate_max => sprintf("%.3f", $drate_max) , drate_last => sprintf("%.3f", $drate_last),
+			pop_100k => sprintf("%.1f", $pop_100k), 
+					};
 	return (@list);
 }
 

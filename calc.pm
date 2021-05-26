@@ -533,7 +533,7 @@ sub	last_data
 	
 	my $dt_start = util::date_pos($start_date, $date_list->[0], $dates, $date_list);	# 2020-01-02 -> array pos
 	my $dt_end   = util::date_pos($end_date,   $date_list->[$dates], $dates, $date_list);		# 2021-01-02 -> array pos
-	#dp::dp "start_date: $start_date end_date:$end_date dt_start:$dt_start dt_end:$dt_end \n";
+	#dp::dp "###### start_date: $start_date end_date:$end_date dt_start:$dt_start dt_end:$dt_end \n";
 
 	my $csvp = $self->{csv_data};
 	if($target_col){
@@ -542,8 +542,18 @@ sub	last_data
 	}
 
 	my $v = $csvp->{$key}->[$dt_end] // -1;
-	#dp::dp "$dt_end: $v  $start_date - $end_date\n";
-
+	#dp::dp "###### last_date --> $dt_end: [$v]  $start_date - $end_date\n";
+	if(0){#  || $v == -1){
+		#dp::dp "####### " ;
+		dp::dp "===== " ;
+		$csvp = $csvp->{$key};
+		for(my $i = $dt_end - 3; $i <= $self->{dates}; $i++){
+			print "$i:[" . $csvp->[$i] . "]";
+		}
+		my $i = $dt_end;
+		print "   -> $i:[" . $csvp->[$i] . "]";
+		print "\n";
+	}
 	return $v;
 }
 

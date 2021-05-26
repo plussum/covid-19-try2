@@ -1470,9 +1470,22 @@ _EOD_
 	my $date_list = $self->{date_list};
 	my $dt_start = $gp->{dt_start};
 	my $dt_end = $gp->{dt_end};
+#	$dt_start = ($dt_start//"") ? $dt_start : 0;
+#	$dt_end = ($dt_end//"") ? $dt_end : &csv_size($csvp);		# 2021.03.15
+#	if($dt_start < 0){											# 2021.03.15
+#		$dt_start = &csv_size($csvp) + $dt_start;						# 2021.03.15
+#	}															# 2021.03.15
+#	if($dt_end < 0){											# 2021.03.15
+#		$dt_end = &csv_size($csvp) + $dt_end;					# 2021.03.15
+#	}															# 2021.03.15
+	#my $dt_start = $gp->{dt_start};
+	#my $dt_end = $gp->{dt_end};
 	#dp::dp join(",", @$date_list) . "\n";
 	#dp::dp "###" . join(",", $dt_start, $dt_end, $date_list->[$dt_start], $date_list->[$dt_end], scalar(@$date_list)) . "\n";
 
+	#
+	#	Week Line
+	#
 	my $RELATIVE_DATE = 7;
 	my @aw = ();
 
@@ -1485,6 +1498,7 @@ _EOD_
 
 	for(my $dn = $gp->{dt_end} - $s_date; $dn > $gp->{dt_start}; $dn -= $RELATIVE_DATE){
 		my $mark_date = $date_list->[$dn];
+		next if($mark_date le $start_date || $mark_date ge $end_date);
 		
 		#dp::dp "ARROW: $dn, [$mark_date]\n";
 		my $a = sprintf("set arrow from '%s',Y_MIN to '%s',Y_MAX nohead lw 1 dt (3,7) lc rgb \"dark-red\"",

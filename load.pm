@@ -175,7 +175,7 @@ sub	load_csv_holizontal
         if(/"/){
             s/"([^",]+), *([^",]+), *([^",]+)"/$1;$2;$3/g;  # ,"aa,bb,cc", -> aa-bb-cc
             s/"([^",]+), *([^"]+)"/$1-$2/g; # ,"aa,bb", -> aa-bb
-            dp::dp "[$_]\n" if(/Korea/);
+            #dp::dp "[$_]\n" if(/Korea/);
         }
 
 		my $line = $_;
