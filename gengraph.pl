@@ -133,11 +133,12 @@ my $additional_plot = join(",", values %additional_plot_item);
 
 
 my @TARGET_REGION = (
-		"France", "Cameroon", "Japan", "US,United States", "India", "Brazil", 
+		#"France", "Cameroon", 
+		"Japan", "US,United States", "India", "Brazil", "Peru",
 		"United Kingdom", "France", "Spain", "Italy", "Russia", 
 			"Germany", "Poland", "Ukraine", "Netherlands", "Czechia,Czech Republic", "Romania",
 			"Belgium", "Portugal", "Sweden",
-		"China", "Taiwan*", "Singapore", "Vietnam", "Korea-South", 
+		"China", "Taiwan*", "Singapore", "Vietnam", "Malaysia", "Korea-South", 
 		"Indonesia", "Israel", # "Iran", "Iraq","Pakistan", different name between amt and ccse  
 		"Colombia", "Argentina", "Chile", "Mexico", "Canada", 
 		"South Africa", "Seychelles", # ,United States",
@@ -214,7 +215,7 @@ else {
 		my $id = $cdp->{id};
 		push(@ids, $id);
 	}
-	dp::dp "usage:$0 " . join(" | ", "-all", @ids, keys %$cmd_list, "-et -poplist") ."\n";
+	dp::dp "usage:$0 " . join(" | ", "-all", @ids, keys %$cmd_list, "-et | -poplist") ."\n";
 	exit;
 }
 #if($golist{"amt-ccse"}){
@@ -322,6 +323,7 @@ if($golist{"pref-ern"}) {
 
 if($golist{pref}){
 	my $pd_list = [];
+	my $pd_pop_list = [];
 
 	%REG_INFO = ();
 	#
@@ -361,6 +363,7 @@ if($golist{pref}){
 	my $target_keys = [$jp_rlavr->select_keys({item => $positive}, 0)];	# select data for target_keys
 	my $sorted_keys = [$jp_rlavr->sort_csv($jp_rlavr->{csv_data}, $target_keys, -28, 0)];
 	my $endt = ($end_target <= 0) ? (scalar(@$sorted_keys) -1) : ($end_target - 1);
+	dp::dp "endt : [$endt]\n";
 	foreach my $pref (@$sorted_keys[0..$endt]){
 		#next if(! ($pref =~ /愛知|東京/));
 		#next if(! ($pref =~ /愛知/));
@@ -372,7 +375,8 @@ if($golist{pref}){
 			#dp::dp join(",", @$sorted_keys[0..$end]) . "\n";
 			dp::dp "####### $pref $start_date " . $endt . "\n";
 			#push(@$pd_list, &japan_positive_death($jp_cdp, $pref, $start_date));		# 2021.04.05 
-			push(@$pd_list, &japan_positive_death_ern($jp_cdp, $pref, $start_date));
+			push(@$pd_list, &japan_positive_death_ern($jp_cdp, $pref, $start_date, 0));
+			push(@$pd_pop_list, &japan_positive_death_ern($jp_cdp, $pref, $start_date, 1));
 		}
 	}
 
@@ -380,6 +384,15 @@ if($golist{pref}){
 			html_tilte => "Positve/Deaths COVID-19 Japan prefecture ",
 			src_url => "src_url",
 			html_file => "$HTML_PATH/japanpref.html",
+			png_path => $PNG_PATH // "png_path",
+			png_rel_path => $PNG_REL_PATH // "png_rel_path",
+			data_source => $jp_cdp->{src_info},
+		}
+	);
+	csv2graph->gen_html_by_gp_list($pd_pop_list, {						# Generate HTML file with graphs
+			html_tilte => "POP Positve/Deaths COVID-19 Japan prefecture ",
+			src_url => "src_url",
+			html_file => "$HTML_PATH/japanpref_pop.html",
 			png_path => $PNG_PATH // "png_path",
 			png_rel_path => $PNG_REL_PATH // "png_rel_path",
 			data_source => $jp_cdp->{src_info},
@@ -466,6 +479,7 @@ sub	ccse
 	%REG_INFO = ();
 	dp::dp "CCSE\n";
 	my $ccse_gp_list = [];
+	my $ccse_pop_gp_list = [];
 	my $ccse_cdp = csv2graph->new($defccse::CCSE_CONF_DEF); 						# Load Johns Hopkings University CCSE
 	$ccse_cdp->load_csv($defccse::CCSE_CONF_DEF);
 	$ccse_cdp->calc_items("sum", 
@@ -508,7 +522,8 @@ sub	ccse
 		$region =~ s/--.*//;
 		dp::dp "$region\n";
 		foreach my $start_date(0, -62){
-			push(@$ccse_gp_list, &ccse_positive_death_ern($ccse_country, $death_country, $region, $start_date));
+			push(@$ccse_gp_list, &ccse_positive_death_ern($ccse_country, $death_country, $region, $start_date, 0));
+			push(@$ccse_pop_gp_list, &ccse_positive_death_ern($ccse_country, $death_country, $region, $start_date, 1));
 		}
 		#push(@$ccse_gp_list, &ccse_positive_death($ccse_country, $death_country, $region, 0));
 		#push(@$ccse_gp_list, &ccse_positive_ern($ccse_country, $region, 0));
@@ -522,6 +537,16 @@ sub	ccse
 			data_source => $ccse_cdp->{src_info},
 		}
 	);
+	csv2graph->gen_html_by_gp_list($ccse_pop_gp_list, {						# Generate HTML file with graphs
+			html_tilte => "COVID-19 related data visualizer ",
+			src_url => "src_url",
+			html_file => "$HTML_PATH/$param" . "_pop.html",
+			png_path => $PNG_PATH // "png_path",
+			png_rel_path => $PNG_REL_PATH // "png_rel_path",
+			data_source => $ccse_cdp->{src_info},
+		}
+	);
+
 	my $outf = "$param" . "_ri_";
 	&gen_reginfo("$HTML_PATH/$outf", "nc_pop_last", "nc_pop_max");
 	&gen_reginfo("$HTML_PATH/$outf", "nc_pop_max", "nc_pop_last");
@@ -739,34 +764,69 @@ sub	search_cdp_key
 
 sub	ccse_positive_death_ern
 {
-	my($conf_cdp, $death_cdp, $region, $start_date) = @_;
+	my($conf_cdp, $death_cdp, $region, $start_date, $pop) = @_;
 
 	my $conf_region = $conf_cdp->reduce_cdp_target({$prov => "", $cntry => $region});
 	my $death_region = $death_cdp->reduce_cdp_target({$prov => "", $cntry => $region});
-	return &positive_death_ern($conf_region, $death_region, $region, $start_date, "--conf", "--death");
+	my $p = "";
+	$p = {pop_ymax_nc => 50, pop_ymax_nd => 2} if($pop);
+
+	return &positive_death_ern($conf_region, $death_region, $region, $start_date, "--conf", "--death", $p);
 }
 
 sub	japan_positive_death_ern
 { 
-	my($jp_cdp, $pref, $start_date) = @_;
+	my($jp_cdp, $pref, $start_date, $pop) = @_;
 
 	my $jp_pref = $jp_cdp->reduce_cdp_target({item => $positive, prefectureNameJ => $pref});
 	my $death_pref = $jp_cdp->reduce_cdp_target({item => $deaths, prefectureNameJ => $pref});
+	my $p = "";
+	$p = {pop_ymax_nc => 10, pop_ymax_nd => 0.5} if($pop);
 
-	return &positive_death_ern($jp_pref, $death_pref, $pref, $start_date, "#testedPositive", "#deaths");
+	return &positive_death_ern($jp_pref, $death_pref, $pref, $start_date, "#testedPositive", "#deaths", $p);
 }
 
 sub	positive_death_ern
 {
-	my($conf_region, $death_region, $region, $start_date, $conf_post_fix, $death_post_fix) = @_;
+	my($conf_region, $death_region, $region, $start_date, $conf_post_fix, $death_post_fix, $p) = @_;
 
 	#$conf_region->dump();
 	#$death_region->dump();
-	my $p = {start_date => $start_date};
+	$p = {start_date => $start_date} if(!($p // ""));
+	my $pop_ymax_nc = $p->{pop_ymax_nc} // "";
+	my $pop_ymax_nd = $p->{pop_ymax_nd} // "";
+	dp::dp "[$pop_ymax_nc,$pop_ymax_nd]\n";
+
 	my $nc_max = $conf_region->max_rlavr($p);
 	my $nc_max_week = $conf_region->max_rlavr($p);
-	my $y2max = int($nc_max * $y2y1rate / 100 + 0.9999999); 
+
+	my $rlavr = $conf_region->calc_rlavr();
+	my $ern = $conf_region->calc_ern();
+	my $csvp = $ern->{csv_data};
+	my $key = &search_cdp_key($conf_region, $region, $conf_post_fix);
+	if(! $key || !($csvp->{$key}//"")){
+		dp::ABORT "$key undefined \n";
+		return "";
+	}
+
+	my $pop_key = $key; # $region;
+	$pop_key =~ s/$conf_post_fix//;
+	my $population = $POP{$pop_key} // 100000;
+
+	if(! defined $POP{$pop_key}){
+		dp::ABORT "POP: $pop_key, not defined\n";
+		$population = 100000;
+	}
+	my $pop_100k = $population / 100000;
+
 	my $ymax = csvlib::calc_max2($nc_max);			# try to set reasonable max 
+	my $y2max = int($nc_max * $y2y1rate / 100 + 0.9999999); 
+	if($pop_ymax_nc){
+		dp::ABORT "POP: pop_ymax_nd, not defined\n" if(!$pop_ymax_nd);
+		
+		$ymax = $pop_100k * $pop_ymax_nc;
+		$y2max = $pop_100k * $pop_ymax_nd;
+	}
 
 	my $death_rlavr = $death_region->calc_rlavr();
 	my $nd_max = $death_region->max_rlavr($p);
@@ -776,17 +836,8 @@ sub	positive_death_ern
 
 	#dp::dp "y0max:$y0max nc_max:$nc_max, ymax:$ymax, y2max:$y2max death_max:$nd_max\n";
 
-	my $rlavr = $conf_region->calc_rlavr();
-	my $ern = $conf_region->calc_ern();
 	#$rlavr->dump();
-	my $csvp = $ern->{csv_data};
-	#my $key = "$region--conf";
-	my $key = &search_cdp_key($conf_region, $region, $conf_post_fix);
-	#dp::dp "[$key]\n";
-	if(! $key || !($csvp->{$key}//"")){
-		dp::ABORT "$key undefined \n";
-		return "";
-	}
+
 	my $csv_region = $csvp->{$key};
 	my $size = scalar(@$csv_region);
 	for(my $i = 0; $i < $size; $i++){
@@ -817,33 +868,18 @@ sub	positive_death_ern
 	##
 	## POP
 	##
-	my $pop_key = $key; # $region;
-	$pop_key =~ s/$conf_post_fix//;
-	#$pop_key =~ s/[-#].*$//;
-	#$pop_key =~ s/"//g;
-	#dp::dp "$population\n";
-	if($pop_key =~ /Korea/){
-		#$pop_key = "Korea" ;
-		dp::dp "$pop_key: $POP{$pop_key}\n";
-	}
-	my $population = $POP{$pop_key} // 100000;
 
-	if(! defined $POP{$pop_key}){
-		dp::ABORT "POP: $pop_key, not defined\n";
-		$population = 100000;
-	}
-	my $pop_100k = $population / 100000;
 	#dp::dp "[$pop_key]: $pop_100k\n";
 	my $pop_max = $ymax / $pop_100k;
 	my $nc_last = $rlavr->last_data($key);
 	my $week_pos = -7;
-#	if($nc_last <= 0){
+	if($nc_last <= 0){
 #		$week_pos--;
 #		dp::WARNING "nc_last [$nc_last] $key\n";
 #		$nc_last = $rlavr->last_data($key, {end_date => -1});
 #		dp::dp "nc_last [$nc_last] $key\n";
-#		$nc_last = ; # 1 / ($population * 2));
-#	}
+		$nc_last = 0.9999; # 1 / ($population * 2));
+	}
 	my $nc_last_week = $rlavr->last_data($key, {end_date => ($week_pos)});
 	#my $nc_last_week = $nc_last;
 	#dp::dp "===== nc_last_week: $nc_last_week, $nc_last\n";
@@ -867,20 +903,28 @@ sub	positive_death_ern
 		#dp::dp "$pop_max, $pmx: $digit : $pop_dlt\n";
 	}
 	#dp::dp "POP/100k : $region: $pop_100k "  . sprintf("    %.2f", $pop_max) . "\n";
-	for(my $i = $pop_dlt; $i < $pop_max; $i +=  $pop_dlt){
+	my $ln = 0;
+	for(my $i = $pop_dlt; $i < $pop_max; $i +=  $pop_dlt, $ln++){
 		my $pop = $i * $pop_100k;
 		my $dt = "lc 'navy' dt (5,5)";
 		my $lw = 1;
-		if($pop_dlt < 5 && (($i*10) % 10) == 0){
-			#$dt =~ s/\(.\)/(5,5)/;
+		#if((($i*10) % 10) == 0){
+		if(($ln % 2) == 1){
 			$dt =~ s/dt.*$//;
+			if($pop_dlt < 5 ){
+				$lw = 1.5 if(($ln % 4) == 3);
+			}
+			else {
+				$lw = 1.5 if(($ln % 4 ) == 3);
+			}
+			#$dt =~ s/\(.\)/(5,5)/;
 			#dp::dp "line: $i, $pop_dlt\n";
+			#dp::dp "====> line: $i, $pop_dlt, $lw $ln\n";
 		}
 		if(($i % 10) == 0){
 			$dt =~ s/dt.*$//;
-			#$lw = 1.5;
-			#dp::dp "line: $i, $pop_dlt\n";
 		}
+		dp::dp "---> line: $i, $pop_dlt, $lw, $ln\n";
 		my $title = sprintf("title 'Positive %.1f/100K'", $i);
 		push(@adp, "$pop axis x1y1 with lines $title lw $lw $dt");
 	}
@@ -1000,6 +1044,9 @@ sub	positive_death_ern
 	my $drate_last = 100 * $nd_last / $nc_last;
 	my $pop_dsc = sprintf("pp[%.1f,%.1f] dp[%.2f,%.2f](max,lst) pop:%d",
 		$pop_max, $pop_last, $nd_max / $pop_100k, $nd_last / $pop_100k, $pop_100k);
+	if($pop_ymax_nc){
+		$pop_dsc = sprintf("pop[%d, nc:%.1f, nd:%.1f]", $pop_100k, $pop_ymax_nc, $pop_ymax_nd);
+	}
 	#dp::dp "===== " .join(",", $region, $nc_last, $nc_last_week,  $nc_last / $nc_last_week) . "\n";
 	#dp::dp "===== " .join(",", $region, $nd_last, $nd_last_week,  $nd_last / $nd_last_week) . "\n";
 	if($nc_last_week <= 0){
