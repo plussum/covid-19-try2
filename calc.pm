@@ -282,8 +282,8 @@ sub	population
 		$key =~ s/"//g;
 		my $pop = $pop_list->{$key} // "";
 		#dp::dp "POP: $key: $pop\n";
-		if(!$pop){
-			dp::WARNING "No population data [$key]\n";  
+		if(!$pop || $pop < $thresh){
+			dp::WARNING "No population data [$key]\n" if($VERBOSE);  
 			$pop = 0;
 			#next;
 		}

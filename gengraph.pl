@@ -77,6 +77,7 @@ my $box_fill  		= "boxes fill";
 
 my $y2y1rate = 2.5;
 my $end_target = 0;
+my $CCSE_MAX = 119; # 99;
 
 #
 #	for APPLE Mobility Trends
@@ -134,6 +135,7 @@ my $additional_plot = join(",", values %additional_plot_item);
 
 my @TARGET_REGION = (
 		#"France", "Cameroon", 
+		#"Australia", "New Zealand",
 		"Japan", "US,United States", "India", "Brazil", "Peru",
 		"United Kingdom", "France", "Spain", "Italy", "Russia", 
 			"Germany", "Poland", "Ukraine", "Netherlands", "Czechia,Czech Republic", "Romania",
@@ -142,6 +144,7 @@ my @TARGET_REGION = (
 		"Indonesia", "Israel", # "Iran", "Iraq","Pakistan", different name between amt and ccse  
 		"Colombia", "Argentina", "Chile", "Mexico", "Canada", 
 		"South Africa", "Seychelles", # ,United States",
+		"Australia", "New Zealand",
 );
 
 my @TARGET_PREF = ("Tokyo", "Kanagawa", "Chiba", "Saitama", "Kyoto", "Osaka");
@@ -365,22 +368,26 @@ if($golist{pref}){
 	my $endt = ($end_target <= 0) ? (scalar(@$sorted_keys) -1) : ($end_target - 1);
 	dp::dp "endt : [$endt]\n";
 	foreach my $pref (@$sorted_keys[0..$endt]){
-		#next if(! ($pref =~ /愛知|東京/));
-		#next if(! ($pref =~ /愛知/));
 		$pref =~ s/[\#\-].*$//;
-		dp::dp "$pref\n";
-
+		dp::dp "rlavr: $pref\n";
 		foreach my $start_date (0, -28){ # , -28){
-			#my $sorted_keys = [$jp_rlavr->sort_csv($jp_rlavr->{csv_data}, $target_keys, $start_date, -14)];
-			#dp::dp join(",", @$sorted_keys[0..$end]) . "\n";
-			dp::dp "####### $pref $start_date " . $endt . "\n";
-			#push(@$pd_list, &japan_positive_death($jp_cdp, $pref, $start_date));		# 2021.04.05 
-			push(@$pd_list, &japan_positive_death_ern($jp_cdp, $pref, $start_date, 0));
+			push(@$pd_list, &japan_positive_death_ern($jp_cdp, $pref, $start_date, 1));		# 0 -> 1 2021.06.28
+		}
+	}
+
+	my $jp_pop_rlavr   = $jp_rlavr->calc_pop($jp_rlavr);
+	$sorted_keys = [$jp_pop_rlavr->sort_csv($jp_pop_rlavr->{csv_data}, $target_keys, -28, 0)];
+	foreach my $pref (@$sorted_keys[0..$endt]){
+		$pref =~ s/[\#\-].*$//;
+		dp::dp "pop: $pref\n";
+		foreach my $start_date (0, -28){ # , -28){
 			push(@$pd_pop_list, &japan_positive_death_ern($jp_cdp, $pref, $start_date, 1));
 		}
 	}
 
 	csv2graph->gen_html_by_gp_list($pd_list, {						# Generate HTML file with graphs
+			row => 2,
+			no_lank_label => 1,
 			html_tilte => "Positve/Deaths COVID-19 Japan prefecture ",
 			src_url => "src_url",
 			html_file => "$HTML_PATH/japanpref.html",
@@ -390,6 +397,8 @@ if($golist{pref}){
 		}
 	);
 	csv2graph->gen_html_by_gp_list($pd_pop_list, {						# Generate HTML file with graphs
+			row => 2,
+			no_lank_label => 1,
 			html_tilte => "POP Positve/Deaths COVID-19 Japan prefecture ",
 			src_url => "src_url",
 			html_file => "$HTML_PATH/japanpref_pop.html",
@@ -430,7 +439,7 @@ sub	gen_reginfo
 					);
 	my @keys = ();
 	foreach my $k ($sort_key, @sub, @keys_list){
-		next if(defined $DISPF{$k});
+		ext if(defined $DISPF{$k});
 
 		$DISPF{$k} = 1;
 		push(@keys, $k);
@@ -479,31 +488,26 @@ sub	ccse
 	%REG_INFO = ();
 	dp::dp "CCSE\n";
 	my $ccse_gp_list = [];
+	my $ccse_rlavr_gp_list = [];
 	my $ccse_pop_gp_list = [];
+
+	#
+	#	Marge regional data of certain counties
+	#
 	my $ccse_cdp = csv2graph->new($defccse::CCSE_CONF_DEF); 						# Load Johns Hopkings University CCSE
 	$ccse_cdp->load_csv($defccse::CCSE_CONF_DEF);
-	$ccse_cdp->calc_items("sum", 
-				{"Province/State" => "", "Country/Region" => "Canada"},				# All Province/State with Canada, ["*","Canada",]
-				{"Province/State" => "null", "Country/Region" => "="}				# total gos ["","Canada"] null = "", = keep
-	);
-	$ccse_cdp->calc_items("sum", 
-				{"Province/State" => "", "Country/Region" => "China"},				# All Province/State with Canada, ["*","Canada",]
-				{"Province/State" => "null", "Country/Region" => "="}				# total gos ["","Canada"] null = "", = keep
-	);
-	my $ccse_country = $ccse_cdp->reduce_cdp_target({"Province/State" => "NULL"});	# Select Country
-
 	my $death_cdp = csv2graph->new($defccse::CCSE_DEATHS_DEF); 						# Load Johns Hopkings University CCSE
 	$death_cdp->load_csv($defccse::CCSE_DEATHS_DEF);
-	$death_cdp->calc_items("sum", 
-				{"Province/State" => "", "Country/Region" => "Canada"},				# All Province/State with Canada, ["*","Canada",]
-				{"Province/State" => "null", "Country/Region" => "="}				# total gos ["","Canada"] null = "", = keep
-	); 
-	$death_cdp->calc_items("sum", 
-				{"Province/State" => "", "Country/Region" => "China"},				# All Province/State with Canada, ["*","Canada",]
-				{"Province/State" => "null", "Country/Region" => "="}				# total gos ["","Canada"] null = "", = keep
-	); 
+	foreach my $wcdp ($ccse_cdp, $death_cdp){
+		foreach my $country ("Canada", "China", "Australia"){
+			$wcdp->calc_items("sum", 
+						{"Province/State" => "", "Country/Region" => $country},				# All Province/State with Canada, ["*","Canada",]
+						{"Province/State" => "null", "Country/Region" => "="}				# total gos ["","Canada"] null = "", = keep
+			);
+		}
+	}
+	my $ccse_country = $ccse_cdp->reduce_cdp_target({"Province/State" => "NULL"});	# Select Country
 	my $death_country = $death_cdp->reduce_cdp_target({"Province/State" => "NULL"});	# Select Country
-
 
 	my $graph_kind = $csv2graph::GRAPH_KIND;
 
@@ -513,22 +517,37 @@ sub	ccse
 	my $sorted_keys = [$ccse_rlavr->sort_csv($ccse_rlavr->{csv_data}, $target_keys, -28, 0)];
 	my $target_region = ($param ne "ccse-tgt") ? $sorted_keys  : \@TARGET_REGION;
 	my $endt = ($end_target <= 0) ? (scalar(@$target_region) -1) : ($end_target - 1);
-	$endt = 99 if($endt > 99);
+	$endt = $CCSE_MAX if($endt > $CCSE_MAX);
 	#my $endt = ($end_target <= 0) ? $#TARGET_REGION : $end_target;
-
-	my $start_date = 0;
 	#dp::dp "####### " . $endt . "\n";
 	foreach my $region (@$target_region[0..$endt]){
 		$region =~ s/--.*//;
-		dp::dp "$region\n";
+		dp::dp "rlavr: $region\n";
 		foreach my $start_date(0, -62){
-			push(@$ccse_gp_list, &ccse_positive_death_ern($ccse_country, $death_country, $region, $start_date, 0));
+			push(@$ccse_gp_list, &ccse_positive_death_ern($ccse_country, $death_country, $region, $start_date, 1));	# 0 -> 1 2021.06.28
+			push(@$ccse_rlavr_gp_list, &ccse_positive_death_ern($ccse_country, $death_country, $region, $start_date, 0));	# 0 -> 1 2021.06.28
+		}
+	}
+
+	#my $jp_pop_rlavr   = $jp_rlavr->calc_pop($jp_rlavr);
+	#$sorted_keys = [$jp_pop_rlavr->sort_csv($jp_pop_rlavr->{csv_data}, $target_keys, -28, 0)];
+
+	my $ccse_pop_rlavr   = $ccse_rlavr->calc_pop($ccse_rlavr);
+	$sorted_keys = [$ccse_pop_rlavr->sort_csv($ccse_pop_rlavr->{csv_data}, $target_keys, -28, 0)];
+	$target_region = ($param ne "ccse-tgt") ? $sorted_keys  : \@TARGET_REGION;
+	#dp::dp "####### " . $endt . "\n";
+	dp::dp "pop:   " . join(",", (@$target_region[0..10])) . "\n";
+	foreach my $region (@$target_region[0..$endt]){
+		$region =~ s/--.*//;
+		dp::dp "pop: $region\n";
+		foreach my $start_date(0, -62){
 			push(@$ccse_pop_gp_list, &ccse_positive_death_ern($ccse_country, $death_country, $region, $start_date, 1));
 		}
-		#push(@$ccse_gp_list, &ccse_positive_death($ccse_country, $death_country, $region, 0));
-		#push(@$ccse_gp_list, &ccse_positive_ern($ccse_country, $region, 0));
 	}
+
 	csv2graph->gen_html_by_gp_list($ccse_gp_list, {						# Generate HTML file with graphs
+			row => 2,
+			no_lank_label => 1,
 			html_tilte => "COVID-19 related data visualizer ",
 			src_url => "src_url",
 			html_file => "$HTML_PATH/$param.html",
@@ -537,7 +556,21 @@ sub	ccse
 			data_source => $ccse_cdp->{src_info},
 		}
 	);
+	csv2graph->gen_html_by_gp_list($ccse_rlavr_gp_list, {						# Generate HTML file with graphs
+			row => 2,
+			no_lank_label => 1,
+			html_tilte => "COVID-19 related data visualizer nc-nd ",
+			src_url => "src_url",
+			html_file => "$HTML_PATH/$param" . "_rlavr.html",
+			png_path => $PNG_PATH // "png_path",
+			png_rel_path => $PNG_REL_PATH // "png_rel_path",
+			data_source => $ccse_cdp->{src_info},
+		}
+	);
+
 	csv2graph->gen_html_by_gp_list($ccse_pop_gp_list, {						# Generate HTML file with graphs
+			row => 2,
+			no_lank_label => 1,
 			html_tilte => "COVID-19 related data visualizer ",
 			src_url => "src_url",
 			html_file => "$HTML_PATH/$param" . "_pop.html",
@@ -824,7 +857,7 @@ sub	positive_death_ern
 	if($pop_ymax_nc){
 		dp::ABORT "POP: pop_ymax_nd, not defined\n" if(!$pop_ymax_nd);
 		
-		$ymax = $pop_100k * $pop_ymax_nc;
+		$ymax = csvlib::calc_max2($pop_100k * $pop_ymax_nc);
 		$y2max = $pop_100k * $pop_ymax_nd;
 	}
 
@@ -846,6 +879,9 @@ sub	positive_death_ern
 	}
 	$ern->rename_key($key, "$region-ern");
 
+	#
+	#	Lines of ERN
+	#
 	my @adp = ();
 	for(my $i = 0; $i < 3; $i += 0.2){
 		next if($i == 0);
@@ -868,7 +904,6 @@ sub	positive_death_ern
 	##
 	## POP
 	##
-
 	#dp::dp "[$pop_key]: $pop_100k\n";
 	my $pop_max = $ymax / $pop_100k;
 	my $nc_last = $rlavr->last_data($key);
@@ -894,12 +929,14 @@ sub	positive_death_ern
 		my $digit = int(log($pmx)/log(10));
 		$digit -- if($digit > 1);
 		$pop_dlt =  10**($digit);
-		if(($pop_max / $pop_dlt) > 5){
+		dp::dp sprintf("POL_DLT: %.3f %.3f\n", $pop_dlt, $pop_max / $pop_dlt);
+		if(($pop_max / $pop_dlt) >= 5){
 			$pop_dlt *= 2;
 		}
 		elsif(($pop_max / $pop_dlt) < 3){
 			$pop_dlt /= 2;
 		}
+		dp::dp sprintf("POL_DLT: %.3f %.3f\n", $pop_dlt, $pop_max / $pop_dlt);
 		#dp::dp "$pop_max, $pmx: $digit : $pop_dlt\n";
 	}
 	#dp::dp "POP/100k : $region: $pop_100k "  . sprintf("    %.2f", $pop_max) . "\n";
@@ -911,8 +948,8 @@ sub	positive_death_ern
 		#if((($i*10) % 10) == 0){
 		if(($ln % 2) == 1){
 			$dt =~ s/dt.*$//;
-			if($pop_dlt < 5 ){
-				$lw = 1.5 if(($ln % 4) == 3);
+			if(($pop_max / $pop_dlt) < 5 ){
+				$lw = 1.5 if(($ln % 2) == 1);
 			}
 			else {
 				$lw = 1.5 if(($ln % 4 ) == 3);
@@ -924,7 +961,7 @@ sub	positive_death_ern
 		if(($i % 10) == 0){
 			$dt =~ s/dt.*$//;
 		}
-		dp::dp "---> line: $i, $pop_dlt, $lw, $ln\n";
+		#dp::dp "---> line: $i, $pop_dlt, $lw, $ln\n";
 		my $title = sprintf("title 'Positive %.1f/100K'", $i);
 		push(@adp, "$pop axis x1y1 with lines $title lw $lw $dt");
 	}
@@ -1065,10 +1102,11 @@ sub	positive_death_ern
 	#my $rg = $key;
 	#$rg =~ s/--.*$//;
 	#$rg =~ s/#.*$//;
+	my $y2label = ($pop_ymax_nc) ? "deaths" : "deaths (max=$y2y1rate% of rlavr confermed)";
 	push(@list, csv2graph->csv2graph_list_gpmix(
 		{gdp => $defccse::CCSE_GRAPH, dsc => sprintf("[$rg] $pop_dsc dr:%.2f%%", $drate_max), start_date => $start_date, 
 			ymax => $ymax, y2max => $y2max, y2min => 0,
-			ylabel => "confermed", y2label => "deaths (max=$y2y1rate% of rlavr confermed)" ,
+			ylabel => "confermed", y2label => $y2label ,
 			additional_plot => $add_plot,
 			graph_items => [@$graph_items],
 			no_label_no => 1,

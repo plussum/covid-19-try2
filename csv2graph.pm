@@ -542,6 +542,8 @@ sub gen_html_by_gp_list
 	my $png_rel_path = $p->{png_rel_path} //"png_rel_path";
 	my $data_source = $p->{data_source} // "data_source";
 	my $dst_dlm = $p->{dst_dlm} // "\t";
+	my $row = $p->{row} // 0;
+	my $no_lank_label = $p->{no_lank_label} // 0;
 
 	my $CSS = $config::CSS;
 	my $class = $config::CLASS;
@@ -561,9 +563,28 @@ sub gen_html_by_gp_list
 	print HTML "<h3>Data Source：$data_source</h3>\n";
 
 	#dp::dp  "Number of Graph Parameters: " .scalar(@$graph_params) . "\n";
+	my $graph_no = -1;
+	my $row_flash = 0;
 	foreach my $gp (@$graph_params){
 		next if(! ($gp//""));
 
+		#
+		#	Put row
+		#
+		$graph_no++;
+
+		#dp::dp "######## $graph_no, $row, " . ($graph_no % $row) . "\n";
+		if($row > 1){
+			if(($graph_no % $row) == 0){
+				print HTML "<table>\n<tbody>\n";
+				print HTML "<tr><td>\n";
+				$row_flash = 1;
+			}
+		}
+		
+		#
+		#
+		#
 		print HTML "<span class=\"c\">$now</span><br>\n";
 		print HTML '<img src="' . $png_rel_path . "/" . $gp->{plot_png} . '">' . "\n";
 		print HTML "<br>\n";
@@ -575,9 +596,9 @@ sub gen_html_by_gp_list
 		my $csv_file = $png_path . "/" . $gp->{plot_csv};
 		open(CSV, $csv_file) || die "canot open $csv_file";
 		binmode(CSV, ":utf8");
-
 		my $l = <CSV>;		# get label form CSV file
 		close(CSV);
+
 		$l =~ s/[\r\n]+$//;
 		my @lbl = split($dst_dlm, $l);
 		shift(@lbl);
@@ -593,15 +614,17 @@ sub gen_html_by_gp_list
 				next if($l =~ /notitle/);
 
 				$l =~ s/$LABEL_DLM.*//;
+				$l =~ s/^\d+:// if($no_lank_label);
 				print HTML "<td>" . $l . "</td>";
 				#dp::dp "HTML LABEL: " . $lbl[$i+$j] . "\n";
 			}
 			print HTML "</tr>\n";
 		}
 		print HTML "</tbody>\n</table>\n";
-		print HTML "</span>\n";
+		print HTML "</span>";
 
 		print HTML "<span $class> <a href=\"$src_url\" target=\"blank\"> Data Source (CSV) </a></span>\n";
+
 		#
 		#	References
 		#
@@ -609,16 +632,42 @@ sub gen_html_by_gp_list
 					join(":", "CSV", $png_rel_path . "/" .$gp->{plot_csv}),
 					join(":", "PLT", $png_rel_path . "/" .$gp->{plot_cmd}),
 		);
-		print HTML "<hr>\n";
 		print HTML "<span $class>";
 		foreach my $r (@refs){
 			my ($tag, $path) = split(":", $r);
 			print HTML "$tag:<a href=\"$path\" target=\"blank\">$path</a>\n"; 
 		}
+		print HTML "</span>";
+
+		#
+		#	closed
+		#
+		if($row < 1){
+			print HTML "<br>\n" ;
+			print HTML "<br><hr>\n\n";
+		}
+		else {
+			if(($graph_no % $row) == ($row - 1)){
+				print HTML "</td></tr>\n";
+				print HTML "</tobody></table>\n";
+
+				print HTML "<br>\n" ;
+				print HTML "<br><hr>\n\n";
+				$row_flash = 0;
+			}
+			else {
+				print HTML "</td><td>\n";
+			}
+		}
+	}
+	if($row_flash){
+		print HTML "</td></tr>\n";
+		print HTML "</tobody></table>\n";
+
 		print HTML "<br>\n" ;
-		print HTML "</span>\n";
 		print HTML "<br><hr>\n\n";
 	}
+	print HTML "</span>\n";
 	print HTML "</BODY>\n";
 	print HTML "</HTML>\n";
 	close(HTML);
