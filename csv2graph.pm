@@ -237,6 +237,8 @@ sub	calc_pop {return calc::calc_pop(@_);}
 sub	population {return calc::population(@_);}
 sub	max_rlavr {return calc::max_rlavr(@_);}
 sub	last_data {return calc::last_data(@_);}
+sub	gen_total {return calc::calc_record("add", @_);}
+sub	calc_record {return calc::calc_record(@_);}
 
 # select
 sub	gen_record_key {return select::gen_record_key(@_);} 

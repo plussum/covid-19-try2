@@ -44,6 +44,7 @@ use deftokyo;
 use deftkow;
 use defdocomo;
 use defmhlw;
+use deftkocsv;
 
 
 binmode(STDOUT, ":utf8");
@@ -150,7 +151,7 @@ my @TARGET_REGION = (
 my @TARGET_PREF = ("Tokyo", "Kanagawa", "Chiba", "Saitama", "Kyoto", "Osaka");
 
 my @cdp_list = ($defamt::AMT_DEF, $defccse::CCSE_DEF, $MARGE_CSV_DEF, 
-					$deftokyo::TOKYO_DEF, $defjapan::JAPAN_DEF, $deftkow::TKOW_DEF, $defdocomo::DOCOMO_DEF, $defmhlw::MHLW_DEF); 
+					$deftokyo::TOKYO_DEF, $defjapan::JAPAN_DEF, $deftkow::TKOW_DEF, $defdocomo::DOCOMO_DEF, $defmhlw::MHLW_DEF, $deftkocsv::TKOCSV_DEF); 
 
 my $cmd_list = {"amt-jp" => 1, "amt-jp-pref" => 1, "tkow-ern" => 1, try => 1, "pref-ern" => 1, pref => 1, docomo => 1, upload => 1, "ccse-tgt" => 1};
 my %REG_INFO = ();
@@ -255,79 +256,6 @@ my $ccse_country = {};
 #	Try for using 
 #
 #
-if($golist{"pref-ern"}) {
-	my $pref_gp_list = [];
-	#
-	#	ccse Japan
-	#
-	my $ccse_cdp = csv2graph->new($defccse::CCSE_CONF_DEF); 						# Load Johns Hopkings University CCSE
-	$ccse_cdp->load_csv($defccse::CCSE_CONF_DEF);
-	my $ccse_country = $ccse_cdp->reduce_cdp_target({"Province/State" => "NULL"});	# Select Country
-
-	my $death_cdp = csv2graph->new($defccse::CCSE_DEATHS_DEF); 						# Load Johns Hopkings University CCSE
-	$death_cdp->load_csv($defccse::CCSE_DEATHS_DEF);
-	my $death_country = $death_cdp->reduce_cdp_target({"Province/State" => "NULL"});	# Select Country
-	my $graph_kind = $csv2graph::GRAPH_KIND;
-
-	my $region = "Japan";
-	foreach my $start_date (0, -93){
-		#push(@$pref_gp_list, &ccse_positive_death($ccse_country, $death_country, $region, $start_date));
-		push(@$pref_gp_list, &ccse_positive_ern($ccse_country, $region, 0));
-	}
-
-	#
-	#	Japan Prefectures
-	#
-	my $jp_cdp = csv2graph->new($defjapan::JAPAN_DEF); 						# Load Apple Mobility Trends
-	$jp_cdp->load_csv($defjapan::JAPAN_DEF);
-
-	my $jp_rlavr = $jp_cdp->calc_rlavr($jp_cdp);
-	my $jp_ern   = $jp_cdp->calc_ern($jp_cdp);
-	my $jp_pop   = $jp_cdp->calc_pop($jp_cdp);
-
-	my $positive = "testedPositive";
-	my $deaths = "deaths";
-
-	my $target_keys = [$jp_rlavr->select_keys({item => $positive}, 0)];	# select data for target_keys
-	foreach my $start_date (0){ # , -28){
-		#my $sorted_keys = [$jp_rlavr->sort_csv($jp_rlavr->{csv_data}, $target_keys, $start_date, -14)];
-		my $sorted_keys = [$jp_ern->sort_csv($jp_ern->{csv_data}, $target_keys, -7*5, -7*2)];
-		my $end = min(50, scalar(@$sorted_keys) - 1); 
-		#dp::dp join(",", @$sorted_keys[0..$end]) . "\n";
-		foreach my $pref (@$sorted_keys[0..$end]){
-			my $csv_data = $jp_cdp->{csv_data};
-			my $csvp = $csv_data->{$pref};
-			#dp::dp join(", ", $pref, $csv_data, $csvp) . "\n";
-			#dp::dp Dumper $csv_data;
-			my $size = scalar(@$csvp);
-			my $term = 10;
-			my $total = 0;
-			for(my $i = $size - $term; $i < $size; $i++){
-				$total += $csvp->[$i];
-			}
-			my $avr = $total / $term;
-			#dp::dp "$pref: $avr, $total\n";
-			$pref =~ s/[\#\-].*$//;
-			my $thresh = 5;
-			if($avr < $thresh){
-				dp::dp "Skip $pref  avr($avr:$total) < $thresh\n";
-				next;
-			}
-			push(@$pref_gp_list, &japan_positive_ern($jp_cdp, $pref, $start_date)) ;
-		}
-	}
-
-	csv2graph->gen_html_by_gp_list($pref_gp_list, {						# Generate HTML file with graphs
-			html_tilte => "ERN/Positive COVID-19 Japan prefecture",
-			src_url => "src_url",
-			html_file => "$HTML_PATH/japanpref_ern.html",
-			png_path => $PNG_PATH // "png_path",
-			png_rel_path => $PNG_REL_PATH // "png_rel_path",
-			data_source => $ccse_cdp->{src_info},
-		}
-	);
-}
-
 if($golist{pref}){
 	my $pd_list = [];
 	my $pd_pop_list = [];
@@ -480,7 +408,7 @@ sub	gen_reginfo
 		#foreach my $region (sort {$REG_INFO{$b}->{$sort_key} <=> $REG_INFO{$a}->{$sort_key}} keys %REG_INFO){
 		my $rgi = $REG_INFO_LIST[$w];
 		foreach my $region (sort {$rgi->{$b}->{$sort_key} <=> $rgi->{$a}->{$sort_key}} keys %$rgi){
-			dp::dp "$w [$region]\n";
+			#dp::dp "$w [$region]\n";
 			next if($region =~ /#-/);
 			#my $r = $REG_INFO{$region};
 			my $r = $rgi->{$region};
@@ -655,6 +583,53 @@ if($golist{mhlw}){
 			html_tilte => "COVID-19 related data visualizer ",
 			src_url => "src_url",
 			html_file => "$HTML_PATH/mhlw.html",
+			png_path => $PNG_PATH // "png_path",
+			png_rel_path => $PNG_REL_PATH // "png_rel_path",
+			data_source => $cdp->{src_info},
+		}
+	);
+}
+
+#
+#
+#	"pcr_positive", "antigen_positive", "pcr_negative", "antigen_negative", "inspected", "positive_rate",
+#			"positive_number", "hospitalized", "mid-modelate", "severe", "residential", "home","adjusting", "deaths", "discharged",
+#
+if($golist{tkocsv}){
+	dp::dp "MHLW\n";
+	
+	my $tkocsv_cdp = $deftkocsv::TKOCSV_DEF;
+	&{$tkocsv_cdp->{down_load}};
+
+	my $cdp = csv2graph->new($tkocsv_cdp); 						# Load Johns Hopkings University CCSE
+	$cdp->load_csv($deftkocsv::TKOCSV_DEF);
+	my $rlavr = $cdp->calc_rlavr();
+
+	$rlavr->calc_record("add", "total_positive", "pcr_positive", "antigen_positive");
+	$rlavr->calc_record("add", "total_tested", "pcr_negative", "antigen_negative", "pcr_positive", "antigen_positive");
+	$rlavr->calc_record("add", "total_pcr", "pcr_positive", "pcr_negative");
+	$rlavr->calc_record("mul", "positive_percent", "positive_rate", "=100");
+	$rlavr->dump({items => 10, lines => 20});
+	#exit;
+
+	push(@$gp_list, csv2graph->csv2graph_list_gpmix(
+	{gdp => $deftkocsv::TKOCSV_GRAPH, dsc => "TKOCSV open Data", start_date => 0, 
+#		ymax => $ymax, y2max => $y2max, y2min => 0,
+		ylabel => "confermed", y2label => "positive rate(%)",
+		#additional_plot => $additional_plot_item{ern}, 
+		graph_items => [
+			#{cdp => $cdp,  item => {"item" => "total_positive",}, static => "", graph_def => $box_fill},
+			#{cdp => $rlavr,  item => {"item" => "total_pcr",}, static => "", graph_def => $line_thick},
+			#{cdp => $rlavr,  item => {"item" => "pcr_positive",}, static => "", graph_def => $line_thick},
+			{cdp => $rlavr,  item => {"item" => "total_tested",}, static => "", graph_def => $box_fill},
+			{cdp => $rlavr,  item => {"item" => "total_positive",}, static => "", graph_def => $box_fill},
+			{cdp => $rlavr,  item => {"item" => "positive_percent",}, static => "", graph_def => $line_thick, axis => "y2"},
+		],
+	}));
+	csv2graph->gen_html_by_gp_list($gp_list, {						# Generate HTML file with graphs
+			html_tilte => "COVID-19 related data visualizer ",
+			src_url => "src_url",
+			html_file => "$HTML_PATH/tkocsv.html",
 			png_path => $PNG_PATH // "png_path",
 			png_rel_path => $PNG_REL_PATH // "png_rel_path",
 			data_source => $cdp->{src_info},
@@ -1088,6 +1063,7 @@ sub	positive_death_ern
 
 		dp::dp "====++ " .join(",", $region, $nd_last, $nd_last_week,  $nd_last / $nd_last_week) . "\n";
 	}
+
 	my $nc_week_diff = $nc_last / $nc_last_week;
 	my $nd_week_diff = $nd_last / $nd_last_week;
 	dp::dp "deaths: $nd_last, $nd_max\n";
@@ -1121,21 +1097,31 @@ sub	positive_death_ern
 
 		for(my $w = 0; $w < 3; $w++){
 			my $wd = -$w * 7;
-			my $_nc_last 	  = $rlavr->last_data($key, {end_date => $wd});
-			my $_nc_last_week = $rlavr->last_data($key, {end_date => ($wd-7)});
-			my $_nd_last 	  = $death_rlavr->last_data($dkey, {end_date => $wd});
-			my $_nd_last_week = $death_rlavr->last_data($dkey, {end_date => ($wd-7)});
-			my $_nc_week_diff = $_nc_last / &zd($_nc_last_week);
-			my $_nd_week_diff = $_nd_last / &zd($_nd_last_week);
+			my $p = ($w == 0) ? {end_date => ""} : {end_date => $wd};
+			my $lp = {end_date => ($wd - 7)};
+			my $_nc_last 	  = $rlavr->last_data($key, $p);
+			my $_nc_last_week = $rlavr->last_data($key, $lp);
+			my $_nd_last 	  = $death_rlavr->last_data($dkey, $p);
+			my $_nd_last_week = $death_rlavr->last_data($dkey, $lp);
 			my $_pop_last  = $_nc_last / $pop_100k;
 			my $_dlst_pop = $_nd_last / $pop_100k;
 			my $_drate_last = 100 * $_nd_last / &zd($_nc_last);
 
+			if($_nc_last_week <= 0){
+				$_nc_last_week = (($_nc_last == 0) ? 1 : $_nc_last) / 999;
+			}
+			if($_nd_last_week <= 0){
+				$_nd_last = 1 if($_nd_last == 0);
+				$_nd_last_week = $_nd_last / 999 ;
+			}
+			my $_nc_week_diff = $_nc_last / $_nc_last_week;
+			my $_nd_week_diff = $_nd_last / $_nd_last_week;
+
 			$REG_INFO_LIST[$w] = {} if(! defined $REG_INFO_LIST[$w]);
-			dp::dp "### $w $start_date [$reg] $_nc_last, $_nd_last\n";
+			#dp::dp "### $w $start_date [$reg] $_nc_last, $_nd_last\n";
 			$REG_INFO_LIST[$w]->{$reg} = {	
 					nc_max => sprintf("%.3f", $nc_max), nd_max => sprintf("%.3f", $nd_max), 
-					nc_week_diff => sprintf("%.3f", $nc_week_diff), nd_week_diff => sprintf("%.3f", $nd_week_diff), 
+					nc_week_diff => sprintf("%.3f", $_nc_week_diff), nd_week_diff => sprintf("%.3f", $_nd_week_diff), 
 					nc_last => sprintf("%.3f", $_nc_last), nd_last => sprintf("%.3f", $_nd_last), 
 					nc_pop_max => sprintf("%.3f", $pop_max), nc_pop_last => sprintf("%.3f", $_pop_last), 
 					nd_pop_max => sprintf("%.3f", $dmax_pop), nd_pop_last => sprintf("%.3f", $_dlst_pop),
@@ -1151,7 +1137,7 @@ sub	zd
 {
 	my($v) = @_;
 
-	$v = 1 / 9999999999999999 if($v == 0);
+	$v = 1 / 999 if($v == 0);
 	return $v;
 }
 

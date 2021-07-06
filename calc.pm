@@ -108,7 +108,7 @@ sub	calc_items
 	#dp::dp "target items : " . scalar(@$target_keys) .  "  " . csvlib::join_array(",", $target_colp) . "\n";# if($verbose);
 
 	my @key_order = $self->gen_key_order($self->{keys}); 		# keys to gen record key
-	my @riw = $self->gen_key_order([keys %$result_colp]); 	# keys order to gen record kee
+	my @riw = $self->gen_key_order([keys %$result_colp]); 	# keys order to gen record key
 
 	dp::dp "key_order: " .join(",", @key_order) . "\n" if($verbose);
 	dp::dp "restore_order: " .join(",", @riw) . "\n" if($verbose);
@@ -148,7 +148,7 @@ sub	calc_items
 		#				geo_type,region,transportation_type,alternative_name,sub-region,country,2020-01-13,,,,
 		# restore_info	"",      =,     avr,                ,                ,          ,
 		#     v
-		# dst_key		same,    same,   avr, same, same, same
+		# dst_key		-,    same,   avr, -, -, -
 		#     v
 		# record_key	region + transportation_type ("avr")
 		#
@@ -390,6 +390,76 @@ sub	calc_method
 }
 
 #
+#		pcr_positive + antigen_positive = total_positive
+#		pcr_negative + antigen_negative = total_negative
+#
+sub	calc_record
+{
+	my $self = shift;
+	my($method, $result_key, @keys) = @_;
+
+	my $key_dlm = $self->{key_dlm};
+	my $csvp = $self->{csv_data};
+	my @key_order = $self->gen_key_order($self->{keys}); 		# keys to gen record key
+
+	my @result = ();
+
+	my @dst_keys = ("#", $result_key);
+
+	my $record_key = select::gen_record_key($key_dlm, \@key_order, \@dst_keys);
+	$self->add_record($record_key, [@dst_keys], []);
+	
+	#dp::dp "key_order: " . join(",", @key_order) . "\n";
+	#dp::dp "dst_keys : " . join(",", @dst_keys) . "\n";
+	#dp::dp "record_key: $record_key\n";
+
+	my $target_csvp = $csvp->{$result_key};
+	my $dates = $self->{dates};
+
+#	if($method eq "add"){
+#		for(my $i = 0; $i <= $dates; $i++){
+#			foreach my $key (@keys){
+#				$target_csvp->[$i] += $csvp->{$key}->scsvp->[$i];
+#			}
+#		}
+#	}
+#	elsif($method eq "div"){
+	for(my $i = 0; $i <= $dates; $i++){
+		my $reg = "";
+		foreach my $key (@keys){
+			my $v = "";
+			if($key =~ /^\=/){		# Static =0, =100
+				$v = $key;
+				$v =~ s/^=//;
+			}
+			else {	
+				$v = $csvp->{$key}->[$i];
+			}
+
+			if(! $reg){
+				$reg = $v;
+			}
+			else {
+				if($method eq "add"){
+					$reg += $v;
+				}
+				elsif($method eq "sub"){
+					$reg -= $v;
+				}
+				elsif($method eq "div"){
+					$reg /= $v;
+				}
+				elsif($method eq "mul"){
+					$reg *= $v;
+				}
+			}
+		}
+		$target_csvp->[$i] = $reg;
+	}
+	return $self;
+}
+
+#
 #	combert csv data to ERN
 #
 ##sub	ern
@@ -530,6 +600,7 @@ sub	last_data
 	my $target_col = (defined $p && (defined $p->{target_cols})) ? $p->{target_cols} : "";
 	my $start_date = (defined $p && (defined $p->{start_date})) ? $p->{start_date} : "";
 	my $end_date = (defined $p && (defined $p->{end_date})) ? $p->{end_date} : "";
+	#$end_date = "" if($end_date  0);
 	
 	my $dt_start = util::date_pos($start_date, $date_list->[0], $dates, $date_list);	# 2020-01-02 -> array pos
 	my $dt_end   = util::date_pos($end_date,   $date_list->[$dates], $dates, $date_list);		# 2021-01-02 -> array pos

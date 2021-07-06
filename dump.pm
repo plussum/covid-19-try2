@@ -167,7 +167,7 @@ sub	dump_csv_data
 	#csvlib::disp_caller(1..3);
 	#print "-" x 30 . "\n";
 	my $ln = 0;
-	foreach my $k (keys %$csv_data){
+	foreach my $k (sort keys %$csv_data){
 		my @w = @{$csv_data->{$k}};
 		next if($#w < 0);
 
