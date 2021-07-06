@@ -605,25 +605,28 @@ if($golist{tkocsv}){
 	$cdp->load_csv($deftkocsv::TKOCSV_DEF);
 	my $rlavr = $cdp->calc_rlavr();
 
-	$rlavr->calc_record("add", "total_positive", "pcr_positive", "antigen_positive");
-	$rlavr->calc_record("add", "total_tested", "pcr_negative", "antigen_negative", "pcr_positive", "antigen_positive");
-	$rlavr->calc_record("add", "total_pcr", "pcr_positive", "pcr_negative");
-	$rlavr->calc_record("mul", "positive_percent", "positive_rate", "=100");
-	$rlavr->dump({items => 10, lines => 20});
-	#exit;
+	$rlavr->calc_record("total_positive", "pcr_positive", "+antigen_positive");
+	$rlavr->calc_record("total_tested", "pcr_negative", "+antigen_negative", "+pcr_positive", "+antigen_positive");
+	$rlavr->calc_record("total_pcr", "pcr_positive", "+pcr_negative");
+	$rlavr->calc_record("positive_percent", "positive_rate", "*=100");
+	# $rlavr->dump({items => 10, lines => 20});
+
+	$cdp->calc_record("total_positive", "pcr_positive", "+antigen_positive");
+	$cdp->calc_record("total_tested", "pcr_negative", "+antigen_negative", "+pcr_positive", "+antigen_positive");
+	$cdp->calc_record("total_pcr", "pcr_positive", "+pcr_negative");
+	$cdp->calc_record("positive_percent", "positive_rate", "*=100");
 
 	push(@$gp_list, csv2graph->csv2graph_list_gpmix(
 	{gdp => $deftkocsv::TKOCSV_GRAPH, dsc => "TKOCSV open Data", start_date => 0, 
-#		ymax => $ymax, y2max => $y2max, y2min => 0,
 		ylabel => "confermed", y2label => "positive rate(%)",
-		#additional_plot => $additional_plot_item{ern}, 
 		graph_items => [
-			#{cdp => $cdp,  item => {"item" => "total_positive",}, static => "", graph_def => $box_fill},
-			#{cdp => $rlavr,  item => {"item" => "total_pcr",}, static => "", graph_def => $line_thick},
-			#{cdp => $rlavr,  item => {"item" => "pcr_positive",}, static => "", graph_def => $line_thick},
 			{cdp => $rlavr,  item => {"item" => "total_tested",}, static => "", graph_def => $box_fill},
 			{cdp => $rlavr,  item => {"item" => "total_positive",}, static => "", graph_def => $box_fill},
 			{cdp => $rlavr,  item => {"item" => "positive_percent",}, static => "", graph_def => $line_thick, axis => "y2"},
+
+			{cdp => $cdp  ,  item => {"item" => "total_tested",}, static => "", graph_def => $line_thin_dot},
+			{cdp => $cdp  ,  item => {"item" => "total_positive",}, static => "", graph_def => $line_thin_dot},
+			{cdp => $cdp  ,  item => {"item" => "positive_percent",}, static => "", graph_def => $line_thin_dot, axis => "y2"},
 		],
 	}));
 	csv2graph->gen_html_by_gp_list($gp_list, {						# Generate HTML file with graphs

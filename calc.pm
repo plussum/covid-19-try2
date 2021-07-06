@@ -390,13 +390,15 @@ sub	calc_method
 }
 
 #
-#		pcr_positive + antigen_positive = total_positive
-#		pcr_negative + antigen_negative = total_negative
-#
+#	$rlavr->calc_record("total_positive", "pcr_positive", "+antigen_positive");
+#	$rlavr->calc_record("total_tested", "pcr_negative", "+antigen_negative", "+pcr_positive", "+antigen_positive");
+#	$rlavr->calc_record("total_pcr", "pcr_positive", "+pcr_negative");
+#	$rlavr->calc_record("positive_percent", "positive_rate", "*=100");
+##
 sub	calc_record
 {
 	my $self = shift;
-	my($method, $result_key, @keys) = @_;
+	my($result_key, @operators) = @_;
 
 	my $key_dlm = $self->{key_dlm};
 	my $csvp = $self->{csv_data};
@@ -416,42 +418,39 @@ sub	calc_record
 	my $target_csvp = $csvp->{$result_key};
 	my $dates = $self->{dates};
 
-#	if($method eq "add"){
-#		for(my $i = 0; $i <= $dates; $i++){
-#			foreach my $key (@keys){
-#				$target_csvp->[$i] += $csvp->{$key}->scsvp->[$i];
-#			}
-#		}
-#	}
-#	elsif($method eq "div"){
+	my @ops = ();
+	foreach my $key (@operators){
+		$key =~ /^([\+\-\*\/]*)(=*)(.*)$/;
+		my ($op, $st, $lb) = ($1//"", $2//"", $3//"");
+		$op = "+" if(!$op);
+		#dp::dp join(",", "$key:", $op, $st, $lb) . "\n";
+		if($op =~ /[\+\-\*\/]/){
+			push(@ops, {op => $op, st => $st, lb => $lb});
+		}
+		else {
+			dp::ABORT "wrong operator [$key]\n";
+		}
+	}
+
 	for(my $i = 0; $i <= $dates; $i++){
-		my $reg = "";
-		foreach my $key (@keys){
-			my $v = "";
-			if($key =~ /^\=/){		# Static =0, =100
-				$v = $key;
-				$v =~ s/^=//;
-			}
-			else {	
-				$v = $csvp->{$key}->[$i];
+		my $reg = 0;
+		foreach my $op (@ops){
+			my $v = $op->{lb};			# static or label
+			if($op->{st} ne "="){		# label
+				$v = $csvp->{$v}->[$i];
 			}
 
-			if(! $reg){
-				$reg = $v;
+			if($op->{op} eq "+"){
+				$reg += $v;
 			}
-			else {
-				if($method eq "add"){
-					$reg += $v;
-				}
-				elsif($method eq "sub"){
-					$reg -= $v;
-				}
-				elsif($method eq "div"){
-					$reg /= $v;
-				}
-				elsif($method eq "mul"){
-					$reg *= $v;
-				}
+			elsif($op->{op} eq "-"){
+				$reg -= $v;
+			}
+			elsif($op->{op} eq "/"){
+				$reg /= $v;
+			}
+			elsif($op->{op} eq "*"){
+				$reg *= $v;
 			}
 		}
 		$target_csvp->[$i] = $reg;
