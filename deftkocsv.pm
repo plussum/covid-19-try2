@@ -120,12 +120,12 @@ sub	download
 		my $now = time;
 		my ($dev,$ino,$mode,$nlink,$uid,$gid,$rdev,$size, $atime,$mtime,$ctime,$blksize,$blocks) = stat($TKOCSV_DL_FLAG_FILE);	
 		my $elpt = $now - $mtime;
-		dp::dp "$now $mtime $elpt " .sprintf("%.2f", $elpt / (60 * 60)) . "\n";
+		#dp::dp "$now $mtime $elpt " .sprintf("%.2f", $elpt / (60 * 60)) . "\n";
 		if($elpt < (2 * 60 * 60 )){
 			$download = 0;
 		}
 	}
-	dp::dp "Donwload: $download\n";
+	#dp::dp "Donwload: $download\n";
 	if($download){
 		system("touch $TKOCSV_DL_FLAG_FILE");
 	}
@@ -176,7 +176,7 @@ sub	download
 			}
 		}
 		close(FD);
-		dp::dp "### COL_NO: $col_no\n";
+		#dp::dp "### COL_NO: $col_no\n";
 		$col_no += $#vlist;
 		$file_no++;
 	}
@@ -201,7 +201,7 @@ sub	download
 			}
 		} 
 		#dp::dp join(",", $header[$i], @data) . "\n";
-		dp::dp $header[$i] . "\n";
+		#dp::dp $header[$i] . "\n";
 		print OUT join(",", $header[$i], @data) . "\n";
 	}
 	close(OUT);

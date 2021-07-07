@@ -576,8 +576,9 @@ sub gen_html_by_gp_list
 		$graph_no++;
 
 		#dp::dp "######## $graph_no, $row, " . ($graph_no % $row) . "\n";
+		my $rwn = $graph_no % $row;
 		if($row > 1){
-			if(($graph_no % $row) == 0){
+			if($rwn == 0){
 				print HTML "<table>\n<tbody>\n";
 				print HTML "<tr><td>\n";
 				$row_flash = 1;
@@ -585,7 +586,29 @@ sub gen_html_by_gp_list
 		}
 		
 		#
+		#	Get Label Name
+		my $csv_file = $png_path . "/" . $gp->{plot_csv};
+		open(CSV, $csv_file) || die "canot open $csv_file";
+		binmode(CSV, ":utf8");
+		my $l = <CSV>;		# get label form CSV file
+		close(CSV);
+		$l =~ s/[\r\n]+$//;
+		my @lbl = split($dst_dlm, $l);
+		shift(@lbl);
+
+		my $lcount = 10;
+
 		#
+		#	Tag
+		#
+		my $tag = $lbl[0];		#	set tag
+		$tag =~ s/\d+://;
+		$tag =~ s/#.*//;
+		$tag =~ s/--.*//;
+		print HTML "<a name=\"$tag$rwn\">$tag</a>\n";
+
+		#
+		#	Image
 		#
 		print HTML "<span class=\"c\">$now</span><br>\n";
 		print HTML '<img src="' . $png_rel_path . "/" . $gp->{plot_png} . '">' . "\n";
@@ -595,17 +618,7 @@ sub gen_html_by_gp_list
 		#
 		#	Lbale name on HTML for search
 		#
-		my $csv_file = $png_path . "/" . $gp->{plot_csv};
-		open(CSV, $csv_file) || die "canot open $csv_file";
-		binmode(CSV, ":utf8");
-		my $l = <CSV>;		# get label form CSV file
-		close(CSV);
 
-		$l =~ s/[\r\n]+$//;
-		my @lbl = split($dst_dlm, $l);
-		shift(@lbl);
-
-		my $lcount = 10;
 		print HTML "<span class=\"c\">\n";
 		print HTML "<table>\n<tbody>\n";
 		for (my $i = 0; $i < $#lbl; $i += $lcount){

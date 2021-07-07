@@ -61,6 +61,8 @@ my $CSV_PATH  = $config::WIN_PATH;
 my $DEFAULT_AVR_DATE = 7;
 my $END_OF_DATA = "###EOD###";
 
+my $WEEK_BEFORE = 4;
+my $THRESH_POP_NC_LAST = 0.5;
 my $mainkey = $config::MAIN_KEY;
 
 #my 	$line_thick = $csv2graph::line_thick;
@@ -154,7 +156,6 @@ my @cdp_list = ($defamt::AMT_DEF, $defccse::CCSE_DEF, $MARGE_CSV_DEF,
 					$deftokyo::TOKYO_DEF, $defjapan::JAPAN_DEF, $deftkow::TKOW_DEF, $defdocomo::DOCOMO_DEF, $defmhlw::MHLW_DEF, $deftkocsv::TKOCSV_DEF); 
 
 my $cmd_list = {"amt-jp" => 1, "amt-jp-pref" => 1, "tkow-ern" => 1, try => 1, "pref-ern" => 1, pref => 1, docomo => 1, upload => 1, "ccse-tgt" => 1};
-my %REG_INFO = ();
 my @REG_INFO_LIST = ();
 
 ####################################
@@ -261,7 +262,6 @@ if($golist{pref}){
 	my $pd_pop_list = [];
 	my $pd_rlavr_list = [];
 
-	%REG_INFO = ();
 	@REG_INFO_LIST = ();
 	#
 	#	ccse Japan
@@ -355,14 +355,17 @@ if($golist{pref}){
 		}
 	);
 
-	&gen_reginfo("$HTML_PATH/japanpref_ri_", "nc_pop_last", "nc_pop_max");
-	&gen_reginfo("$HTML_PATH/japanpref_ri_", "nc_pop_max", "nc_pop_last");
-	&gen_reginfo("$HTML_PATH/japanpref_ri_", "nd_pop_last", "nd_pop_max");
-	&gen_reginfo("$HTML_PATH/japanpref_ri_", "nd_pop_max", "nd_pop_last");
-	&gen_reginfo("$HTML_PATH/japanpref_ri_", "drate_max");
-	&gen_reginfo("$HTML_PATH/japanpref_ri_", "drate_last");
-	&gen_reginfo("$HTML_PATH/japanpref_ri_", "nc_week_diff", "nd_week_diff");
-	&gen_reginfo("$HTML_PATH/japanpref_ri_", "nd_week_diff", "nc_week_diff");
+	my $reg_param = {graph_html => "./japanpref_pop.html"};
+	&gen_reginfo("$HTML_PATH/japanpref_ri_", $reg_param, "nc_pop_last", "nc_pop_max");
+	&gen_reginfo("$HTML_PATH/japanpref_ri_", $reg_param, "nc_pop_max", "nc_pop_last");
+	&gen_reginfo("$HTML_PATH/japanpref_ri_", $reg_param, "nd_pop_last", "nd_pop_max");
+	&gen_reginfo("$HTML_PATH/japanpref_ri_", $reg_param, "nd_pop_max", "nd_pop_last");
+	&gen_reginfo("$HTML_PATH/japanpref_ri_", $reg_param, "drate_max");
+	&gen_reginfo("$HTML_PATH/japanpref_ri_", $reg_param, "drate_last");
+	&gen_reginfo("$HTML_PATH/japanpref_ri_", $reg_param, "nc_week_diff", "nd_week_diff");
+	&gen_reginfo("$HTML_PATH/japanpref_ri_", $reg_param, "nd_week_diff", "nc_week_diff");
+	my $reg_param_th = {graph_html => ($reg_param->{graph_html}), thresh => $THRESH_POP_NC_LAST, thresh_item => "nc_pop_last"};
+	&gen_reginfo("$HTML_PATH/japanpref_th_ri_", $reg_param_th, "nc_week_diff", "nd_week_diff");
 }
 
 #
@@ -380,13 +383,25 @@ if($golist{ccse}) {
 #
 sub	gen_reginfo
 {
-	my ($outf, $sort_key, @sub) = @_;
+	my ($outf, $p, $sort_key, @sub) = @_;
+	
+	$p = {} if(!($p//""));
+	my $thresh = $p->{thresh}//"";
+	my $thresh_item = $p->{thresh_item}//"";
+	my $graph_html = $p->{graph_html}//"";
+	#dp::dp "THRESH_POP: $sort_key [$thresh_item]\n";
 
-	$outf .= $sort_key . ".txt";
-	open(OUT, "| nkf -s >$outf") || die "Cannot create $outf";
-	binmode(OUT, ":utf8");
-	#binmode(OUT, ':encoding(cp932)');
-	print OUT "## $sort_key\n";
+	my $CSS = $config::CSS;
+	my $class = $config::CLASS;
+
+	$outf .= $sort_key . ".html";
+	open(HTML, "> $outf") || die "Cannot create $outf";
+	binmode(HTML, ":utf8");
+	#binmode(HTML, ':encoding(cp932)');
+	print HTML "<html><head></head><body>\n";
+
+	print HTML "<span class=\"c\">\n";
+	print HTML "<h1>$sort_key</h1>\n";
 	my %DISPF = ();
 	my @keys_list = ("nc_pop_max", "nc_pop_last", "nd_pop_max", "nd_pop_last", 
 					"drate_max", "drate_last", "nc_max", "nd_max", 
@@ -401,16 +416,20 @@ sub	gen_reginfo
 		push(@keys, $k);
 	}
 	
-	for(my $w = 0; $w < 3; $w++){
-		print OUT "# week $w\n";
-		print OUT join("\t", "# region", @keys) . "\n";
+	for(my $w = 0; $w < $WEEK_BEFORE; $w++){
+		print HTML "<h2>week $w</h2>\n";
+		print HTML "<table  border=\"1\">\n<tbody>\n";
+		print HTML &table_head("# region", @keys) . "\n";
 		my $n = 1;
-		#foreach my $region (sort {$REG_INFO{$b}->{$sort_key} <=> $REG_INFO{$a}->{$sort_key}} keys %REG_INFO){
 		my $rgi = $REG_INFO_LIST[$w];
 		foreach my $region (sort {$rgi->{$b}->{$sort_key} <=> $rgi->{$a}->{$sort_key}} keys %$rgi){
 			#dp::dp "$w [$region]\n";
 			next if($region =~ /#-/);
-			#my $r = $REG_INFO{$region};
+			if($thresh_item && $rgi->{$region}->{$thresh_item} < $thresh){
+				#dp::dp "THRESH_POP: [$thresh_item] [$thresh:" . $rgi->{$region}->{$thresh_item} . "]\n";
+				next;
+			}
+
 			my $r = $rgi->{$region};
 			$region =~ s/#.*$//;
 			$region =~ s/,.*$//;
@@ -420,7 +439,9 @@ sub	gen_reginfo
 			$region =~ s/Herzegovina/Herz./;
 			$region =~ s/United Arab Emirates/UAE/;
 
-			my @w = (sprintf("%3d\t%-10s", $n++, $region));
+			my $rstr = "<a href=\"$graph_html#$region" . "0\">" . sprintf("%3d %s", $n++, $region) . "</a>";
+			#dp::dp ">>>>> $rstr\n";
+			my @w = ($rstr);	
 			foreach my $k (@keys){
 				my $fmt = "%7.3f";
 				$fmt = "%7.1f"  if($k eq "pop_100k");
@@ -428,19 +449,41 @@ sub	gen_reginfo
 				$fmt = "%11.2f" if($k eq "nc_max");
 				push(@w, sprintf($fmt, $r->{$k}));
 			}
-			$w[0] = "# $w[0]";
-			print OUT join("\t", @w) . "\n";
+			#$w[0] = "# $w[0]";
+			print HTML &table(@w) . "\n";
 		}
-		print OUT "\n" x 2;
+		print HTML "</tbody></table>\n";
+		print HTML "<hr>\n";
 	}
-	close(OUT);
+	print HTML "</body></html>\n";
+	close(HTML);
+}
+
+sub	table
+{
+	return &_print_table("td", 'align="right"', @_);
+}
+sub	table_head
+{
+	return &_print_table("th", 'align="center"', @_);
+}
+sub	_print_table
+{
+	my ($tag, $sub, @data) = @_;
+	
+	my $d = shift(@data);
+	my $s = "<tr><$tag align=\"left\">$d</$tag>";
+	foreach my $d (@data){
+		$s .= "<$tag $sub>$d</$tag>";
+	}
+	$s .= "</tr>";
+	return $s;
 }
 
 
 sub	ccse
 {
 	my ($param) = @_;
-	%REG_INFO = ();
 	@REG_INFO_LIST = ();
 	dp::dp "CCSE\n";
 	my $ccse_gp_list = [];
@@ -537,14 +580,19 @@ sub	ccse
 	);
 
 	my $outf = "$param" . "_ri_";
-	&gen_reginfo("$HTML_PATH/$outf", "nc_pop_last", "nc_pop_max");
-	&gen_reginfo("$HTML_PATH/$outf", "nc_pop_max", "nc_pop_last");
-	&gen_reginfo("$HTML_PATH/$outf", "nd_pop_last", "nd_pop_max");
-	&gen_reginfo("$HTML_PATH/$outf", "nd_pop_max", "nd_pop_last");
-	&gen_reginfo("$HTML_PATH/$outf", "drate_max");
-	&gen_reginfo("$HTML_PATH/$outf", "drate_last");
-	&gen_reginfo("$HTML_PATH/$outf", "nc_week_diff");
-	&gen_reginfo("$HTML_PATH/$outf", "nd_week_diff");
+	my $reg_param = {graph_html => "./$param" . "_pop.html"};
+	&gen_reginfo("$HTML_PATH/$outf", $reg_param, "nc_pop_last", "nc_pop_max");
+	&gen_reginfo("$HTML_PATH/$outf", $reg_param, "nc_pop_max", "nc_pop_last");
+	&gen_reginfo("$HTML_PATH/$outf", $reg_param, "nd_pop_last", "nd_pop_max");
+	&gen_reginfo("$HTML_PATH/$outf", $reg_param, "nd_pop_max", "nd_pop_last");
+	&gen_reginfo("$HTML_PATH/$outf", $reg_param, "drate_max");
+	&gen_reginfo("$HTML_PATH/$outf", $reg_param, "drate_last");
+	&gen_reginfo("$HTML_PATH/$outf", $reg_param, "nc_week_diff");
+	&gen_reginfo("$HTML_PATH/$outf", $reg_param, "nd_week_diff");
+	$reg_param->{thresh => $THRESH_POP_NC_LAST};
+
+	my $reg_param_th = {graph_html => ($reg_param->{graph_html}), thresh => $THRESH_POP_NC_LAST, thresh_item => "nc_pop_last"};
+	&gen_reginfo("$HTML_PATH/$outf" . "th_", $reg_param_th, "nc_week_diff", "nd_week_diff");
 }
 
 #
@@ -616,20 +664,37 @@ if($golist{tkocsv}){
 	$cdp->calc_record("total_pcr", "pcr_positive", "+pcr_negative");
 	$cdp->calc_record("positive_percent", "positive_rate", "*=100");
 
-	push(@$gp_list, csv2graph->csv2graph_list_gpmix(
-	{gdp => $deftkocsv::TKOCSV_GRAPH, dsc => "TKOCSV open Data", start_date => 0, 
-		ylabel => "confermed", y2label => "positive rate(%)",
-		graph_items => [
-			{cdp => $rlavr,  item => {"item" => "total_tested",}, static => "", graph_def => $box_fill},
-			{cdp => $rlavr,  item => {"item" => "total_positive",}, static => "", graph_def => $box_fill},
-			{cdp => $rlavr,  item => {"item" => "positive_percent",}, static => "", graph_def => $line_thick, axis => "y2"},
+	foreach my $start_date (0, -28){
+		push(@$gp_list, csv2graph->csv2graph_list_gpmix(
+		{gdp => $deftkocsv::TKOCSV_GRAPH, dsc => "TKOCSV open Data tested", start_date => $start_date, 
+			ylabel => "confermed", y2label => "positive rate(%)",
+			graph_items => [
+				{cdp => $rlavr,  item => {"item" => "total_tested",}, static => "", graph_def => $box_fill},
+				{cdp => $rlavr,  item => {"item" => "total_positive",}, static => "", graph_def => $box_fill},
+				{cdp => $rlavr,  item => {"item" => "positive_percent",}, static => "", graph_def => $line_thick, axis => "y2"},
 
-			{cdp => $cdp  ,  item => {"item" => "total_tested",}, static => "", graph_def => $line_thin_dot},
-			{cdp => $cdp  ,  item => {"item" => "total_positive",}, static => "", graph_def => $line_thin_dot},
-			{cdp => $cdp  ,  item => {"item" => "positive_percent",}, static => "", graph_def => $line_thin_dot, axis => "y2"},
-		],
-	}));
+				{cdp => $cdp  ,  item => {"item" => "total_tested",}, static => "", graph_def => $line_thin_dot},
+				{cdp => $cdp  ,  item => {"item" => "total_positive",}, static => "", graph_def => $line_thin_dot},
+				{cdp => $cdp  ,  item => {"item" => "positive_percent",}, static => "", graph_def => $line_thin_dot, axis => "y2"},
+			],
+		}));
+	}
+#	"pcr_positive", "antigen_positive", "pcr_negative", "antigen_negative", "inspected", "positive_rate",
+#			"positive_number", "hospitalized", "mid-modelate", "severe", "residential", "home","adjusting", "deaths", "discharged",
+	foreach my $start_date (0, -28){
+		push(@$gp_list, csv2graph->csv2graph_list_gpmix(
+		{gdp => $deftkocsv::TKOCSV_GRAPH, dsc => "TKOCSV open Data hospitalized", start_date => $start_date, 
+			ylabel => "confermed", y2label => "positive rate(%)",
+			graph_items => [
+				{cdp => $cdp  ,  item => {"item" => "severe",}, static => "", graph_def => $box_fill, axis => "y2",},
+				{cdp => $cdp  ,  item => {"item" => "hospitalized",}, static => "", graph_def => $line_thick},
+				#{cdp => $cdp  ,  item => {"item" => "mid-modelate",}, static => "", graph_def => $line_thick},
+			],
+		}));
+	}
+
 	csv2graph->gen_html_by_gp_list($gp_list, {						# Generate HTML file with graphs
+			row => 2,
 			html_tilte => "COVID-19 related data visualizer ",
 			src_url => "src_url",
 			html_file => "$HTML_PATH/tkocsv.html",
@@ -1087,18 +1152,7 @@ sub	positive_death_ern
 
 	if($start_date >= 0){
 		my $reg = "$region#$start_date";
-
-	#	$REG_INFO{$reg} = {	
-	#			nc_max => sprintf("%.3f", $nc_max), nd_max => sprintf("%.3f", $nd_max), 
-	#			nc_week_diff => sprintf("%.3f", $nc_week_diff), nd_week_diff => sprintf("%.3f", $nd_week_diff), 
-	#			nc_last => sprintf("%.3f", $nc_last), nd_last => sprintf("%.3f", $nd_last), 
-	#			nc_pop_max => sprintf("%.3f", $pop_max), nc_pop_last => sprintf("%.3f", $pop_last), 
-	#			nd_pop_max => sprintf("%.3f", $dmax_pop), nd_pop_last => sprintf("%.3f", $dlst_pop),
-	#			drate_max => sprintf("%.3f", $drate_max) , drate_last => sprintf("%.3f", $drate_last),
-	#			pop_100k => sprintf("%.1f", $pop_100k), 
-	#					};
-
-		for(my $w = 0; $w < 3; $w++){
+		for(my $w = 0; $w < $WEEK_BEFORE; $w++){
 			my $wd = -$w * 7;
 			my $p = ($w == 0) ? {end_date => ""} : {end_date => $wd};
 			my $lp = {end_date => ($wd - 7)};
