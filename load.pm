@@ -37,7 +37,8 @@ sub	load_csv
 	
 	if(($download // "")){
 		my $download = $self->{download};
-		$download->($self);
+		#$download->($self);
+		&{$self->{down_load}};
 	}
 	if(! $src_file){
 		dp::WARNING "load_csv: no src_file information\n";
@@ -180,7 +181,8 @@ sub	load_csv_holizontal
 
 		my $line = $_;
 		my @items = (split(/$src_dlm/, $line));
-		my $master_key = select::gen_record_key($key_dlm, \@key_order, ["masterkey", @items]);
+		#my $master_key = select::gen_record_key($key_dlm, \@key_order, ["masterkey", @items]);
+		my $master_key = select::gen_record_key($key_dlm, \@key_order, ["", @items]);		# 2021.07.08 .... vaccine
 		#dp::dp "MASTER_KEY: " .$master_key . ":" . ":" . join(",", @key_order) . "  : " .join(",", @items) . "\n";
 
 ##		$csv_data->{$k}= [@items[$data_start..$#items]];	# set csv data

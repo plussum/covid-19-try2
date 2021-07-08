@@ -45,6 +45,7 @@ use deftkow;
 use defdocomo;
 use defmhlw;
 use deftkocsv;
+use defvac;
 
 
 binmode(STDOUT, ":utf8");
@@ -77,6 +78,7 @@ my $line_thick_dot = "line linewidth 2 dt(7,3)";
 my $line_thin_dot 	= "line linewidth 1 dt(6,4)";
 my $line_thin_dot2 	= "line linewidth 1 dt(2,6)";
 my $box_fill  		= "boxes fill";
+my $box_fill_solid 	= 'boxes fill solid border lc rgb "white" lw 1';
 
 my $y2y1rate = 2.5;
 my $end_target = 0;
@@ -153,7 +155,8 @@ my @TARGET_REGION = (
 my @TARGET_PREF = ("Tokyo", "Kanagawa", "Chiba", "Saitama", "Kyoto", "Osaka");
 
 my @cdp_list = ($defamt::AMT_DEF, $defccse::CCSE_DEF, $MARGE_CSV_DEF, 
-					$deftokyo::TOKYO_DEF, $defjapan::JAPAN_DEF, $deftkow::TKOW_DEF, $defdocomo::DOCOMO_DEF, $defmhlw::MHLW_DEF, $deftkocsv::TKOCSV_DEF); 
+					$deftokyo::TOKYO_DEF, $defjapan::JAPAN_DEF, $deftkow::TKOW_DEF, $defdocomo::DOCOMO_DEF, 
+					$defmhlw::MHLW_DEF, $deftkocsv::TKOCSV_DEF, $defvac::VACCINE_DEF); 
 
 my $cmd_list = {"amt-jp" => 1, "amt-jp-pref" => 1, "tkow-ern" => 1, try => 1, "pref-ern" => 1, pref => 1, docomo => 1, upload => 1, "ccse-tgt" => 1};
 my @REG_INFO_LIST = ();
@@ -327,6 +330,7 @@ if($golist{pref}){
 			html_tilte => "Positve/Deaths COVID-19 Japan prefecture ",
 			src_url => "src_url",
 			html_file => "$HTML_PATH/japanpref.html",
+			alt_graph => "./japanpref_rlavr.html",
 			png_path => $PNG_PATH // "png_path",
 			png_rel_path => $PNG_REL_PATH // "png_rel_path",
 			data_source => $jp_cdp->{src_info},
@@ -338,6 +342,7 @@ if($golist{pref}){
 			html_tilte => "POP Positve/Deaths COVID-19 Japan prefecture ",
 			src_url => "src_url",
 			html_file => "$HTML_PATH/japanpref_pop.html",
+			alt_graph => "./japanpref_rlavr.html",
 			png_path => $PNG_PATH // "png_path",
 			png_rel_path => $PNG_REL_PATH // "png_rel_path",
 			data_source => $jp_cdp->{src_info},
@@ -349,6 +354,7 @@ if($golist{pref}){
 			html_tilte => "POP Positve/Deaths COVID-19 Japan prefecture ",
 			src_url => "src_url",
 			html_file => "$HTML_PATH/japanpref_rlavr.html",
+			alt_graph => "./japanpref_pop.html",
 			png_path => $PNG_PATH // "png_path",
 			png_rel_path => $PNG_REL_PATH // "png_rel_path",
 			data_source => $jp_cdp->{src_info},
@@ -550,6 +556,7 @@ sub	ccse
 			html_tilte => "COVID-19 related data visualizer ",
 			src_url => "src_url",
 			html_file => "$HTML_PATH/$param.html",
+			alt_graph => "$./$param" . "_rlavr.html",
 			png_path => $PNG_PATH // "png_path",
 			png_rel_path => $PNG_REL_PATH // "png_rel_path",
 			data_source => $ccse_cdp->{src_info},
@@ -561,6 +568,7 @@ sub	ccse
 			html_tilte => "COVID-19 related data visualizer nc-nd ",
 			src_url => "src_url",
 			html_file => "$HTML_PATH/$param" . "_rlavr.html",
+			alt_graph => "./$param" . "_pop.html",
 			png_path => $PNG_PATH // "png_path",
 			png_rel_path => $PNG_REL_PATH // "png_rel_path",
 			data_source => $ccse_cdp->{src_info},
@@ -573,6 +581,7 @@ sub	ccse
 			html_tilte => "COVID-19 related data visualizer ",
 			src_url => "src_url",
 			html_file => "$HTML_PATH/$param" . "_pop.html",
+			alt_graph => "./$param" . "_rlavr.html",
 			png_path => $PNG_PATH // "png_path",
 			png_rel_path => $PNG_REL_PATH // "png_rel_path",
 			data_source => $ccse_cdp->{src_info},
@@ -589,7 +598,6 @@ sub	ccse
 	&gen_reginfo("$HTML_PATH/$outf", $reg_param, "drate_last");
 	&gen_reginfo("$HTML_PATH/$outf", $reg_param, "nc_week_diff");
 	&gen_reginfo("$HTML_PATH/$outf", $reg_param, "nd_week_diff");
-	$reg_param->{thresh => $THRESH_POP_NC_LAST};
 
 	my $reg_param_th = {graph_html => ($reg_param->{graph_html}), thresh => $THRESH_POP_NC_LAST, thresh_item => "nc_pop_last"};
 	&gen_reginfo("$HTML_PATH/$outf" . "th_", $reg_param_th, "nc_week_diff", "nd_week_diff");
@@ -644,8 +652,6 @@ if($golist{mhlw}){
 #			"positive_number", "hospitalized", "mid-modelate", "severe", "residential", "home","adjusting", "deaths", "discharged",
 #
 if($golist{tkocsv}){
-	dp::dp "MHLW\n";
-	
 	my $tkocsv_cdp = $deftkocsv::TKOCSV_DEF;
 	&{$tkocsv_cdp->{down_load}};
 
@@ -705,6 +711,123 @@ if($golist{tkocsv}){
 	);
 }
 
+#
+#	"date":"2021-07-06","prefecture":"47","gender":"U","age":"UNK","medical_worker":false,"status":2,"count":5
+#	"date":"2021-07-06","prefecture":"47","age":"UNK","status":2,"count":5
+#
+#
+if($golist{vaccine})
+{
+	my $jp_cdp = csv2graph->new($defjapan::JAPAN_DEF); 						# Load Apple Mobility Trends
+	$jp_cdp->load_csv($defjapan::JAPAN_DEF);
+	my $jp_rlavr = $jp_cdp->calc_rlavr();
+
+	my $ccse_cdp = csv2graph->new($defccse::CCSE_CONF_DEF); 						# Load Johns Hopkings University CCSE
+	$ccse_cdp->load_csv($defccse::CCSE_CONF_DEF);
+	my $death_cdp = csv2graph->new($defccse::CCSE_DEATHS_DEF); 						# Load Johns Hopkings University CCSE
+	$death_cdp->load_csv($defccse::CCSE_DEATHS_DEF);
+#	foreach my $wcdp ($ccse_cdp, $death_cdp){
+#		foreach my $country ("Canada", "China", "Australia"){
+#			$wcdp->calc_items("sum", 
+#						{"Province/State" => "", "Country/Region" => $country},				# All Province/State with Canada, ["*","Canada",]
+#						{"Province/State" => "null", "Country/Region" => "="}				# total gos ["","Canada"] null = "", = keep
+#			);
+#		}
+#	}
+	my $ccse_country = $ccse_cdp->reduce_cdp_target({"Province/State" => "NULL", "Country/Region" => "Japan"});	# Select Country
+	my $death_country = $death_cdp->reduce_cdp_target({"Province/State" => "NULL", "Country/Region" => "Japan"});	# Select Country
+	my $positive_rlavr = $ccse_country->calc_rlavr();
+	my $death_rlavr = $death_country->calc_rlavr();
+
+	my $cdp_def = $defvac::VACCINE_DEF;
+	#&{$cdp_def->{down_load}};
+
+	my $cdp = csv2graph->new($cdp_def); 						# Load Johns Hopkings University CCSE
+	$cdp->load_csv({download => 1});
+
+	$cdp->calc_items("sum", 
+		{prefecture => "", },				# All Province/State with Canada, ["*","Canada",]
+		{prefecture => "Japan",age => "=", status => "="}			# total gos ["","Canada"] null = "", = keep
+	);
+
+	my $pop_jp = $POP{Japan} / 100;
+	foreach my $age ("all", "le64", "ge65"){
+		foreach my $st ("any-c", "2-c"){
+			#dp::dp join(",", "Japan#$age#$st"."p", "#Japan#$age#$st", "/=$pop_jp") . "\n";
+			$cdp->calc_record("Japan#$age#$st"."p", "#Japan#$age#$st", "/=$pop_jp");			# daily to cumulative
+		}
+	}
+	#$cdp->dump({search_key => "Japan#all#any-c", items => 100});
+	#$cdp->dump({lines => 1000});
+	#exit;
+
+	my $prefecture = "東京都";
+	my $rlavr = $cdp->calc_rlavr();
+	foreach my $start_date (0){
+		my $pref = "東京都";
+		push(@$gp_list, csv2graph->csv2graph_list_gpmix(
+		{gdp => $defvac::VACCINE_GRAPH, dsc => "Tokyo Vaccine(age), Positive and Deaths(rlavr 7)", start_date => $start_date, 
+			ylabel => "confermed", y2label => "vaccine rate(%) and deaths",
+			ymin => 0, y2min => 0,
+			graph_items => [
+				{cdp => $cdp,  item => {prefecture => $pref, age => "all", status => "any-cp"}, static => "", graph_def => $box_fill_solid, axis => "y2"},
+				{cdp => $cdp,  item => {prefecture => $pref, age => "ge65", status => "any-cp"}, static => "", graph_def => $box_fill_solid, axis => "y2"},
+				{cdp => $cdp,  item => {prefecture => $pref, age => "le64", status => "any-cp"}, static => "", graph_def => $box_fill_solid, axis => "y2"},
+				{cdp => $jp_rlavr,  item => {item => $positive, prefectureNameJ => $pref}, static => "", graph_def => $line_thick},
+				{cdp => $jp_rlavr,  item => {item => $deaths, prefectureNameJ => $pref}, static => "", graph_def => $line_thick, axis => "y2"},
+			],
+		}));
+		push(@$gp_list, csv2graph->csv2graph_list_gpmix(
+		{gdp => $defvac::VACCINE_GRAPH, dsc => "Tokyo Vaccine(1,2), Positive and Deaths(rlavr 7)", start_date => $start_date, 
+			ylabel => "confermed", y2label => "vaccine rate(%) and deaths",
+			ymin => 0, y2min => 0,
+			graph_items => [
+				{cdp => $cdp,  item => {prefecture => $pref, age => "all", status => "any-cp"}, static => "", graph_def => $box_fill_solid, axis => "y2"},
+				{cdp => $cdp,  item => {prefecture => $pref, age => "all", status => "2-cp"}, static => "", graph_def => $box_fill_solid, axis => "y2"},
+				{cdp => $jp_rlavr,  item => {item => $positive, prefectureNameJ => $pref}, static => "", graph_def => $line_thick},
+				{cdp => $jp_rlavr,  item => {item => $deaths, prefectureNameJ => $pref}, static => "", graph_def => $line_thick, axis => "y2"},
+			],
+		}));
+
+		##### Japan
+		$pref = "Japan";
+		push(@$gp_list, csv2graph->csv2graph_list_gpmix(
+		{gdp => $defvac::VACCINE_GRAPH, dsc => "Japan Vaccine(age), Positive and Deaths(rlavr 7)", start_date => $start_date, 
+			ylabel => "confermed", y2label => "vaccine rate(%) and deaths",
+			ymin => 0, y2min => 0,
+			graph_items => [
+				{cdp => $cdp,  item => {prefecture => $pref, age => "all", status => "any-cp"}, static => "", graph_def => $box_fill_solid, axis => "y2"},
+				{cdp => $cdp,  item => {prefecture => $pref, age => "ge65", status => "any-cp"}, static => "", graph_def => $box_fill_solid, axis => "y2"},
+				{cdp => $cdp,  item => {prefecture => $pref, age => "le64", status => "any-cp"}, static => "", graph_def => $box_fill_solid, axis => "y2"},
+				{cdp => $positive_rlavr,  item => {}, static => "", graph_def => $line_thick},
+				{cdp => $death_rlavr,  item => {}, static => "", graph_def => $line_thick, axis => "y2"},
+			],
+		}));
+		push(@$gp_list, csv2graph->csv2graph_list_gpmix(
+		{gdp => $defvac::VACCINE_GRAPH, dsc => "Japan Vaccine(1,2), Positive and Deaths(rlavr 7)", start_date => $start_date, 
+			ylabel => "confermed", y2label => "vaccine rate(%) and deaths",
+			ymin => 0, y2min => 0,
+			graph_items => [
+				{cdp => $cdp,  item => {prefecture => $pref, age => "all", status => "any-cp"}, static => "", graph_def => $box_fill_solid, axis => "y2"},
+				{cdp => $cdp,  item => {prefecture => $pref, age => "all", status => "2-cp"}, static => "", graph_def => $box_fill_solid, axis => "y2"},
+				{cdp => $positive_rlavr,  item => {}, static => "", graph_def => $line_thick},
+				{cdp => $death_rlavr,  item => {}, static => "", graph_def => $line_thick, axis => "y2"},
+			],
+		}));
+
+	}
+
+	csv2graph->gen_html_by_gp_list($gp_list, {						# Generate HTML file with graphs
+			row => 1,
+			html_tilte => "COVID-19 vaccine from CIO",
+			src_url => "src_url",
+			html_file => "$HTML_PATH/vaccine.html",
+			png_path => $PNG_PATH // "png_path",
+			png_rel_path => $PNG_REL_PATH // "png_rel_path",
+			data_source => $cdp->{src_info},
+		}
+	);
+}
 #
 #
 #
@@ -1713,6 +1836,7 @@ if($golist{"tkow-ern"}) {
 #	Generate HTML FILE
 #
 csv2graph->gen_html_by_gp_list($gp_list, {						# Generate HTML file with graphs
+		row => 1,
 		html_tilte => "COVID-19 related data visualizer ",
 		src_url => "src_url",
 		html_file => "$HTML_PATH/csv2graph_index.html",

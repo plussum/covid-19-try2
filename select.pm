@@ -16,6 +16,7 @@ use config;
 use csvlib;
 use dump;
 use util;
+use dp;
 
 my $VERBOSE = 0;
 my $DEBUG = 0;
@@ -39,8 +40,10 @@ sub	gen_record_key
 		else {
 			$itm = $items->[$n] // "";
 		}
+		#dp::dp "$n [$itm]\n";
 		push(@gen_key, $itm);
 	}
+	#dp::dp join($dlm, @gen_key) . "\n";
 	return join($dlm, @gen_key);
 }
 
@@ -163,7 +166,7 @@ sub	select_keys
 
 	$verbose = $verbose // "";
 	$verbose = 0 if($verbose eq "");
-	#$verbose = 2;
+	#$verbose = 1;
 	my @target_col_array = ();
 	my @non_target_col_array = ();
 	my $condition = 0;

@@ -108,7 +108,7 @@ sub	calc_items
 	#dp::dp "target items : " . scalar(@$target_keys) .  "  " . csvlib::join_array(",", $target_colp) . "\n";# if($verbose);
 
 	my @key_order = $self->gen_key_order($self->{keys}); 		# keys to gen record key
-	my @riw = $self->gen_key_order([keys %$result_colp]); 	# keys order to gen record key
+	my @riw = $self->gen_key_order([keys %$result_colp]); 		# keys order to gen record key
 
 	dp::dp "key_order: " .join(",", @key_order) . "\n" if($verbose);
 	dp::dp "restore_order: " .join(",", @riw) . "\n" if($verbose);
@@ -400,22 +400,30 @@ sub	calc_record
 	my $self = shift;
 	my($result_key, @operators) = @_;
 
+	my $verbose = 0;
 	my $key_dlm = $self->{key_dlm};
 	my $csvp = $self->{csv_data};
 	my @key_order = $self->gen_key_order($self->{keys}); 		# keys to gen record key
 
 	my @result = ();
 
-	my @dst_keys = ("#", $result_key);
+	dp::dp "result_key:[$result_key]\n" if($verbose);
+	#my @dst_keys = ("#", $result_key);		
+	$result_key =~ /^(\+*)(.*)$/;
+	(my $cum, $result_key)  = ($1//"", $2//"");
+	dp::dp "[$cum], [$result_key]\n" if($verbose);
+	my @dst_keys = split(/#/, "#" .$result_key);		
+	dp::dp join("#", @dst_keys). "\n" if($verbose);
 
+	#@key_order = (0,1);
+	dp::dp "-" x 20 . "\n" if($verbose);
 	my $record_key = select::gen_record_key($key_dlm, \@key_order, \@dst_keys);
-	$self->add_record($record_key, [@dst_keys], []);
 	
-	#dp::dp "key_order: " . join(",", @key_order) . "\n";
-	#dp::dp "dst_keys : " . join(",", @dst_keys) . "\n";
-	#dp::dp "record_key: $record_key\n";
+	dp::dp "key_order: " . join(",", @key_order) . "\n" if($verbose);
+	dp::dp "dst_keys : " . join(",", @dst_keys) . "\n" if($verbose);
+	dp::dp "record_key: $record_key\n" if($verbose);
 
-	my $target_csvp = $csvp->{$result_key};
+	my $target_csvp = []; # $csvp->{$result_key};
 	my $dates = $self->{dates};
 
 	my @ops = ();
@@ -423,7 +431,7 @@ sub	calc_record
 		$key =~ /^([\+\-\*\/]*)(=*)(.*)$/;
 		my ($op, $st, $lb) = ($1//"", $2//"", $3//"");
 		$op = "+" if(!$op);
-		#dp::dp join(",", "$key:", $op, $st, $lb) . "\n";
+		dp::dp join(",", "$key:", $op, $st, $lb) . "\n" if($verbose);
 		if($op =~ /[\+\-\*\/]/){
 			push(@ops, {op => $op, st => $st, lb => $lb});
 		}
@@ -436,8 +444,14 @@ sub	calc_record
 		my $reg = 0;
 		foreach my $op (@ops){
 			my $v = $op->{lb};			# static or label
+			my $st = $op->{st};
+			my $opp = $op->{op};
+			my $rel = $op->{rel};
+			my $lb = $v;
+			my $lreg = $reg;
+			#dp::dp "$i $reg [$opp:$st:$lb:$v]\n";
 			if($op->{st} ne "="){		# label
-				$v = $csvp->{$v}->[$i];
+				$v = $csvp->{$v}->[$i] // 0;
 			}
 
 			if($op->{op} eq "+"){
@@ -452,9 +466,14 @@ sub	calc_record
 			elsif($op->{op} eq "*"){
 				$reg *= $v;
 			}
+			#dp::dp "$i $reg = ($cum) $lreg $opp [$st] $lb [$v]\n";
 		}
+		$reg += $target_csvp->[$i-1] if($cum && $i > 0);
 		$target_csvp->[$i] = $reg;
+		#dp::dp "$result_key $i: $reg " . $target_csvp->[$i] . "\n";
 	}
+	dp::dp "$result_key : " . join(",", @$target_csvp) . "\n" if($verbose);
+	$self->add_record($record_key, [@dst_keys], [@$target_csvp]);
 	return $self;
 }
 

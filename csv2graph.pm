@@ -546,6 +546,7 @@ sub gen_html_by_gp_list
 	my $dst_dlm = $p->{dst_dlm} // "\t";
 	my $row = $p->{row} // 0;
 	my $no_lank_label = $p->{no_lank_label} // 0;
+	my $alt_graph = $p->{alt_graph}//"";
 
 	my $CSS = $config::CSS;
 	my $class = $config::CLASS;
@@ -575,7 +576,8 @@ sub gen_html_by_gp_list
 		#
 		$graph_no++;
 
-		#dp::dp "######## $graph_no, $row, " . ($graph_no % $row) . "\n";
+		#dp::dp "######## $graph_no, $row\n";
+		#dp::dp "######## " . ($graph_no % $row) . "\n";
 		my $rwn = $graph_no % $row;
 		if($row > 1){
 			if($rwn == 0){
@@ -611,7 +613,9 @@ sub gen_html_by_gp_list
 		#	Image
 		#
 		print HTML "<span class=\"c\">$now</span><br>\n";
+		print HTML "<a href=\"$alt_graph#$tag" . "0\">" if($alt_graph);
 		print HTML '<img src="' . $png_rel_path . "/" . $gp->{plot_png} . '">' . "\n";
+		print HTML "</a>\n" if($alt_graph);
 		print HTML "<br>\n";
 		#dp::dp "$gp->{plot_png} \n";
 	
@@ -1085,6 +1089,7 @@ sub	csv2graph_mix
 ##			$target_col = "";
 ##		}
 
+		#dp::dp "#### ". Dumper($target_col);
 		@$target_keys = $cdp->select_keys($target_col, 0);	# select data for target_keys
 
 		#dp::dp "target_key: " . join(" : ", @$target_keys). "\n" ;
@@ -1174,6 +1179,7 @@ sub	csv2graph_mix
 		my @vals = ();
 		for(my $item = 0; $item < scalar(@$graph_csv); $item++){
 			my $v = $graph_csv->[$item]->[$dt+1];
+			$v = $v//-999;
 			push(@vals, $v);
 			#dp::dp "$item, $dt, $v\n";
 		}
@@ -1478,6 +1484,7 @@ _EOD_
 		#dp::dp join(",", $label[$i], $key, $axis_flag) . "\n";
 		$key =~ s/^\d+:// if($gp->{no_label_no} // "");
 		$key =~ s/[']/_/g;	# avoid error at plot
+		$key =~ s/_/\\_/g;	# avoid error at plot
 		#dp::dp "### $i: $key $src_csv, $y2key\n";
 		$pn++;
 

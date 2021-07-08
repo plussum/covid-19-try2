@@ -182,11 +182,12 @@ sub	dump_csv_data
 				$scv = $src_csv->{$k} // "-" ;
 			}
 
+			my $itm = ($items <= $#w) ? $items : $#w;
 			if($search_key && $k =~ /$search_key/){
-				print "[$ln] " . join(", ", $k, "[$scv]", @w[0..$items]) . " [$search_key]\n";
+				print "[$ln] " . join(", ", $k, "[$scv]", @w[0..$itm]) . " [$search_key]\n";
 			}
 			elsif($lines eq "" || $ln < $lines){
-				print "[$ln] " . join(", ", $k, "[$scv]", @w[0..$items]) . "\n";
+				print "[$ln] " . join(", ", $k, "[$scv]", @w[0..$itm]) . "\n";
 			}
 		}
 		$ln++;
