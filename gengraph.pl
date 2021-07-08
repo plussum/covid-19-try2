@@ -659,24 +659,26 @@ if($golist{tkocsv}){
 	$cdp->load_csv($deftkocsv::TKOCSV_DEF);
 	my $rlavr = $cdp->calc_rlavr();
 
-	$rlavr->calc_record({result => "total_positive", op => ["pcr_positive", "+antigen_positive"]});
-	$rlavr->calc_record({result => "total_tested", op => ["pcr_negative", "+antigen_negative", "+pcr_positive", "+antigen_positive"]});
-	$rlavr->calc_record({result => "total_pcr", op => ["pcr_positive", "+pcr_negative"]});
-	$rlavr->calc_record({result => "positive_percent", op => ["positive_rate", "*=100"]});
+	$rlavr->calc_record({result => "#total_positive", op => ["pcr_positive", "+antigen_positive"]});
+	$rlavr->calc_record({result => "#total_tested", op => ["pcr_negative", "+antigen_negative", "+pcr_positive", "+antigen_positive"]});
+	$rlavr->calc_record({result => "#total_pcr", op => ["pcr_positive", "+pcr_negative"]});
+	$rlavr->calc_record({result => "#positive_percent", op => ["positive_rate", "*=100"], v => 1} );
+	$rlavr->dump({search_key => "positive_percent"});
 	# $rlavr->dump({items => 10, lines => 20});
 
-	$cdp->calc_record({result => "total_positive", op => ["pcr_positive", "+antigen_positive"]});
-	$cdp->calc_record({result => "total_tested", op => ["pcr_negative", "+antigen_negative", "+pcr_positive", "+antigen_positive"]});
-	$cdp->calc_record({result => "total_pcr", op => ["pcr_positive", "+pcr_negative"]});
-	$cdp->calc_record({result => "positive_percent", op => ["positive_rate", "*=100"]});
+	$cdp->calc_record({result => "#total_positive", op => ["pcr_positive", "+antigen_positive"]});
+	$cdp->calc_record({result => "#total_tested", op => ["pcr_negative", "+antigen_negative", "+pcr_positive", "+antigen_positive"]});
+	$cdp->calc_record({result => "#total_pcr", op => ["pcr_positive", "+pcr_negative"]});
+	$cdp->calc_record({result => "#positive_percent", op => ["positive_rate", "*=100"]});
 
 	foreach my $start_date (0, -28){
+		my $box = ($start_date >= 0) ? $box_fill : $box_fill_solid;
 		push(@$gp_list, csv2graph->csv2graph_list_gpmix(
 		{gdp => $deftkocsv::TKOCSV_GRAPH, dsc => "TKOCSV open Data tested", start_date => $start_date, 
 			ylabel => "confermed", y2label => "positive rate(%)",
 			graph_items => [
-				{cdp => $rlavr,  item => {"item" => "total_tested",}, static => "", graph_def => $box_fill},
-				{cdp => $rlavr,  item => {"item" => "total_positive",}, static => "", graph_def => $box_fill},
+				{cdp => $rlavr,  item => {"item" => "total_tested",}, static => "", graph_def => $box},
+				{cdp => $rlavr,  item => {"item" => "total_positive",}, static => "", graph_def => $box},
 				{cdp => $rlavr,  item => {"item" => "positive_percent",}, static => "", graph_def => $line_thick, axis => "y2"},
 
 				{cdp => $cdp  ,  item => {"item" => "total_tested",}, static => "", graph_def => $line_thin_dot},
@@ -688,11 +690,12 @@ if($golist{tkocsv}){
 #	"pcr_positive", "antigen_positive", "pcr_negative", "antigen_negative", "inspected", "positive_rate",
 #			"positive_number", "hospitalized", "mid-modelate", "severe", "residential", "home","adjusting", "deaths", "discharged",
 	foreach my $start_date (0, -28){
+		my $box = ($start_date >= 0) ? $box_fill : $box_fill_solid;
 		push(@$gp_list, csv2graph->csv2graph_list_gpmix(
 		{gdp => $deftkocsv::TKOCSV_GRAPH, dsc => "TKOCSV open Data hospitalized", start_date => $start_date, 
 			ylabel => "confermed", y2label => "positive rate(%)",
 			graph_items => [
-				{cdp => $cdp  ,  item => {"item" => "severe",}, static => "", graph_def => $box_fill, axis => "y2",},
+				{cdp => $cdp  ,  item => {"item" => "severe",}, static => "", graph_def => $box, axis => "y2",},
 				{cdp => $cdp  ,  item => {"item" => "hospitalized",}, static => "", graph_def => $line_thick},
 				#{cdp => $cdp  ,  item => {"item" => "mid-modelate",}, static => "", graph_def => $line_thick},
 			],
@@ -843,6 +846,7 @@ if($golist{vaccine})
 			html_tilte => "COVID-19 vaccine from CIO",
 			src_url => "src_url",
 			html_file => "$HTML_PATH/vaccine.html",
+			alt_graph => "./japanpref_pop.html",
 			png_path => $PNG_PATH // "png_path",
 			png_rel_path => $PNG_REL_PATH // "png_rel_path",
 			data_source => $cdp->{src_info},
