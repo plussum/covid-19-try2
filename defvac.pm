@@ -96,7 +96,7 @@ sub	download
 	my %POP = ();
 	csvlib::cnt_pop(\%POP);	
 
-	&load_area_code();
+	&load_area_code($AREA_CODE);
 	dp::dp "DOWNLOAD  $VACCINE_DL_FLAG_FILE\n";
 	if(-f $VACCINE_DL_FLAG_FILE){
 		my $now = time;
@@ -227,6 +227,8 @@ sub	do
 
 sub	load_area_code
 {
+	my($area_code) = @_;
+
 	my $area_code_file = join("/", $config::WIN_PATH, "areacode.csv");
 	dp::dp $area_code_file . "\n";
 
@@ -238,10 +240,10 @@ sub	load_area_code
 
 		my($code, @w) = split(/,/, $_);
 		my $area = join("-", $w[0], $w[1]);
-		$AREA_CODE->{$code} = $area;
+		$area_code->{$code} = $area;
 		if($code =~ /^(\d\d)0/){
 			my $pcode = $1;
-			$AREA_CODE->{$pcode} = $w[0];
+			$area_code->{$pcode} = $w[0];
 			#dp::dp "$pcode:$w[0]\n";
 		}
 	}

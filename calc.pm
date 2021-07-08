@@ -398,28 +398,33 @@ sub	calc_method
 sub	calc_record
 {
 	my $self = shift;
-	my($result_key, @operators) = @_;
+	my ($p) = @_;
 
-	my $verbose = 0;
+	my $dlm = $p->{dlm} // "#";
+	my $result_key = $p->{result};
+	my $operators = $p->{op};
+	my $cumulative = $p->{cumulative} // "";
+
+	my $verbose = $p->{v}//0;
 	my $key_dlm = $self->{key_dlm};
 	my $csvp = $self->{csv_data};
-	my @key_order = $self->gen_key_order($self->{keys}); 		# keys to gen record key
+	my $ko = [];
+	foreach my $k (@{$self->{keys}}){
+		next if($k =~ /^=/);
+		push(@$ko, $k);
+	}
+	my @key_order = $self->gen_key_order($ko); 		# keys to gen record key
+	my @dst_keys = split(/$dlm/, $result_key);		
 
 	my @result = ();
 
 	dp::dp "result_key:[$result_key]\n" if($verbose);
-	#my @dst_keys = ("#", $result_key);		
-	$result_key =~ /^(\+*)(.*)$/;
-	(my $cum, $result_key)  = ($1//"", $2//"");
-	dp::dp "[$cum], [$result_key]\n" if($verbose);
-	my @dst_keys = split(/#/, "#" .$result_key);		
-	dp::dp join("#", @dst_keys). "\n" if($verbose);
-
-	#@key_order = (0,1);
-	dp::dp "-" x 20 . "\n" if($verbose);
-	my $record_key = select::gen_record_key($key_dlm, \@key_order, \@dst_keys);
-	
 	dp::dp "key_order: " . join(",", @key_order) . "\n" if($verbose);
+	dp::dp join(",", @dst_keys). "\n" if($verbose);
+
+	my $record_key = select::gen_record_key($key_dlm, \@key_order, \@dst_keys);
+
+	
 	dp::dp "dst_keys : " . join(",", @dst_keys) . "\n" if($verbose);
 	dp::dp "record_key: $record_key\n" if($verbose);
 
@@ -427,7 +432,7 @@ sub	calc_record
 	my $dates = $self->{dates};
 
 	my @ops = ();
-	foreach my $key (@operators){
+	foreach my $key (@$operators){
 		$key =~ /^([\+\-\*\/]*)(=*)(.*)$/;
 		my ($op, $st, $lb) = ($1//"", $2//"", $3//"");
 		$op = "+" if(!$op);
@@ -466,11 +471,11 @@ sub	calc_record
 			elsif($op->{op} eq "*"){
 				$reg *= $v;
 			}
-			#dp::dp "$i $reg = ($cum) $lreg $opp [$st] $lb [$v]\n";
+			dp::dp "$i $reg = ($cumulative) $lreg $opp [$st] $lb [$v]\n" if($verbose > 2);
 		}
-		$reg += $target_csvp->[$i-1] if($cum && $i > 0);
+		$reg += $target_csvp->[$i-1] if($cumulative && $i > 0);
 		$target_csvp->[$i] = $reg;
-		#dp::dp "$result_key $i: $reg " . $target_csvp->[$i] . "\n";
+		dp::dp "$result_key $i: $reg " . $target_csvp->[$i] . "\n" if($verbose > 1);
 	}
 	dp::dp "$result_key : " . join(",", @$target_csvp) . "\n" if($verbose);
 	$self->add_record($record_key, [@dst_keys], [@$target_csvp]);
