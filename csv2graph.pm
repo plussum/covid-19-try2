@@ -603,10 +603,14 @@ sub gen_html_by_gp_list
 		#
 		#	Tag
 		#
-		my $tag = $lbl[0];		#	set tag
-		$tag =~ s/\d+:#*//;
-		$tag =~ s/#.*//;
-		$tag =~ s/--.*//;
+		my $tag = $gp->{graph_tag} // "UNDEF";
+		if($tag eq "UNDEF"){
+			$tag = $lbl[0];		#	set tag
+			$tag =~ s/\d+:#*//;
+			$tag =~ s/#.*//;
+			$tag =~ s/--.*//;
+		}
+		
 		print HTML "<a name=\"$tag$rwn\">$tag</a>\n";
 
 		#
@@ -634,6 +638,11 @@ sub gen_html_by_gp_list
 
 				$l =~ s/$LABEL_DLM.*//;
 				$l =~ s/^\d+:// if($no_lank_label);
+				if($gp->{label_sub_from}){
+					my $sub_from = $gp->{label_sub_from};
+					my $sub_to = $gp->{label_sub_to} // "";
+					$l =~ s/$sub_from/$sub_to/;
+				}
 				print HTML "<td>" . $l . "</td>";
 				#dp::dp "HTML LABEL: " . $lbl[$i+$j] . "\n";
 			}
@@ -661,7 +670,7 @@ sub gen_html_by_gp_list
 		#
 		#	closed
 		#
-		if($row < 1){
+		if($row <= 1){
 			print HTML "<br>\n" ;
 			print HTML "<br><hr>\n\n";
 		}
