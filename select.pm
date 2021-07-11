@@ -47,6 +47,17 @@ sub	gen_record_key
 	return join($dlm, @gen_key);
 }
 
+
+#
+#	keys => ["item"],				# 気温,湿度,,,
+#	return 	"#"
+#
+# my @MAIN_KEYS = ("Country/Region", "Province/State"),	#
+# defccse.pm:$CCSE_CONF_DEF->{keys} = [@MAIN_KEYS, "=conf"];
+# defccse.pm:$CCSE_DEATHS_DEF->{keys} = [@MAIN_KEYS, "=death"];
+# defccse.pm:$CCSE_US_CONF_DEF->{keys} = [@MAIN_KEYS, "=conf_us"];
+# defccse.pm:$CCSE_US_DEATHS_DEF->{keys} = [@MAIN_KEYS, "=death_us"];
+#
 sub	added_key
 {
 	my $self = shift;
@@ -70,13 +81,17 @@ sub	gen_key_order
 	my @keys = ();
 
 	my $item_name_hash = $cdp->{item_name_hash};
-	foreach my $k (@$key_order){
+	for(my $i = 0; $i < scalar(@$key_order); $i++){
+		my $k = $key_order->[$i];
 		if($k eq "ern"){
 			dp::dp "$k\n";
 		}
 		my $itn = $k;
 		if($k =~ /^=/){
 			#dp::dp "#" x 20 . $k . "\n";
+		}
+		elsif($k eq "item"){			# added 2021.07.11 for load_vertical_multi
+			$itn = $i;
 		}
 		elsif($k =~ /\D/){
 			$itn = $item_name_hash->{$k} // "UNDEF";

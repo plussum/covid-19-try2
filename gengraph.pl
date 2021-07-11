@@ -46,6 +46,8 @@ use defdocomo;
 use defmhlw;
 use deftkocsv;
 use defvac;
+use defowid;
+
 
 
 binmode(STDOUT, ":utf8");
@@ -156,10 +158,28 @@ my @TARGET_PREF = ("Tokyo", "Kanagawa", "Chiba", "Saitama", "Kyoto", "Osaka");
 
 my @cdp_list = ($defamt::AMT_DEF, $defccse::CCSE_DEF, $MARGE_CSV_DEF, 
 					$deftokyo::TOKYO_DEF, $defjapan::JAPAN_DEF, $deftkow::TKOW_DEF, $defdocomo::DOCOMO_DEF, 
-					$defmhlw::MHLW_DEF, $deftkocsv::TKOCSV_DEF, $defvac::VACCINE_DEF); 
+					$defmhlw::MHLW_DEF, $deftkocsv::TKOCSV_DEF, $defvac::VACCINE_DEF, $defowid::OWID_VAC_DEF); 
 
 my $cmd_list = {"amt-jp" => 1, "amt-jp-pref" => 1, "tkow-ern" => 1, try => 1, "pref-ern" => 1, pref => 1, docomo => 1, upload => 1, "ccse-tgt" => 1};
 my @REG_INFO_LIST = ();
+
+#
+#
+#
+my @gcl = ("royalblue", "#e36c09", "forest-green", "mediumpurple3", 			# https://mz-kb.com/blog/2018/10/31/gnuplot-graph-color/
+			"dark-pink", "#00d0f0", "#60d008", "brown",  "gray20", 
+			"gray30");
+my @bcl = ( "gray10", "dark-orange",		# 0.5
+			"midnight-blue", "dark-orange",			# 0.2
+			"steelblue", "dark-orange",		# 0.1
+			"dark-green", "dark-orange",	# 0.05
+			"seagreen", "dark-orange",		# 0.02
+			"gray70", "dark-orange",		# 0.01
+			"gray80", "dark-orange",		# 0.01
+			"gray90", "dark-orange",		# 0.01
+			"white", "dark-orange",
+			"white", "dark-orange",
+		);
 
 ####################################
 #
@@ -272,6 +292,8 @@ if($golist{pref}){
 	my $ccse_cdp = csv2graph->new($defccse::CCSE_CONF_DEF); 						# Load Johns Hopkings University CCSE
 	$ccse_cdp->load_csv($defccse::CCSE_CONF_DEF);
 	my $ccse_country = $ccse_cdp->reduce_cdp_target({"Province/State" => "NULL"});	# Select Country
+	#$ccse_country->dump();
+	#exit;
 
 	my $death_cdp = csv2graph->new($defccse::CCSE_DEATHS_DEF); 						# Load Johns Hopkings University CCSE
 	$death_cdp->load_csv($defccse::CCSE_DEATHS_DEF);
@@ -409,13 +431,13 @@ sub	gen_reginfo
 	print HTML "<span class=\"c\">\n";
 	print HTML "<h1>$sort_key</h1>\n";
 	my %DISPF = ();
-	my @keys_list = ("nc_pop_max", "nc_pop_last", "nd_pop_max", "nd_pop_last", 
-					"drate_max", "drate_last", "nc_max", "nd_max", 
+	my @keys_list = ("nc_pop_last","nd_pop_last", "drate_last", 
+					"nc_pop_max",  "nd_pop_max",  "drate_max",  "nc_max", "nd_max", 
 					"nc_week_diff", "nd_week_diff",
 					"pop_100k",
 					);
 	my @keys = ();
-	foreach my $k ($sort_key, @sub, @keys_list){
+	foreach my $k ($sort_key, @keys_list){		# $sort_key, @sub, @key_list
 		#dp::WARNING "DIPF $k: " . join(",", $sort_key, @sub, @keys_list) . "\n" if(defined $DISPF{$k});
 
 		$DISPF{$k} = 1;
@@ -758,14 +780,29 @@ if($golist{vaccine})
 	#$cdp->dump({search_key => "Japan#all#any-c", items => 100});
 	#$cdp->dump({lines => 1000});
 
+	#
+	#
+	#
+	my @adp = ();
+	my $pct_gap = 10;
+	for(my $i = 1; ($i * $pct_gap) < 100; $i++){
+		my $pct = $i * $pct_gap; 
+		my $dt = (($pct % 20) == 0 ) ? "lc 'blue' dt (3,7)" : "lc 'blue' dt (2,8)";
+		#my $dt = "lc 'red' dt (6,4)";
+		my $title = "title '$pct%'";
+		push(@adp, "$pct axis x1y2 with lines notitle lw 1 $dt");
+	}
+	my $add_plot = join(",\\\n", @adp);
+
 	##### Japan
 	my $pref = "Japan";
 	my $start_date = 0;
-
+	@$gp_list = ();
 	push(@$gp_list, csv2graph->csv2graph_list_gpmix(
 	{gdp => $defvac::VACCINE_GRAPH, dsc => "Japan Vaccine(age), Positive and Deaths(rlavr 7)", start_date => $start_date, 
 		ylabel => "confermed", y2label => "vaccine rate(%) and deaths/max(%)",
 		ymin => 0, y2min => 0,
+		additional_plot => $add_plot,
 		graph_items => [
 			{cdp => $cdp,  item => {prefecture => $pref, age => "all", status => "any-cp"}, static => "", graph_def => $box_fill_solid, axis => "y2"},
 			{cdp => $cdp,  item => {prefecture => $pref, age => "ge65", status => "any-cp"}, static => "", graph_def => $box_fill_solid, axis => "y2"},
@@ -778,6 +815,7 @@ if($golist{vaccine})
 	{gdp => $defvac::VACCINE_GRAPH, dsc => "Japan Vaccine(1,2), Positive and Deaths(rlavr 7)", start_date => $start_date, 
 		ylabel => "confermed", y2label => "vaccine rate(%) and deaths/max(%)",
 		ymin => 0, y2min => 0,
+		additional_plot => $add_plot,
 		graph_items => [
 			{cdp => $cdp,  item => {prefecture => $pref, age => "all", status => "any-cp"}, static => "", graph_def => $box_fill_solid, axis => "y2"},
 			{cdp => $cdp,  item => {prefecture => $pref, age => "all", status => "2-cp"}, static => "", graph_def => $box_fill_solid, axis => "y2"},
@@ -790,7 +828,9 @@ if($golist{vaccine})
 	defvac::load_area_code($AREA_CODE);
 	my $rlavr = $cdp->calc_rlavr();
 	my @pref_list = ("東京都","埼玉県","神奈川県", "千葉県", "京都府", "大阪府", "兵庫県","奈良県","沖縄県");
-	foreach my $pref (@pref_list){ #(1..47){
+  
+	my $et = ($end_target > 0 && $end_target <= $#pref_list) ? $end_target : $#pref_list;
+	foreach my $pref (@pref_list[0..$et]){ #(1..47){
 		if($pref =~ /^\d+$/){
 			my $pn = sprintf("%02d", $pref);
 			dp::dp "<<$pn>>\n";
@@ -817,6 +857,7 @@ if($golist{vaccine})
 		{gdp => $defvac::VACCINE_GRAPH, dsc => "$pref Vaccine(age), Positive and Deaths(rlavr 7)", start_date => $start_date, 
 			ylabel => "confermed", y2label => "vaccine rate(%) and deaths",
 			ymin => 0, y2min => 0,
+			additional_plot => $add_plot,
 			graph_items => [
 				{cdp => $cdp,  item => {prefecture => $pref, age => "all", status => "any-cp"}, static => "", graph_def => $box_fill_solid, axis => "y2"},
 				{cdp => $cdp,  item => {prefecture => $pref, age => "ge65", status => "any-cp"}, static => "", graph_def => $box_fill_solid, axis => "y2"},
@@ -829,6 +870,7 @@ if($golist{vaccine})
 		{gdp => $defvac::VACCINE_GRAPH, dsc => "$pref Vaccine(1,2), Positive and Deaths(rlavr 7)", start_date => $start_date, 
 			ylabel => "confermed", y2label => "vaccine rate(%) and deaths",
 			ymin => 0, y2min => 0,
+			additional_plot => $add_plot,
 			graph_items => [
 				{cdp => $cdp,  item => {prefecture => $pref, age => "all", status => "any-cp"}, static => "", graph_def => $box_fill_solid, axis => "y2"},
 				{cdp => $cdp,  item => {prefecture => $pref, age => "all", status => "2-cp"}, static => "", graph_def => $box_fill_solid, axis => "y2"},
@@ -837,8 +879,6 @@ if($golist{vaccine})
 				{cdp => $death_pref,  item => { prefectureNameJ => "$pref#$deaths"."_p"}, static => "", graph_def => $line_thick, axis => "y2"},
 			],
 		}));
-
-
 	}
 
 	csv2graph->gen_html_by_gp_list($gp_list, {						# Generate HTML file with graphs
@@ -853,6 +893,47 @@ if($golist{vaccine})
 		}
 	);
 }
+
+#
+#	OWID VACCINE
+#
+if($golist{owidvac})
+{
+	my $cdp = csv2graph->new($defowid::OWID_VAC_DEF); 						# Load Apple Mobility Trends
+	$cdp->load_csv();
+
+	@$gp_list = ();
+	my $start_date = 0;
+	my $add_plot = "";
+	my @target_region = ("Japan", "World", "United Kingdom", "Asia", "Brazil", "Europe", "France", "Germany", 
+				"India", "Indonesia", "Israel", "Italy", 
+				"Russia", "Singapore", "Sweden", "Taiwan", "South Africa", "South Korea", "Spain", "Sweden", "United States", 
+	);
+	foreach my $region (@target_region){
+		push(@$gp_list, csv2graph->csv2graph_list_gpmix(
+		{gdp => $defowid::OWID_VAC_GRAPH, dsc => "[$region] OWID Vaccine", start_date => $start_date, 
+			ylabel => "confermed", #y2label => "vaccine rate(%) and deaths/max(%)",
+			ymin => 0, ymax => 100, y2min => 0,
+			additional_plot => $add_plot,
+			graph_items => [
+				{cdp => $cdp,  item => {location => $region,}, static => "", graph_def => $line_thick, },
+			],
+		}));
+	}
+
+	csv2graph->gen_html_by_gp_list($gp_list, {						# Generate HTML file with graphs
+			row => 1,
+			html_tilte => "COVID-19 vaccine from OWID",
+			src_url => "src_url",
+			html_file => "$HTML_PATH/owidva.html",
+			#alt_graph => "./japanpref_pop.html",
+			png_path => $PNG_PATH // "png_path",
+			png_rel_path => $PNG_REL_PATH // "png_rel_path",
+			data_source => $cdp->{src_info},
+		}
+	);
+}
+
 #
 #
 #
@@ -1159,21 +1240,7 @@ sub	positive_death_ern
 #	my @gcl = ("#0070f0", "#e36c09", "forest-green", "dark-violet", 			# https://mz-kb.com/blog/2018/10/31/gnuplot-graph-color/
 #				"dark-pink", "#00d0f0", "#60d008", "brown",  "gray50", 
 #				);
-	my @gcl = ("royalblue", "#e36c09", "forest-green", "mediumpurple3", 			# https://mz-kb.com/blog/2018/10/31/gnuplot-graph-color/
-				"dark-pink", "#00d0f0", "#60d008", "brown",  "gray20", 
-				"gray30");
-	my @bcl = ( "gray10", "dark-orange",		# 0.5
-				"midnight-blue", "dark-orange",			# 0.2
-				"steelblue", "dark-orange",		# 0.1
-				"dark-green", "dark-orange",	# 0.05
-				"seagreen", "dark-orange",		# 0.02
-				"gray70", "dark-orange",		# 0.01
-				"gray80", "dark-orange",		# 0.01
-				"gray90", "dark-orange",		# 0.01
-				"white", "dark-orange",
-				"white", "dark-orange",
 
-			);
 	my @death_pop = ();
 	my ($d100k, $dn_unit, $unit_no) = ();
 	my @color = ();

@@ -1,0 +1,47 @@
+#[251]./gengraph.pl: pref
+#[57]load.pm:load::load_csv LOAD CSV  [Johns Hopkins CSSE][ccse_conf]
+#[137]load.pm:load::load_csv_holizontal source_file: /mnt/f/_share/cov/plussum.github.io/CSV/time_series_covid19_confirmed_global.csv
+#[171]load.pm:load::load_csv_holizontal keys : Country/Region,Province/State,=conf
+called from[1]: csv2graph :: csv2graph.pm #212 dump::dump_cdp
+called from[2]: main :: ./gengraph.pl #295 csv2graph::dump
+##########[5] CSV DUMP Johns Hopkins CSSE ##########
+##### VALUE ######
+id      ccse_conf
+src_info        Johns Hopkins CSSE
+main_url        https://covid19.apple.com/mobility
+src_url https://github.com/beoutbreakprepared/nCoV2019
+csv_file
+src_dlm ,
+timefmt %m/%d/%y
+data_start      4
+down_load       CODE(0x2c66d68)
+dates   534
+##### ARRAY ######
+date_list(534)  [#0:2020-01-22,#1:2020-01-23,#2:2020-01-24,#3:2020-01-25,#4:2020-01-26,#5:2020-01-27] [2021-07-09]
+keys(2) [#0:Country/Region,#1:Province/State,#2:=conf]
+load_order(191) [#0:Greece--conf,#1:Lithuania--conf,#2:Eswatini--conf,#3:Tunisia--conf,#4:Korea-South--conf,#5:Turkey--conf] [Liechtenstein--conf]
+item_name_list(4)       [#0:mainkey,#1:Province/State,#2:Country/Region,#3:Lat,#4:Long]
+defined_item_name_list(-1)      []
+marge_item_pos(-1)      []
+order_list(-1)  []
+##### HASH ######
+order(0)        {}
+item_name_hash(0)       {}
+alias(0)        {}
+##### key_items ######
+------ [5] Dump keyitems data (HASH(0x537dd10)) search_key[] --------
+        mainkey,Province/State,Country/Region,Lat,Long
+[0] Serbia--conf[0]: Serbia--conf,,Serbia,44.0165,21.0059
+[1] Guinea-Bissau--conf[0]: Guinea-Bissau--conf,,Guinea-Bissau,11.8037,-15.1804
+[2] Finland--conf[0]: Finland--conf,,Finland,61.92411,25.748151
+[3] Tajikistan--conf[0]: Tajikistan--conf,,Tajikistan,38.861,71.2761
+[4] Micronesia--conf[0]: Micronesia--conf,,Micronesia,7.4256,150.5508
+[5] Dominica--conf[0]: Dominica--conf,,Dominica,15.415,-61.371
+##### csv_data ######
+------ [5] Dump csv data (HASH(0x2f93df8)) []--------
+[0] Afghanistan--conf, [0], 0, 0, 0, 0, 0, 0
+[1] Albania--conf, [0], 0, 0, 0, 0, 0, 0
+[2] Algeria--conf, [0], 0, 0, 0, 0, 0, 0
+[3] Andorra--conf, [0], 0, 0, 0, 0, 0, 0
+[4] Angola--conf, [0], 0, 0, 0, 0, 0, 0
+########################################

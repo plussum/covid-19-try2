@@ -63,6 +63,9 @@ sub	load_csv
 	elsif($direct =~ /transact/i){
 		$rc = &load_transaction($self, $src_file);
 	}
+	elsif($direct =~ /vertical_multi/i){
+		$rc = load_csv_vertical_multi($self, $src_file);
+	}
 	elsif($direct =~ /vertical/i){
 		$rc = load_csv_vertical($self, $src_file);
 	}
@@ -214,6 +217,11 @@ sub	load_csv_holizontal
 #	key2, 11,12,13
 #	key3, 21,22,23
 #
+#	Load vetical multi item csv file
+#
+
+#
+#
 sub	load_csv_vertical
 {
 	my $self = shift;
@@ -231,6 +239,8 @@ sub	load_csv_vertical
 	my $data_start_line = $self->{data_start_line} // 1;
 	my $load_col = $self->{load_col} // "";
 	my $load_order = $self->{load_order};
+	my $date_col = $self->{date_col}//0;
+	my $key_dlm = $self->{key_dlm}; 
 
 	#
 	#	set main key (item name) 
@@ -242,6 +252,8 @@ sub	load_csv_vertical
 	$self->set_alias($self->{alias});		#
 	#@{$self->{item_name_list}} = ($key_name);		# set item_name 
 	#$self->{item_name_hash}->{$key_name} = 0;
+
+	my @key_order = $self->gen_key_order($self->{keys});		# keys to gen record key
 
 	#
 	#	Load CSV DATA
@@ -257,7 +269,7 @@ sub	load_csv_vertical
 	#
 	my $ln = 0;
 	my $line = "";
-	for(; $ln <= $item_name_line; $ln++){
+	for($ln = 0; $ln <= $item_name_line; $ln++){
 		$line = <FD>;
 	}
 	$line =~ s/[\r\n]+$//;
@@ -321,16 +333,19 @@ sub	load_csv_vertical
 	while(<FD>){
 		s/[\r\n]+$//;
 		my $line = decode('utf-8', $_);
-		my ($date, @items) = split(/$src_dlm/, $line);
+		my (@items) = split(/$src_dlm/, $line);
+		my $date = $items[$date_col];
 	
 		#dp::dp "$date, [$src_dlm]" . join(",", @items) ."\n";
 		$date_list->[$ln] = util::timefmt($timefmt, $date);
 		#dp::dp "date:$ln $date " . $date_list->[$ln] . " ($timefmt) $self->{title}\n";
 		#my @w = ($date);	
+		my $k = select::gen_record_key($key_dlm, \@key_order, ["", @items]);		# 2021.07.08 .... vaccine
 		for(my $i = 0; $i <= $#items; $i++){
 			next if(! $load_flag[$i]);
 
 			my $k = $item_names[$i] . $added_key;
+
 			$csv_data->{$k}->[$ln]= $items[$i];
 			#push(@w, "$ln:{". $k . "}:$items[$i]");
 		}
@@ -350,6 +365,223 @@ sub	load_csv_vertical
 	return 1;
 }
 
+#
+#	Load vetical multi item csv file
+#
+# location,iso_code,date,total_vaccinations,people_vaccinated,people_fully_vaccinated,
+# 	daily_vaccinations_raw,daily_vaccinations,total_vaccinations_per_hundred,
+#	people_vaccinated_per_hundred,people_fully_vaccinated_per_hundred,daily_vaccinations_per_million
+# Japan,JPN,2021-04-12,1693683,1132778,560905,,70971,1.34,0.9,0.44,561
+# Japan,JPN,2021-04-13,1751347,1150352,600995,57664,66112,1.38,0.91,0.48,523
+# Japan,JPN,2021-04-14,1806491,1164069,642422,55144,59055,1.43,0.92,0.51,467
+# Japan,JPN,2021-04-15,1866243,1187838,678405,59752,54091,1.48,0.94,0.54,428
+# Japan,JPN,2021-04-16,1943875,1225479,718396,77632,50194,1.54,0.97,0.57,397
+#
+#							2021-01-01, 2021-01-02
+# Japan, total_vaccinations
+# Japan, people_vaccinated
+# Japan, people_fully_vaccinated
+# Japan, total_vaccinations_per_hundred
+#
+
+#
+#			key1,key2,key3,
+#	01/01
+#	01/02
+#	01/03
+#
+#	"key" 01/01, 01/02, 01/03
+#	key1, 1,2,3
+#	key2, 11,12,13
+#	key3, 21,22,23
+#
+sub load_csv_vertical_multi
+{
+	my $self = shift;
+	my ($src_file) = @_;
+
+	my $verbose = 1;
+	my $remove_head = 1;
+	my $data_start = $self->{data_start};
+	my $src_dlm = $self->{src_dlm};
+	my $date_list = $self->{date_list};
+	my $csv_data = $self->{csv_data};
+	my $key_items = $self->{key_items};
+	my @keys = @{$self->{keys}};
+	my $timefmt = $self->{timefmt};
+	my $item_name_line = $self->{item_name_line} // 0;
+	my $data_start_line = $self->{data_start_line} // 1;
+	my $load_col = $self->{load_col} // "";
+	my $load_order = $self->{load_order};
+	my $date_col = $self->{date_col}//0;
+	my $key_dlm = $self->{key_dlm}; 
+	my $item_name_hash = $self->{item_name_hash};
+
+	#
+	#	set main key (item name) 
+	#	vertical csv had only main key (1 key)
+	#
+	##my $key_name = $self->{key_name} // "";			# set key name as "key" or $self->{key_name}
+	##$key_name = $config::MAIN_KEY if(! $key_name);
+	$self->add_key_items([$config::MAIN_KEY]);
+	$self->set_alias($self->{alias});		#
+
+
+	#
+	#	Load CSV DATA
+	#
+	dp::dp "LOAD:$src_file\n";
+	open(FD, "$src_file" ) || die "Cannot open $src_file";
+	binmode(FD, ":utf8");
+	#binmode(FD, ":encording(cp932)");
+
+	#
+	#	load item names
+	#
+	my $ln = 0;
+	my $line = "";
+	for($ln = 0; $ln < $item_name_line; $ln++){
+		$line = <FD>;
+	}
+	$line =~ s/[\r\n]+$//;
+	#$line = decode('utf-8', $line);
+
+	#dp::dp "$line\n";
+
+	if($line =~ /"/){
+		$line =~ s/"([^",]+), *([^",]+), *([^",]+)"/$1;$2;$3/g;  # ,"aa,bb,cc", -> aa-bb-cc
+		$line =~ s/"([^",]+), *([^"]+)"/$1-$2/g; # ,"aa,bb", -> aa-bb
+		#dp::dp "[[[[[[[$_]]]]]]]]]]\n";
+	}
+	my @item_names = split(/$src_dlm/, $line);
+	if($#item_names <= 1){
+		dp::WARNING "may be wrong delimitter [$src_dlm]\n\n";
+	}
+	my @load_flag = ();
+	for(my $i = 0; $i < $#item_names; $i++){
+		$load_flag[$i] = "";
+		$item_name_hash->{$item_names[$i]} = $i;
+	}
+	foreach my $col (@$load_col){
+		my $i = $col;
+		if($col =~ /\D/){
+			$i = $item_name_hash->{$i} // dp::ABORT "undefined item: $i\n";
+		}
+		dp::dp "[$col] [$i]\n";
+		$load_flag[$i] = 1;
+	}
+	my $keys = $self->{keys};
+	my @key_order = $self->gen_key_order($self->{keys});		# keys to gen record key
+	dp::dp "keys:      " .join(",", @$keys) . "\n";
+	dp::dp "key_order: " .join(",", @key_order) . "\n";
+	my $n = 0;
+	@{$self->{item_name_list}} = ();		# set item_name 
+	foreach my $kname (@keys){
+		if(!($kname =~ /\D/)){
+			$kname = $item_names[$kname] // dp::ABORT "$kname undefined\n";
+		}
+		push(@{$self->{item_name_list}}, $kname);		# set item_name 
+		$self->{item_name_hash}->{$kname} = $n++;
+	}
+
+	#
+	#	Skip non data row
+	#
+	for($ln++; $ln < $data_start_line; $ln++){		# skip lines until data_start_line
+		<FD>;
+	}
+
+	#
+	#	Load dated data
+	#
+	$ln = 0;
+	my $date_no = 0;
+	my %date_col = ();
+	my $date = "";
+	my $FIRST_DATE = "9999-99-99";
+	my $LASt_DATE = "";
+	my $csv_load = {};
+	while(<FD>){
+		s/[\r\n]+$//;
+		my (@items) = split(/$src_dlm/, $_);
+		$date = $items[$date_col];
+		$date = util::timefmt($timefmt, $date);
+		if(! defined $date_col{$date}){
+			$date_col{$date} = $date_no++;
+		}
+		my $dt = $date_col{$date};
+		$FIRST_DATE = $date if($date lt $FIRST_DATE);
+		$LAST_DATE = $date if($date ge $LAST_DATE);
+
+		for(my $i = $#items  + 1; $i <= $#item_names; $i++){
+			push(@items, "");
+		}
+#		dp::dp "record: ";
+#		for(my $i = 0; $i <= $#items; $i++){
+#			print "$i:$items[$i] ";
+#		}
+#		print "\n";
+		
+		my @ids = ();		# for debug
+		my @vals = ();		# for debug
+		for(my $i = 0; $i <= $#items; $i++){
+			next if(! $load_flag[$i]);				# check load flag
+
+			my @item_key = ();						# generate keys
+			for(my $jk = 0; $jk <= $#key_order; $jk++){
+				my $k = $keys->[$jk];
+				my $item = "";
+				if($k eq "" || $k eq "item"){		# set item_name as a key of the record
+					$item = $item_names[$i];		# location,iso_code,date,total_vaccinations,people_vaccinated,people_fully_vaccinated
+				}
+				else {
+					if($k =~ /\D/){					# ex. location => 0
+						$k = $item_name_hash->{$k} // dp::ABORT "item[$k] not defined\n";
+					}
+					$item = $items[$k];		# set item names[$k] as a key of the record
+				}
+				push(@item_key, $item);
+			}
+			my $k = select::gen_record_key($key_dlm, \@key_order, [@item_key]);
+
+			my $v = $items[$i] // 0;
+			$v = 0 if(! $v);
+			$csv_load->{$k}->{$date}= $v;
+			#dp::dp "[$k] $date -> " . $items[$i] . "[" . join(",", @item_key) . "]\n";
+			#dp::dp "$i [$k] $date [$dt] -> " . $v . "\n";
+			push(@ids, $item_key[1]);
+			push(@vals, $v);
+		}
+		#dp::dp join("#", $items[0], @ids). " -> " . join(",", @vals) . "\n";
+		#dp::dp $items[0] . ":$date -> " . join(",", @vals) . "\n" if($verbose);
+		$ln++;
+	}
+	close(FD);
+
+	my @key_list = (keys %$csv_load);
+	my $first_dt = csvlib::ymds2tm($FIRST_DATE);
+	for(my $dt = 0; $dt < $date_no; $dt++){
+		my $date = csvlib::ut2date($first_dt + $dt * 60 * 60 * 24);
+		$date_list->[$dt] = $date;
+	}
+	$self->{dates} = $date_no - 1;
+
+	dp::dp "date_no: $date_no $FIRST_DATE keys : " . $#key_list . "\n";
+	my $kn = 0;
+	#dp::dp "load_end,, build_csv_data\n";
+	foreach my $key (keys %$csv_load){
+		#dp::dp $kn++ . "/" . $#key_list . ":$key\n";
+		my @data = ();
+		for(my $dt = 0; $dt < $date_no; $dt++){
+			my $date = $date_list->[$dt];
+			$data[$dt] = $csv_load->{$key}->{$date} // "NaN"; 
+		}
+		my @key_list = split(/$key_dlm/, $key);
+		$self->add_record($key, [@key_list], [@data]);		# add record with data
+	}
+	#dp::dp "done\n";
+	return 0;
+}
 #
 #	Load Json format
 #

@@ -604,7 +604,7 @@ sub gen_html_by_gp_list
 		#	Tag
 		#
 		my $tag = $lbl[0];		#	set tag
-		$tag =~ s/\d+://;
+		$tag =~ s/\d+:#*//;
 		$tag =~ s/#.*//;
 		$tag =~ s/--.*//;
 		print HTML "<a name=\"$tag$rwn\">$tag</a>\n";

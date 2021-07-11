@@ -38,7 +38,8 @@ sub	dump_cdp
 		if($p){
 			my $arsize = scalar(@$p) - 1;
 			my $as = ($arsize > $items) ? $items :$arsize;
-		 	print "$k($arsize)\t[" . csvlib::join_array(",", @{$p}[0..$as]). "]\n";
+			my $ls = ($items < $arsize) ? ("$arsize [" . $p->[$arsize] . "]") : "";
+		 	print "$k($arsize)\t[" . csvlib::join_array(",", @{$p}[0..$as]). "] $ls\n";
 		}
 		else {
 			print "$k\tundef\n";
