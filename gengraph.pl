@@ -674,18 +674,17 @@ if($golist{mhlw}){
 #			"positive_number", "hospitalized", "mid-modelate", "severe", "residential", "home","adjusting", "deaths", "discharged",
 #
 if($golist{tkocsv}){
-	my $tkocsv_cdp = $deftkocsv::TKOCSV_DEF;
-	&{$tkocsv_cdp->{down_load}};
-
-	my $cdp = csv2graph->new($tkocsv_cdp); 						# Load Johns Hopkings University CCSE
-	$cdp->load_csv($deftkocsv::TKOCSV_DEF);
+	my $cdp = csv2graph->new($deftkocsv::TKOCSV_DEF); 						# Load Johns Hopkings University CCSE
+	$cdp->load_csv({download => 1});
 	my $rlavr = $cdp->calc_rlavr();
 
 	$rlavr->calc_record({result => "#total_positive", op => ["pcr_positive", "+antigen_positive"]});
 	$rlavr->calc_record({result => "#total_tested", op => ["pcr_negative", "+antigen_negative", "+pcr_positive", "+antigen_positive"]});
 	$rlavr->calc_record({result => "#total_pcr", op => ["pcr_positive", "+pcr_negative"]});
 	$rlavr->calc_record({result => "#positive_percent", op => ["positive_rate", "*=100"], v => 1} );
-	$rlavr->dump({search_key => "positive_percent"});
+
+	#$rlavr->dump({search_key => "positive_percent"});
+	$rlavr->dump({lines => 20});
 	# $rlavr->dump({items => 10, lines => 20});
 
 	$cdp->calc_record({result => "#total_positive", op => ["pcr_positive", "+antigen_positive"]});
@@ -900,16 +899,49 @@ if($golist{vaccine})
 if($golist{owidvac})
 {
 	my $cdp = csv2graph->new($defowid::OWID_VAC_DEF); 						# Load Apple Mobility Trends
-	$cdp->load_csv();
+	$cdp->load_csv({download => 1});
+	&completing_zero($cdp);
 
 	@$gp_list = ();
 	my $start_date = 0;
 	my $add_plot = "";
-	my @target_region = ("Japan", "World", "United Kingdom", "Asia", "Brazil", "Europe", "France", "Germany", 
+	my @target_region = ("Japan", "United Kingdom", "Brazil", "France", "Germany", 
 				"India", "Indonesia", "Israel", "Italy", 
 				"Russia", "Singapore", "Sweden", "Taiwan", "South Africa", "South Korea", "Spain", "Sweden", "United States", 
 	);
-	foreach my $region (@target_region){
+	my @target_area = ("Wold", "Asia", "Europe");
+
+	my $ccse_cdp = csv2graph->new($defccse::CCSE_CONF_DEF); 						# Load Johns Hopkings University CCSE
+	$ccse_cdp->load_csv($defccse::CCSE_CONF_DEF);
+	my $death_cdp = csv2graph->new($defccse::CCSE_DEATHS_DEF); 						# Load Johns Hopkings University CCSE
+	$death_cdp->load_csv($defccse::CCSE_DEATHS_DEF);
+
+	my $ccse_country = $ccse_cdp->reduce_cdp_target({"Province/State" => "NULL", "Country/Region" => "Japan"});	# Select Country
+	my $death_country = $death_cdp->reduce_cdp_target({"Province/State" => "NULL", "Country/Region" => "Japan"});	# Select Country
+	my $positive_rlavr = $ccse_country->calc_rlavr();
+	my $death_rlavr = $death_country->calc_rlavr();
+
+	my $target_location = join(",", @target_area, @target_region);
+	my @select_items = ("total_vaccinations_per_hundred","people_fully_vaccinated_per_hundred");
+	foreach my $target_item (@select_items){
+		my $lank_width = 10;
+		for(my $lank = 1; $lank <= $#target_region; $lank += $lank_width){
+			my $le = $lank + $lank_width - 1;
+			push(@$gp_list, csv2graph->csv2graph_list_gpmix(
+			{gdp => $defowid::OWID_VAC_GRAPH, dsc => "[$target_item](#$lank-$le) OWID Vaccine", start_date => $start_date, 
+				ylabel => "confermed", #y2label => "vaccine rate(%) and deaths/max(%)",
+				ymin => 0, ymax => 100, y2min => 0,
+				lank => [$lank, $le],
+				label_sub_from => '#.*', label_sub_to => '',	# change label "1:Israel#people_vaccinated_per_hundred" -> "1:Israel"
+				additional_plot => $add_plot,
+				graph_items => [
+					{cdp => $cdp,  item => {location => $target_location, item_name => $target_item}, static => "", graph_def => $line_thin, },
+				],
+			}));
+		}
+	}
+if(0){			# Simple graph
+	foreach my $region (@target_area, @target_region){
 		push(@$gp_list, csv2graph->csv2graph_list_gpmix(
 		{gdp => $defowid::OWID_VAC_GRAPH, dsc => "[$region] OWID Vaccine", start_date => $start_date, 
 			ylabel => "confermed", #y2label => "vaccine rate(%) and deaths/max(%)",
@@ -920,18 +952,72 @@ if($golist{owidvac})
 			],
 		}));
 	}
+}
+
+	my @adp = ();
+	my $pct_gap = 10;
+	for(my $i = 1; ($i * $pct_gap) < 100; $i++){
+		my $pct = $i * $pct_gap; 
+		my $dt = (($pct % 20) == 0 ) ? "lc 'blue' dt (3,7)" : "lc 'blue' dt (2,8)";
+		#my $dt = "lc 'red' dt (6,4)";
+		my $title = "title '$pct%'";
+		push(@adp, "$pct axis x1y2 with lines notitle lw 1 $dt");
+	}
+	$add_plot = join(",\\\n", @adp);
+
+	$start_date = "2021-01-01";
+
+	foreach my $region (@target_region){
+		next if($region eq "Taiwan");
+		next if($region eq "South Korea");
+		next if($region eq "United States");
+		$ccse_country = $ccse_cdp->reduce_cdp_target({"Province/State" => "NULL", "Country/Region" => $region});	# Select Country
+		$death_country = $death_cdp->reduce_cdp_target({"Province/State" => "NULL", "Country/Region" => $region});	# Select Country
+		$positive_rlavr = $ccse_country->calc_rlavr();
+		$death_rlavr = $death_country->calc_rlavr();
+		my $death_max = $death_rlavr->max_val({start_date => $start_date}) / 100;
+		$death_rlavr->calc_record({dlm => "#", result => "##$region--death_p#", op => ["$region--death", "/=$death_max"]});			# daily to cumulative
+
+		push(@$gp_list, csv2graph->csv2graph_list_gpmix(
+		{gdp => $defowid::OWID_VAC_GRAPH, dsc => "[$region] OWID Vaccine, Positive and Deaths(rlavr 7)", start_date => $start_date, 
+			ylabel => "confermed", #y2label => "vaccine rate(%) and deaths/max(%)",
+			ymin => 0, y2min => 0,
+			additional_plot => $add_plot,
+			graph_items => [
+	#			{cdp => $cdp,  item => {location => $region,}, static => "", graph_def => $box_fill_solid},
+				{cdp => $cdp,  item => {location => $region, item_name => "total_vaccinations_per_hundred"}, static => "", graph_def => $box_fill_solid, axis => "y2"},
+				{cdp => $cdp,  item => {location => $region, item_name => "people_fully_vaccinated_per_hundred"}, static => "", graph_def => $box_fill_solid, axis => "y2"},
+				{cdp => $positive_rlavr,  item => {"Country/Region" => "$region"}, static => "", graph_def => $line_thick},
+				{cdp => $death_rlavr,  item => {"Country/Region" => "$region--death_p"}, static => "", graph_def => $line_thick, axis => "y2"},
+			],
+		}));
+	}
 
 	csv2graph->gen_html_by_gp_list($gp_list, {						# Generate HTML file with graphs
 			row => 1,
 			html_tilte => "COVID-19 vaccine from OWID",
 			src_url => "src_url",
-			html_file => "$HTML_PATH/owidva.html",
+			html_file => "$HTML_PATH/owidvac.html",
 			#alt_graph => "./japanpref_pop.html",
 			png_path => $PNG_PATH // "png_path",
 			png_rel_path => $PNG_REL_PATH // "png_rel_path",
 			data_source => $cdp->{src_info},
 		}
 	);
+	exit;
+}
+sub	completing_zero
+{
+	my($self) = @_;
+
+	my $csvp = $self->{csv_data};
+	my $dates = $self->{dates};
+	foreach my $k (keys %$csvp){
+		my $cp = $csvp->{$k};
+		for(my $dt = 1; $dt <= $dates; $dt++){
+			$cp->[$dt] = $cp->[$dt-1] if($cp->[$dt] eq "NaN" || $cp->[$dt] == 0);
+		}
+	}
 }
 
 #

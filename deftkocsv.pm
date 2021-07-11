@@ -92,43 +92,32 @@ our $TKOCSV_GRAPH = {
 	],
 };
 
+# 東京都 新型コロナウイルス感染症検査の陽性率・検査人数
+#	全国地方公共団体コード	都道府県名	市区町村名	判明_年月日	PCR検査陽性者数	抗原検査陽性者数	PCR検査陰性者数	抗原検査陰性者数	検査人数(7日間移動平均)	陽性率
+# 東京都 新型コロナウイルス感染症入院患者数
+# URL: https://stopcovid19.metro.tokyo.lg.jp/data/130001_tokyo_covid19_details_testing_positive_cases.csv
+#	全国地方公共団体コード	都道府県名	市区町村名	日付	陽性者数（累計）	入院中	軽症・中等症	重症	宿泊療養	自宅療養	調整中	死亡	退院
+my $urls = [		# for keep order of records
+	{name => "pcr_tested", values => [3,4,5,6,7,8,9],
+		item_names => ["date", "pcr_positive", "antigen_positive", "pcr_negative", "antigen_negative", "inspected", "positive_rate"],
+		url => "https://stopcovid19.metro.tokyo.lg.jp/data/130001_tokyo_covid19_positivity_rate_in_testing.csv", },
+	{name => "pcr_hospitalized", values =>[3,4,5,6,7,8,9,10,11,12,13],
+		item_names => ["date", "positive_number", "hospitalized", "mid-modelate", "severe", "residential", "home","adjusting", "deaths", "discharged"],
+		url => "https://stopcovid19.metro.tokyo.lg.jp/data/130001_tokyo_covid19_details_testing_positive_cases.csv", },
+];
+
 sub	download
 {
-	# 東京都 新型コロナウイルス感染症検査の陽性率・検査人数
-	#	全国地方公共団体コード	都道府県名	市区町村名	判明_年月日	PCR検査陽性者数	抗原検査陽性者数	PCR検査陰性者数	抗原検査陰性者数	検査人数(7日間移動平均)	陽性率
-	# 東京都 新型コロナウイルス感染症入院患者数
-	# URL: https://stopcovid19.metro.tokyo.lg.jp/data/130001_tokyo_covid19_details_testing_positive_cases.csv
-	#	全国地方公共団体コード	都道府県名	市区町村名	日付	陽性者数（累計）	入院中	軽症・中等症	重症	宿泊療養	自宅療養	調整中	死亡	退院
-	my $urls = [		# for keep order of records
-		{name => "pcr_tested", values => [3,4,5,6,7,8,9],
-			item_names => ["date", "pcr_positive", "antigen_positive", "pcr_negative", "antigen_negative", "inspected", "positive_rate"],
-			url => "https://stopcovid19.metro.tokyo.lg.jp/data/130001_tokyo_covid19_positivity_rate_in_testing.csv", },
-		{name => "pcr_hospitalized", values =>[3,4,5,6,7,8,9,10,11,12,13],
-			item_names => ["date", "positive_number", "hospitalized", "mid-modelate", "severe", "residential", "home","adjusting", "deaths", "discharged"],
-			url => "https://stopcovid19.metro.tokyo.lg.jp/data/130001_tokyo_covid19_details_testing_positive_cases.csv", },
-	];
-
+	my $self = shift;
+	#csvlib::disp_caller(1..3);
+	#dp::dp "[$self]\n";
 	my $csv = {};
 	my @date = ();
 	my $file_no = 0;
 	my $col_no = 0;
 	my @header = ();
-	my $download = 1;
+	my $download = $self->check_download();
 
-	dp::dp "DOWNLOAD  $TKOCSV_DL_FLAG_FILE\n";
-	if(-f $TKOCSV_DL_FLAG_FILE){
-		my $now = time;
-		my ($dev,$ino,$mode,$nlink,$uid,$gid,$rdev,$size, $atime,$mtime,$ctime,$blksize,$blocks) = stat($TKOCSV_DL_FLAG_FILE);	
-		my $elpt = $now - $mtime;
-		#dp::dp "$now $mtime $elpt " .sprintf("%.2f", $elpt / (60 * 60)) . "\n";
-		if($elpt < (2 * 60 * 60 )){
-			$download = 0;
-		}
-	}
-	#dp::dp "Donwload: $download\n";
-	if($download){
-		system("touch $TKOCSV_DL_FLAG_FILE");
-	}
 	foreach my $items (@$urls){
 		my $csvf = "$CSV_PATH/tkocsv_" . $items->{name} . ".csv";
 		my $csvf_txt = "$csvf.txt";

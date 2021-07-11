@@ -33,7 +33,8 @@ my $END_OF_DATA = $config::END_OF_DATA;
 
 ####################################################################
 #
-my $OWID_VAC_CSV = "$WIN_PATH/owid/covid-19-data/public/data/vaccinations/vaccinations.csv";
+my $OWID_ROOT = "$WIN_PATH/owid/covid-19-data";
+my $OWID_VAC_CSV = "$OWID_ROOT/public/data/vaccinations/vaccinations.csv";
 
 our $OWID_VAC_DEF = 
 {
@@ -49,14 +50,14 @@ our $OWID_VAC_DEF =
 	timefmt => '%Y-%m-%d',		# comverbt to %Y-%m-%d
 	src_dlm => ",",
 	key_dlm => "#",
-	keys => ["location","item"],		# Japan, total_vaccinations_per_hundred,
+	keys => ["location","item_name"],		# Japan, total_vaccinations_per_hundred,
 	date_col => 2,
 	data_start => 3,
 	item_name_line => 1,		# from 1
 	data_start_line => 2,		# from 1 
 	alias => {},
 	load_col => [
- 		"people_vaccinated_per_hundred","people_fully_vaccinated_per_hundred",
+ 		"total_vaccinations_per_hundred", "people_vaccinated_per_hundred","people_fully_vaccinated_per_hundred",
 	],
 };
 
@@ -86,13 +87,16 @@ our $OWID_VAC_GRAPH = {
 
 #csv2graph::gen_html($TKW_DEF, $TKW_GRAPH, $TKW_GRAPH->{graph_params}); 
 
-
 #
 #	Down Load CSV 
 #
 sub	download
 {
-	my ($cdp) = @_;
+	my $self = shift;
+	dp::dp "[$self] " . join(",", @_) . "\n";
+	if($self->check_download()){
+		system("(cd $OWID_ROOT; git pull origin master)");
+	}
 	return 1;
 }
 

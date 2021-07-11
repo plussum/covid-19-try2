@@ -38,7 +38,7 @@ sub	load_csv
 	if(($download // "")){
 		my $download = $self->{download};
 		#$download->($self);
-		&{$self->{down_load}};
+		&{$self->{down_load}}($self);
 	}
 	if(! $src_file){
 		dp::WARNING "load_csv: no src_file information\n";
@@ -185,8 +185,8 @@ sub	load_csv_holizontal
 		my $line = $_;
 		my @items = (split(/$src_dlm/, $line));
 		#my $master_key = select::gen_record_key($key_dlm, \@key_order, ["masterkey", @items]);
-		my $master_key = select::gen_record_key($key_dlm, \@key_order, ["", @items]);		# 2021.07.08 .... vaccine
-		#dp::dp "MASTER_KEY: " .$master_key . ":" . ":" . join(",", @key_order) . "  : " .join(",", @items) . "\n";
+		my $master_key = select::gen_record_key($key_dlm, \@key_order, ["", @items[0..($data_start-1)]]);		# 2021.07.08 .... vaccine
+		#dp::dp "MASTER_KEY: [" .$master_key . "] " . join(",", @key_order) . "  : " .join(",", @items[0..($data_start-1)]) . "\n";
 
 ##		$csv_data->{$k}= [@items[$data_start..$#items]];	# set csv data
 ##		$key_items->{$k} = [@items[0..($data_start - 1)]];	# set csv data
@@ -531,7 +531,7 @@ sub load_csv_vertical_multi
 			for(my $jk = 0; $jk <= $#key_order; $jk++){
 				my $k = $keys->[$jk];
 				my $item = "";
-				if($k eq "" || $k eq "item"){		# set item_name as a key of the record
+				if($k eq "" || $k eq "item_name"){		# set item_name as a key of the record
 					$item = $item_names[$i];		# location,iso_code,date,total_vaccinations,people_vaccinated,people_fully_vaccinated
 				}
 				else {
@@ -690,7 +690,7 @@ sub	load_transaction
 
 ##	my $key_name = $self->{key_name} // "";			# set key name as "key" or $self->{key_name}
 ##	$key_name = $config::MAIN_KEY if(! $key_name);
-	$self->add_key_items([$config::MAIN_KEY, @items[0..($data_start-1)], "item"]);
+	$self->add_key_items([$config::MAIN_KEY, @items[0..($data_start-1)], "item"]);		# "item_name"
 	$self->set_alias($self->{alias});		#
 
 	#dp::dp join(",", "# " , @key_list) . "\n";

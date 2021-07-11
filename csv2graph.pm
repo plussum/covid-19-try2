@@ -1350,6 +1350,7 @@ sub	graph
 	my $dsc = $gp->{dsc} // "";
 	$dsc =~ s/~//;
 	my $title = join(" ", $dsc, ($gp->{static}//""), "($end_date)") . "    $src_info";
+	$title =~ s/_/\\_/g;	# avoid error at plot
 	#dp::dp "[$title] $gp->{plot_png}\n";
 	#dp::dp "#### " . join(",", "[" . $p->{lank}[0] . "]", @lank) . "\n";
 
@@ -1469,6 +1470,11 @@ _EOD_
 		my $graph = $gp->{graph} // ($gdp->{graph} // $DEFAULT_GRAPH);
 		my $y2_graph = "";
 		my ($key, $axis_flag, $graph_def) = split($LABEL_DLM, $label[$i]);
+		if($gp->{label_sub_from}){
+			my $sub_from = $gp->{label_sub_from};
+			my $sub_to = $gp->{label_sub_to} // "";
+			$key =~ s/$sub_from/$sub_to/;
+		}
 		#dp::dp "[$graph_def]\n";
 		if($graph_def =~ /^#D#/){
 			if(defined $GRAPH_KIND->{$graph_def}){
@@ -1590,6 +1596,33 @@ _EOD_
 	#dp::dp "gnuplot $plotf\n";
 	system("gnuplot $plotf");
 	#dp::dp "-- Done\n";
+}
+
+#
+#
+#
+sub	check_download
+{
+	my $self = shift;
+
+	my $flag_file = "$config::CSV_PATH/" . $self->{id} . ".flag";
+
+	dp::dp "DOWNLOAD  $flag_file\n";
+	my $download = 1;
+	if(-f $flag_file){
+		my $now = time;
+		my ($dev,$ino,$mode,$nlink,$uid,$gid,$rdev,$size, $atime,$mtime,$ctime,$blksize,$blocks) = stat($flag_file);	
+		my $elpt = $now - $mtime;
+		#dp::dp "$now $mtime $elpt " .sprintf("%.2f", $elpt / (60 * 60)) . "\n";
+		if($elpt < (2 * 60 * 60 )){
+			$download = 0;
+		}
+	}
+	#dp::dp "Donwload: $download\n";
+	if($download){
+		system("touch $flag_file");
+	}
+	return $download;
 }
 
 1;

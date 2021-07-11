@@ -90,7 +90,7 @@ sub	gen_key_order
 		if($k =~ /^=/){
 			#dp::dp "#" x 20 . $k . "\n";
 		}
-		elsif($k eq "item"){			# added 2021.07.11 for load_vertical_multi
+		elsif($k eq "item_name"){			# added 2021.07.11 for load_vertical_multi
 			$itn = $i;
 		}
 		elsif($k =~ /\D/){
