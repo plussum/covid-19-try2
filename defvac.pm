@@ -126,6 +126,7 @@ sub	download
 	binmode(FD, ":utf8");
 	my %date_list_flag = ();
 	my $data_hash = {};
+	my $ln = 0;
 	while(<FD>){
 		#dp::dp $_;
 		s/[\r\n]+$//;;
@@ -137,18 +138,30 @@ sub	download
 		my $status = $record->{status}//"--undef--";
 		my $medical = $record->{medical_worker}//"--undef--";
 	
+		#dp::dp join(",", $date, $pref, $age, $status) . "\n";
 		my $v = $record->{count};
 		if($v =~ /\D/){
 			dp::dp "[$v]\n";
 			exit;
 		}
-		$data_hash->{$date}->{$pref}->{$age}->{$status} += $record->{count};
-		$data_hash->{$date}->{$pref}->{$age}->{any} += $record->{count};
-		$data_hash->{$date}->{$pref}->{all}->{$status} += $record->{count};
-		$data_hash->{$date}->{$pref}->{all}->{any} += $record->{count};
+		my $val = $record->{count};
+		$data_hash->{$date} = {} if(!defined $data_hash->{$date});
+		foreach my $p ($pref, "00"){
+			$data_hash->{$date}->{$p} = {} if(!defined $data_hash->{$date}->{$p});
+			foreach my $a ($age, "all"){
+				$data_hash->{$date}->{$p}->{$a} = {} if(!defined $data_hash->{$date}->{$p}->{$a});
+				foreach my $s ($status, "any"){
+					$data_hash->{$date}->{$p}->{$a}->{$s} = 0 if(!defined $data_hash->{$date}->{$p}->{$a}->{$s});
+					$data_hash->{$date}->{$p}->{$a}->{$s} += $v;
+					# dp::dp "$p:$a:$s: " . $data_hash->{$date}->{$p}->{$a}->{$s}  . "\n" if($p =~ /Japan/);
+				}
+			}
+		}
 		$date_list_flag{$date} ++;
+		$ln++;
 	}
 	close(FD);
+	dp::dp "lines: $ln\n";
 
 	#dp::dp "### COL_NO: $col_no\n";
 	
@@ -160,37 +173,44 @@ sub	download
 
 	my @date_list = (sort keys %date_list_flag);
 	print OUT join(",", @item_names, @date_list) . "\n";
-	foreach my $pref (1..47){
+	foreach my $pref (0..47){
+		my $pref_name = "Japan";
+		#foreach my $age ("65-", "-64", "UNK", "all"){
 		$pref = sprintf("%02d", $pref);
-		my $pref_name = $AREA_CODE->{$pref};
-		dp::dp "[$pref]\n" if(! $pref_name);
+		if($pref > 0){
+			$pref_name = $AREA_CODE->{$pref} // "";
+			dp::dp "[$pref]\n" if(! $pref_name);
+		}
 		#dp::dp "[$pref:$pref_name]\n";
 		if(!defined $POP{$pref_name}){
 			dp::ABORT "POP: [$pref_name]\n";
 		}
-		my $pop = $POP{$pref_name} / 100;
-		#foreach my $age ("65-", "-64", "UNK", "all"){
 		foreach my $age ("ge65", "le64", "UNK", "all"){
-			foreach my $status (1, 2, "any"){
+			my $pop_name = "$pref_name-$age";
+			#dp::dp "[$pop_name]\n";
+			$pop_name = $pref_name if($age eq "all");
+			if(! defined $POP{$pop_name}){
+			#	dp::dp ">>> undef [$pop_name]\n" ;
+			}
+			my $pop = ($POP{$pop_name}//0) / 100;
+			foreach my $status ("1", "2", "any"){
 				my @vals = ();
 				my @cvals = ();
 				my @pvals = ();
 				my $lv = 0;
-				my $cs = "$status" . "-c";
-				my $ps = "$status" . "-cp";
 				foreach my $date (@date_list){
 					my $v = $data_hash->{$date}->{$pref}->{$age}->{$status};
 					$v = 0 if(!$v || $v < 0);
 					push(@vals, $v);
 					push(@cvals, $v + $lv);
-					push(@pvals, sprintf("%.3f", ($v + $lv) / $pop));
+					push(@pvals, sprintf("%.3f", ($v + $lv) / $pop)) if($pop > 0);
 					$lv = $v + $lv;
 				}
 				print OUT join(",", $pref_name, $age, $status, @vals) . "\n";
-				print OUT join(",", $pref_name, $age, $cs, @cvals) . "\n";
-				print OUT join(",", $pref_name, $age, $ps, @pvals) . "\n";
-				#if($pref_name =~ /東京/){
-				#	print join(",", $pref_name, $age, $ps, @pvals) . "\n";
+				print OUT join(",", $pref_name, $age, "$status-c", @cvals) . "\n";
+				print OUT join(",", $pref_name, $age, "$status-cp", @pvals) . "\n" if($pop > 0);
+				#if($pref_name =~ /Japan/){
+				#	print join(",", $pref_name, $age, "$status-c", @cvals) . "\n";
 				#}
 			}
 		}
@@ -215,6 +235,19 @@ sub	perse_json
 	}
 	#dp::dp join(",", @w) . "\n";
 	return $record;
+}
+
+sub	add_val
+{
+	my($data_hash, $date, $pref, $age, $status, $v) = @_;
+	
+	$data_hash->{$date} = {} if(!defined $data_hash->{$date});
+	$data_hash->{$date}->{$pref} = {} if(!defined $data_hash->{$date}->{$pref});
+	$data_hash->{$date}->{$pref}->{$age} = {} if(!defined $data_hash->{$date}->{$pref}->{$age});
+	$data_hash->{$date}->{$pref}->{$age}->{$status} = 0 if(!defined $data_hash->{$date}->{$pref}->{$age}->{$status});
+	$data_hash->{$date}->{$pref}->{$age}->{$status} += $v;
+	
+	return $data_hash->{$date}->{$pref}->{$age}->{$status};
 }
 
 sub	do

@@ -65,7 +65,7 @@ my $DEFAULT_AVR_DATE = 7;
 my $END_OF_DATA = "###EOD###";
 
 my $WEEK_BEFORE = 4;
-my $THRESH_POP_NC_LAST = 0.5;
+my $THRESH_POP_NC_LAST = 1.0; #0.5;
 my $mainkey = $config::MAIN_KEY;
 
 #my 	$line_thick = $csv2graph::line_thick;
@@ -697,6 +697,7 @@ if($golist{tkocsv}){
 		push(@$gp_list, csv2graph->csv2graph_list_gpmix(
 		{gdp => $deftkocsv::TKOCSV_GRAPH, dsc => "TKOCSV open Data tested", start_date => $start_date, 
 			ylabel => "confermed", y2label => "positive rate(%)",
+			ymin => 0, y2min => 0,
 			graph_items => [
 				{cdp => $rlavr,  item => {"item" => "total_tested",}, static => "", graph_def => $box},
 				{cdp => $rlavr,  item => {"item" => "total_positive",}, static => "", graph_def => $box},
@@ -715,6 +716,7 @@ if($golist{tkocsv}){
 		push(@$gp_list, csv2graph->csv2graph_list_gpmix(
 		{gdp => $deftkocsv::TKOCSV_GRAPH, dsc => "TKOCSV open Data hospitalized", start_date => $start_date, 
 			ylabel => "confermed", y2label => "positive rate(%)",
+			ymin => 0, y2min => 0,
 			graph_items => [
 				{cdp => $cdp  ,  item => {"item" => "severe",}, static => "", graph_def => $box, axis => "y2",},
 				{cdp => $cdp  ,  item => {"item" => "hospitalized",}, static => "", graph_def => $line_thick},
@@ -744,6 +746,14 @@ if($golist{vaccine})
 {
 	my $jp_cdp = csv2graph->new($defjapan::JAPAN_DEF); 						# Load Apple Mobility Trends
 	$jp_cdp->load_csv($defjapan::JAPAN_DEF);
+#	$jp_cdp->calc_items("sum", 
+#		{prefectureNameJ => "", },						# All Prefecture
+#		#{year => "=",month => "=",date => "=" ,prefectureNameJ => "Japan",prefectureNameE => "Japan",item => "="}
+#		{prefectureNameJ => "Japan"},
+#	);
+#	$jp_cdp->dump({search_key => "Japan"});
+#	exit;
+
 	my $jp_rlavr = $jp_cdp->calc_rlavr();
 
 	my $ccse_cdp = csv2graph->new($defccse::CCSE_CONF_DEF); 						# Load Johns Hopkings University CCSE
@@ -758,19 +768,25 @@ if($golist{vaccine})
 	my $cdp_def = $defvac::VACCINE_DEF;
 	my $cdp = csv2graph->new($cdp_def); 						# Load Johns Hopkings University CCSE
 	$cdp->load_csv({download => 1});
-	$cdp->calc_items("sum", 
-		{prefecture => "", },				# All Province/State with Canada, ["*","Canada",]
-		{prefecture => "Japan",age => "=", status => "="}			# total gos ["","Canada"] null = "", = keep
-	);
 
-	my $pop_jp = $POP{Japan} / 100;
-	foreach my $age ("all", "le64", "ge65"){
-		foreach my $st ("any-c", "2-c"){
-			#dp::dp join(",", "Japan#$age#$st"."p", "#Japan#$age#$st", "/=$pop_jp") . "\n";
-			$cdp->calc_record({dlm => "#", result => "#Japan#$age#$st"."p", op => ["#Japan#$age#$st", "/=$pop_jp"]});			# daily to cumulative
-		}
-	}
+#	$cdp->calc_items("sum", 
+#		{prefecture => "", },				# All Province/State with Canada, ["*","Canada",]
+#		{prefecture => "Japan",age => "=", status => "="}			# total gos ["","Canada"] null = "", = keep
+#	);
 
+#	my $pop_jp = $POP{Japan} / 100;
+#	foreach my $age ("all", "le64", "ge65"){
+#		foreach my $st ("any-c", "1-c", "2-c"){
+#			#dp::dp join(",", "Japan#$age#$st"."p", "#Japan#$age#$st", "/=$pop_jp") . "\n";
+#			$cdp->calc_record({dlm => "#", result => "#Japan#$age#$st"."p", op => ["#Japan#$age#$st", "/=$pop_jp"]});		#
+#			my $atag = "Japan-$age";
+#			my $pop_age = $POP{$atag} // dp::ABORT "No POP data for [$atag]";
+#			$pop_age /= 100;
+#			dp::dp "$atag : " . $pop_age . "\n";
+#			$cdp->calc_record({dlm => "#", result => "#Japan#$age#$st"."ap", op => ["#Japan#$age#$st", "/=$pop_age"]});		# 
+#		}
+#	}
+#
 	my $death_max = $death_rlavr->max_val({start_date => "2021-04-13"}) / 100;
 	$death_rlavr->calc_record({dlm => "#", result => "##Japan--death_p#", op => ["Japan--death", "/=$death_max"]});			# daily to cumulative
 	#$death_rlavr->dump({items => 100});
@@ -798,38 +814,40 @@ if($golist{vaccine})
 	my $start_date = 0;
 	@$gp_list = ();
 	push(@$gp_list, csv2graph->csv2graph_list_gpmix(
-	{gdp => $defvac::VACCINE_GRAPH, dsc => "Japan Vaccine(age), Positive and Deaths(rlavr 7)", start_date => $start_date, 
+	{gdp => $defvac::VACCINE_GRAPH, dsc => "Japan Vaccine(over 65), Positive and Deaths(rlavr 7)", start_date => $start_date, 
 		ylabel => "confermed", y2label => "vaccine rate(%) and deaths/max(%)",
 		ymin => 0, y2min => 0,
 		additional_plot => $add_plot,
 		graph_items => [
-			{cdp => $cdp,  item => {prefecture => $pref, age => "all", status => "any-cp"}, static => "", graph_def => $box_fill_solid, axis => "y2"},
-			{cdp => $cdp,  item => {prefecture => $pref, age => "ge65", status => "any-cp"}, static => "", graph_def => $box_fill_solid, axis => "y2"},
-			{cdp => $cdp,  item => {prefecture => $pref, age => "le64", status => "any-cp"}, static => "", graph_def => $box_fill_solid, axis => "y2"},
-			{cdp => $positive_rlavr,  item => {}, static => "", graph_def => $line_thick},
-			{cdp => $death_rlavr,  item => {"Country/Region" => "Japan--death_p"}, static => "", graph_def => $line_thick, axis => "y2"},
-		],
-	}));
-	push(@$gp_list, csv2graph->csv2graph_list_gpmix(
-	{gdp => $defvac::VACCINE_GRAPH, dsc => "Japan Vaccine(1,2), Positive and Deaths(rlavr 7)", start_date => $start_date, 
-		ylabel => "confermed", y2label => "vaccine rate(%) and deaths/max(%)",
-		ymin => 0, y2min => 0,
-		additional_plot => $add_plot,
-		graph_items => [
-			{cdp => $cdp,  item => {prefecture => $pref, age => "all", status => "any-cp"}, static => "", graph_def => $box_fill_solid, axis => "y2"},
-			{cdp => $cdp,  item => {prefecture => $pref, age => "all", status => "2-cp"}, static => "", graph_def => $box_fill_solid, axis => "y2"},
+			{cdp => $cdp,  item => {prefecture => $pref, age => "ge65", status => "1-cp"}, static => "", graph_def => $box_fill, axis => "y2"},
+			{cdp => $cdp,  item => {prefecture => $pref, age => "ge65", status => "2-cp"}, static => "", graph_def => $box_fill, axis => "y2"},
+			#{cdp => $cdp,  item => {prefecture => $pref, age => "all", status => "any-cp"}, static => "", graph_def => $box_fill_solid, axis => "y2"},
 			{cdp => $positive_rlavr,  item => {}, static => "", graph_def => $line_thick},
 			{cdp => $death_rlavr,  item => {"Country/Region" => "Japan--death_p"}, static => "", graph_def => $line_thick, axis => "y2"},
 		],
 	}));
 
+	push(@$gp_list, csv2graph->csv2graph_list_gpmix(
+	{gdp => $defvac::VACCINE_GRAPH, dsc => "Japan Vaccine(all age), Positive and Deaths(rlavr 7)", start_date => $start_date, 
+		ylabel => "confermed", y2label => "vaccine rate(%) and deaths/max(%)",
+		ymin => 0, y2min => 0,
+		additional_plot => $add_plot,
+		graph_items => [
+			{cdp => $cdp,  item => {prefecture => $pref, age => "all", status => "1-cp"}, static => "", graph_def => $box_fill, axis => "y2"},
+			{cdp => $cdp,  item => {prefecture => $pref, age => "all", status => "2-cp"}, static => "", graph_def => $box_fill, axis => "y2"},
+			{cdp => $positive_rlavr,  item => {}, static => "", graph_def => $line_thick},
+			{cdp => $death_rlavr,  item => {"Country/Region" => "Japan--death_p"}, static => "", graph_def => $line_thick, axis => "y2"},
+		],
+	}));
+
+	my $start_date = "2021-04-13";
 	my $AREA_CODE = {};
 	defvac::load_area_code($AREA_CODE);
 	my $rlavr = $cdp->calc_rlavr();
 	my @pref_list = ("東京都","埼玉県","神奈川県", "千葉県", "京都府", "大阪府", "兵庫県","奈良県","沖縄県");
   
 	my $et = ($end_target > 0 && $end_target <= $#pref_list) ? $end_target : $#pref_list;
-	foreach my $pref (@pref_list[0..$et]){ #(1..47){
+	foreach my $pref (1..47) { # @pref_list[0..$et]){ #(1..47){
 		if($pref =~ /^\d+$/){
 			my $pn = sprintf("%02d", $pref);
 			dp::dp "<<$pn>>\n";
@@ -837,45 +855,48 @@ if($golist{vaccine})
 		}
 		my $pop_pref = $POP{$pref} / 100;
 		dp::dp "[$pref:$pop_pref]\n";
-		foreach my $age ("all", "le64", "ge65"){
-			foreach my $st ("any-c", "2-c"){
-				#dp::dp join(",", "Japan#$age#$st"."p", "#$pref#$age#$st", "/=$pop_jp") . "\n";
-				$cdp->calc_record({dlm => "#", result => "#$pref#$age#$st"."p", op => ["#$pref#$age#$st", "/=$pop_pref"]}, v => 0);	# daily to cumulative
-			}
-		}
+#		foreach my $age ("all", "le64", "ge65"){
+#			foreach my $st ("any-c", "2-c"){
+#				#dp::dp join(",", "Japan#$age#$st"."p", "#$pref#$age#$st", "/=$pop_jp") . "\n";
+#				$cdp->calc_record({dlm => "#", result => "#$pref#$age#$st"."p", op => ["#$pref#$age#$st", "/=$pop_pref"]}, v => 0);	# daily to cumulative
+#			}
+#		}
 		my $death_pref = $jp_rlavr->reduce_cdp_target({item => $deaths, prefectureNameJ => $pref});
-		my $death_max = $death_pref->max_val({start_date => "2021-04-13"}) / 100;
+		#$death_pref->dump({search_key => "東京都"});
+		my $death_max = $death_pref->max_val({start_date => $start_date})/ 100;
 		#
 		#	calc_record,, dump見ながら、カラムを合わせてやりました
 		#
 		$death_pref->calc_record({dlm => ",", result => "$pref#$deaths,,,,$pref#$deaths"."_p", op => ["$pref#$deaths", "/=$death_max"], v => 0});
+		#my $death_pref1 = $jp_rlavr->reduce_cdp_target({item => $deaths, prefectureNameJ => "$pref#deaths" . "_p"});
 		dp::dp "death_max: $death_max x 100\n";
 		#$death_pref->dump();
 
 		push(@$gp_list, csv2graph->csv2graph_list_gpmix(
-		{gdp => $defvac::VACCINE_GRAPH, dsc => "$pref Vaccine(age), Positive and Deaths(rlavr 7)", start_date => $start_date, 
+		{gdp => $defvac::VACCINE_GRAPH, dsc => "$pref Vaccine(over 65), Positive and Deaths(rlavr 7)", start_date => $start_date, 
 			ylabel => "confermed", y2label => "vaccine rate(%) and deaths",
 			ymin => 0, y2min => 0,
 			additional_plot => $add_plot,
 			graph_items => [
-				{cdp => $cdp,  item => {prefecture => $pref, age => "all", status => "any-cp"}, static => "", graph_def => $box_fill_solid, axis => "y2"},
-				{cdp => $cdp,  item => {prefecture => $pref, age => "ge65", status => "any-cp"}, static => "", graph_def => $box_fill_solid, axis => "y2"},
-				{cdp => $cdp,  item => {prefecture => $pref, age => "le64", status => "any-cp"}, static => "", graph_def => $box_fill_solid, axis => "y2"},
+				{cdp => $cdp,  item => {prefecture => $pref, age => "ge65", status => "1-cp"}, static => "", graph_def => $box_fill, axis => "y2"},
+				{cdp => $cdp,  item => {prefecture => $pref, age => "ge65", status => "2-cp"}, static => "", graph_def => $box_fill, axis => "y2"},
+				#{cdp => $cdp,  item => {prefecture => $pref, age => "le64", status => "any-cp"}, static => "", graph_def => $box_fill_solid, axis => "y2"},
 				{cdp => $jp_rlavr,  item => {item => $positive, prefectureNameJ => $pref}, static => "", graph_def => $line_thick},
 				{cdp => $death_pref,  item => { prefectureNameJ => "$pref#$deaths"."_p"}, static => "", graph_def => $line_thick, axis => "y2"},
+				#{cdp => $death_pref,  item => { prefectureNameJ => "$pref"}, static => "", graph_def => $line_thick, axis => "y2"},
 			],
 		}));
 		push(@$gp_list, csv2graph->csv2graph_list_gpmix(
-		{gdp => $defvac::VACCINE_GRAPH, dsc => "$pref Vaccine(1,2), Positive and Deaths(rlavr 7)", start_date => $start_date, 
+		{gdp => $defvac::VACCINE_GRAPH, dsc => "$pref Vaccine(all age), Positive and Deaths(rlavr 7)", start_date => $start_date, 
 			ylabel => "confermed", y2label => "vaccine rate(%) and deaths",
 			ymin => 0, y2min => 0,
 			additional_plot => $add_plot,
 			graph_items => [
-				{cdp => $cdp,  item => {prefecture => $pref, age => "all", status => "any-cp"}, static => "", graph_def => $box_fill_solid, axis => "y2"},
-				{cdp => $cdp,  item => {prefecture => $pref, age => "all", status => "2-cp"}, static => "", graph_def => $box_fill_solid, axis => "y2"},
+				{cdp => $cdp,  item => {prefecture => $pref, age => "all", status => "1-cp"}, static => "", graph_def => $box_fill, axis => "y2"},
+				{cdp => $cdp,  item => {prefecture => $pref, age => "all", status => "2-cp"}, static => "", graph_def => $box_fill, axis => "y2"},
 				{cdp => $jp_rlavr,  item => {item => $positive, prefectureNameJ => $pref}, static => "", graph_def => $line_thick},
-				#{cdp => $death_pref,  item => {item => $deaths, prefectureNameJ => "$pref#$deaths"."_p"}, static => "", graph_def => $line_thick, axis => "y2"},
 				{cdp => $death_pref,  item => { prefectureNameJ => "$pref#$deaths"."_p"}, static => "", graph_def => $line_thick, axis => "y2"},
+				#{cdp => $death_pref,  item => { prefectureNameJ => "$pref"}, static => "", graph_def => $line_thick, axis => "y2"},
 			],
 		}));
 	}

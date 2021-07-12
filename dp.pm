@@ -33,6 +33,7 @@ sub	WARNING
 		print $info . join("", $warn);
 	}
 	print $info . "-" x 30 . "\n";
+	&disp_caller(1..6);
 
 }
 sub	ABORT
