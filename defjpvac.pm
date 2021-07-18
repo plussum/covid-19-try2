@@ -11,10 +11,10 @@
 # {"date":"2021-04-12","prefecture":"01","gender":"U","age":"-64","medical_worker":false,"status":1,"count":12}
 # {"date":"2021-04-12","prefecture":"01","gender":"U","age":"UNK","medical_worker":false,"status":1,"count":1}
 #
-package defvac;
+package defjpvac;
 use Exporter;
 @ISA = (Exporter);
-@EXOIORT = qw(defvac);
+@EXOIORT = qw(defjpvac);
 
 use strict;
 use warnings;
@@ -40,12 +40,12 @@ my $AREA_CODE = {};
 # https://vrs-data.cio.go.jp/vaccination/opendata/latest/prefecture.ndjson
 # {"date":"2021-04-12","prefecture":"01","gender":"F","age":"-64","medical_worker":false,"status":1,"count":113}
 #
-my $VACCINE_CSV = "$CSV_PATH/vaccine.csv";
+my $VACCINE_CSV = "$CSV_PATH/jpvac.csv";
 my $VACCINE_JSON = "$CSV_PATH/vaccine.ndjson";
 my $VACCINE_URL = "https://vrs-data.cio.go.jp/vaccination/opendata/latest/prefecture.ndjson"; 
 our $VACCINE_DEF =
 {
-	id => "vaccine",
+	id => "jpvac",
 	src_info => "CISO Dashboad, Tokyo Open Data",
 	main_url => "https://cio.go.jp/c19vaccine_dashboard",
 	src_file => $VACCINE_CSV,
@@ -65,7 +65,7 @@ our $VACCINE_GRAPH = {
 	html_title => ($VACCINE_DEF->{src_info}),
 	png_path   => "$PNG_PATH",
 	png_rel_path => $PNG_REL_PATH,
-	html_file => "$HTML_PATH/vaccine.html",
+	html_file => "$HTML_PATH/jpvac.html",
 
 	dst_dlm => "\t",
 	avr_date => 7,
@@ -84,6 +84,7 @@ our $VACCINE_GRAPH = {
 
 sub	download
 {
+	my $self = shift;
 	my $csv = {};
 	my @date = ();
 	my $file_no = 0;
@@ -97,29 +98,13 @@ sub	download
 	csvlib::cnt_pop(\%POP);	
 
 	&load_area_code($AREA_CODE);
-	dp::dp "DOWNLOAD  $VACCINE_DL_FLAG_FILE\n";
-	if(-f $VACCINE_DL_FLAG_FILE){
-		my $now = time;
-		my ($dev,$ino,$mode,$nlink,$uid,$gid,$rdev,$size, $atime,$mtime,$ctime,$blksize,$blocks) = stat($VACCINE_DL_FLAG_FILE);	
-		my $elpt = $now - $mtime;
-		#dp::dp "$now $mtime $elpt " .sprintf("%.2f", $elpt / (60 * 60)) . "\n";
-		if($elpt < (2 * 60 * 60 )){
-			$download = 0;
-		}
-	}
-	#dp::dp "Donwload: $download\n";
-	if($download){
-		system("touch $VACCINE_DL_FLAG_FILE");
-	}
-
 	my $csvf = $VACCINE_JSON;
-	my $cmd = "wget $VACCINE_URL -O $csvf.gz; gunzip -f $csvf.gz";
-	if($download || ! (-f $csvf)){
-		unlink($csvf);
+	if($self->check_download() || !(-f $csvf)){
+		my $cmd = "wget $VACCINE_URL -O $csvf.gz; gunzip -f $csvf.gz";
+		unlink($csvf) if(-f $csvf);
 		&do($cmd) ;
 	}
 
-	dp::dp $csvf . "\n";
 	my %ages = ("65-" => "ge65", "-64" => "le64", "UNK" => "UNK", "all" => "all");
 
 	open(FD, "$csvf") || die "canot open $csvf";
@@ -193,19 +178,23 @@ sub	download
 			#	dp::dp ">>> undef [$pop_name]\n" ;
 			}
 			my $pop = ($POP{$pop_name}//0) / 100;
+			#dp::dp "[$pop_name][$pop]\n";
 			foreach my $status ("1", "2", "any"){
 				my @vals = ();
 				my @cvals = ();
 				my @pvals = ();
 				my $lv = 0;
+				my $p = 0;
 				foreach my $date (@date_list){
 					my $v = $data_hash->{$date}->{$pref}->{$age}->{$status};
 					$v = 0 if(!$v || $v < 0);
 					push(@vals, $v);
 					push(@cvals, $v + $lv);
-					push(@pvals, sprintf("%.3f", ($v + $lv) / $pop)) if($pop > 0);
+					$p = ($pop > 0) ? sprintf("%.3f", ($v + $lv) / $pop) : 0;
+					push(@pvals, $p);
 					$lv = $v + $lv;
 				}
+				#dp::dp "[$pop_name][$pop][$age][$status] $lv $p \n"; 
 				print OUT join(",", $pref_name, $age, $status, @vals) . "\n";
 				print OUT join(",", $pref_name, $age, "$status-c", @cvals) . "\n";
 				print OUT join(",", $pref_name, $age, "$status-cp", @pvals) . "\n" if($pop > 0);

@@ -45,7 +45,7 @@ use deftkow;
 use defdocomo;
 use defmhlw;
 use deftkocsv;
-use defvac;
+use defjpvac;
 use defowid;
 
 
@@ -158,7 +158,7 @@ my @TARGET_PREF = ("Tokyo", "Kanagawa", "Chiba", "Saitama", "Kyoto", "Osaka");
 
 my @cdp_list = ($defamt::AMT_DEF, $defccse::CCSE_DEF, $MARGE_CSV_DEF, 
 					$deftokyo::TOKYO_DEF, $defjapan::JAPAN_DEF, $deftkow::TKOW_DEF, $defdocomo::DOCOMO_DEF, 
-					$defmhlw::MHLW_DEF, $deftkocsv::TKOCSV_DEF, $defvac::VACCINE_DEF, $defowid::OWID_VAC_DEF); 
+					$defmhlw::MHLW_DEF, $deftkocsv::TKOCSV_DEF, $defjpvac::VACCINE_DEF, $defowid::OWID_VAC_DEF); 
 
 my $cmd_list = {"amt-jp" => 1, "amt-jp-pref" => 1, "tkow-ern" => 1, try => 1, "pref-ern" => 1, pref => 1, docomo => 1, upload => 1, "ccse-tgt" => 1};
 my @REG_INFO_LIST = ();
@@ -742,7 +742,7 @@ if($golist{tkocsv}){
 #	"date":"2021-07-06","prefecture":"47","age":"UNK","status":2,"count":5
 #
 #
-if($golist{vaccine})
+if($golist{jpvac})
 {
 	my $jp_cdp = csv2graph->new($defjapan::JAPAN_DEF); 						# Load Apple Mobility Trends
 	$jp_cdp->load_csv($defjapan::JAPAN_DEF);
@@ -765,7 +765,7 @@ if($golist{vaccine})
 	my $positive_rlavr = $ccse_country->calc_rlavr();
 	my $death_rlavr = $death_country->calc_rlavr();
 
-	my $cdp_def = $defvac::VACCINE_DEF;
+	my $cdp_def = $defjpvac::VACCINE_DEF;
 	my $cdp = csv2graph->new($cdp_def); 						# Load Johns Hopkings University CCSE
 	$cdp->load_csv({download => 1});
 
@@ -807,17 +807,46 @@ if($golist{vaccine})
 		my $title = "title '$pct%'";
 		push(@adp, "$pct axis x1y2 with lines notitle lw 1 $dt");
 	}
-	my $add_plot = join(",\\\n", @adp);
+	my $percent_axis = join(",\\\n", @adp);
+
+	my $start_date = "2021-04-13";
+	@$gp_list = ();
+
+	#
+	#	Lank of vaccinated pref
+	#
+	foreach my $ag ("ge65", "all"){
+		foreach my $st ("1-cp", "2-cp"){
+			my $tg_cdp = $cdp->reduce_cdp_target({age => $ag, status => $st});
+			my $lank_width = 25;
+			for(my $lank = 1; $lank <= 48; $lank += $lank_width){
+				my $le = $lank + $lank_width - 1;
+				$le = 47 if($le > 48);
+				push(@$gp_list, csv2graph->csv2graph_list_gpmix(
+				{gdp => $defjpvac::VACCINE_GRAPH, dsc => "Japan Vaccine($ag,$st) $lank-$le (rlavr 7)", start_date => $start_date, 
+					graph_tag => "Japan Vaccinated",
+					ylabel => "Vaccinated (%)", y2label => "Vaccinated (%)", 
+					ymin => 0, ymax => 100, y2min => 0, y2max => 100,
+					additional_plot => $percent_axis,
+					label_sub_from => "#$ag" . '.*', label_sub_to => '',	# change label 
+					lank => [$lank, $le],
+					sort_start => -2, sort_end => -1,
+					term_y_size => 400,
+					graph_items => [
+						{cdp => $tg_cdp,  item => {age => $ag, status => $st}, static => "", graph_def => $line_thin},
+					],
+				}));
+			}
+		}
+	}
 
 	##### Japan
 	my $pref = "Japan";
-	my $start_date = 0;
-	@$gp_list = ();
 	push(@$gp_list, csv2graph->csv2graph_list_gpmix(
-	{gdp => $defvac::VACCINE_GRAPH, dsc => "Japan Vaccine(over 65), Positive and Deaths(rlavr 7)", start_date => $start_date, 
+	{gdp => $defjpvac::VACCINE_GRAPH, dsc => "Japan Vaccine(over 65), Positive and Deaths(rlavr 7)", start_date => $start_date, 
 		ylabel => "confermed", y2label => "vaccine rate(%) and deaths/max(%)",
 		ymin => 0, y2min => 0,
-		additional_plot => $add_plot,
+		additional_plot => $percent_axis,
 		graph_items => [
 			{cdp => $cdp,  item => {prefecture => $pref, age => "ge65", status => "1-cp"}, static => "", graph_def => $box_fill, axis => "y2"},
 			{cdp => $cdp,  item => {prefecture => $pref, age => "ge65", status => "2-cp"}, static => "", graph_def => $box_fill, axis => "y2"},
@@ -828,10 +857,10 @@ if($golist{vaccine})
 	}));
 
 	push(@$gp_list, csv2graph->csv2graph_list_gpmix(
-	{gdp => $defvac::VACCINE_GRAPH, dsc => "Japan Vaccine(all age), Positive and Deaths(rlavr 7)", start_date => $start_date, 
+	{gdp => $defjpvac::VACCINE_GRAPH, dsc => "Japan Vaccine(all age), Positive and Deaths(rlavr 7)", start_date => $start_date, 
 		ylabel => "confermed", y2label => "vaccine rate(%) and deaths/max(%)",
 		ymin => 0, y2min => 0,
-		additional_plot => $add_plot,
+		additional_plot => $percent_axis,
 		graph_items => [
 			{cdp => $cdp,  item => {prefecture => $pref, age => "all", status => "1-cp"}, static => "", graph_def => $box_fill, axis => "y2"},
 			{cdp => $cdp,  item => {prefecture => $pref, age => "all", status => "2-cp"}, static => "", graph_def => $box_fill, axis => "y2"},
@@ -840,14 +869,14 @@ if($golist{vaccine})
 		],
 	}));
 
-	my $start_date = "2021-04-13";
 	my $AREA_CODE = {};
-	defvac::load_area_code($AREA_CODE);
+	defjpvac::load_area_code($AREA_CODE);
 	my $rlavr = $cdp->calc_rlavr();
-	my @pref_list = ("東京都","埼玉県","神奈川県", "千葉県", "京都府", "大阪府", "兵庫県","奈良県","沖縄県");
+#	my @pref_list = ("東京都","埼玉県","神奈川県", "千葉県", "京都府", "大阪府", "兵庫県","奈良県","沖縄県");
+	my @pref_list = (1..47);
   
 	my $et = ($end_target > 0 && $end_target <= $#pref_list) ? $end_target : $#pref_list;
-	foreach my $pref (1..47) { # @pref_list[0..$et]){ #(1..47){
+	foreach my $pref (@pref_list[0..$et]){ #(1..47){
 		if($pref =~ /^\d+$/){
 			my $pn = sprintf("%02d", $pref);
 			dp::dp "<<$pn>>\n";
@@ -864,6 +893,7 @@ if($golist{vaccine})
 		my $death_pref = $jp_rlavr->reduce_cdp_target({item => $deaths, prefectureNameJ => $pref});
 		#$death_pref->dump({search_key => "東京都"});
 		my $death_max = $death_pref->max_val({start_date => $start_date})/ 100;
+		$death_max = 1/999 if($death_max <= 0);
 		#
 		#	calc_record,, dump見ながら、カラムを合わせてやりました
 		#
@@ -873,10 +903,10 @@ if($golist{vaccine})
 		#$death_pref->dump();
 
 		push(@$gp_list, csv2graph->csv2graph_list_gpmix(
-		{gdp => $defvac::VACCINE_GRAPH, dsc => "$pref Vaccine(over 65), Positive and Deaths(rlavr 7)", start_date => $start_date, 
+		{gdp => $defjpvac::VACCINE_GRAPH, dsc => "$pref Vaccine(over 65), Positive and Deaths(rlavr 7)", start_date => $start_date, 
 			ylabel => "confermed", y2label => "vaccine rate(%) and deaths",
 			ymin => 0, y2min => 0,
-			additional_plot => $add_plot,
+			additional_plot => $percent_axis,
 			graph_items => [
 				{cdp => $cdp,  item => {prefecture => $pref, age => "ge65", status => "1-cp"}, static => "", graph_def => $box_fill, axis => "y2"},
 				{cdp => $cdp,  item => {prefecture => $pref, age => "ge65", status => "2-cp"}, static => "", graph_def => $box_fill, axis => "y2"},
@@ -886,11 +916,12 @@ if($golist{vaccine})
 				#{cdp => $death_pref,  item => { prefectureNameJ => "$pref"}, static => "", graph_def => $line_thick, axis => "y2"},
 			],
 		}));
+
 		push(@$gp_list, csv2graph->csv2graph_list_gpmix(
-		{gdp => $defvac::VACCINE_GRAPH, dsc => "$pref Vaccine(all age), Positive and Deaths(rlavr 7)", start_date => $start_date, 
+		{gdp => $defjpvac::VACCINE_GRAPH, dsc => "$pref Vaccine(all age), Positive and Deaths(rlavr 7)", start_date => $start_date, 
 			ylabel => "confermed", y2label => "vaccine rate(%) and deaths",
 			ymin => 0, y2min => 0,
-			additional_plot => $add_plot,
+			additional_plot => $percent_axis,
 			graph_items => [
 				{cdp => $cdp,  item => {prefecture => $pref, age => "all", status => "1-cp"}, static => "", graph_def => $box_fill, axis => "y2"},
 				{cdp => $cdp,  item => {prefecture => $pref, age => "all", status => "2-cp"}, static => "", graph_def => $box_fill, axis => "y2"},
@@ -925,7 +956,7 @@ if($golist{owidvac})
 
 	@$gp_list = ();
 	my $start_date = 0;
-	my $add_plot = "";
+	my $percent_axis = "";
 	my @target_region = (
 			"Japan", 
 			"United States", 
@@ -975,20 +1006,33 @@ if($golist{owidvac})
 	my $positive_rlavr = $ccse_country->calc_rlavr();
 	my $death_rlavr = $death_country->calc_rlavr();
 
+	my @adp = ();
+	my $pct_gap = 10;
+	for(my $i = 1; ($i * $pct_gap) < 100; $i++){
+		my $pct = $i * $pct_gap; 
+		my $dt = (($pct % 20) == 0 ) ? "lc 'blue' dt (3,7)" : "lc 'blue' dt (2,8)";
+		#my $dt = "lc 'red' dt (6,4)";
+		my $title = "title '$pct%'";
+		push(@adp, "$pct axis x1y2 with lines notitle lw 1 $dt");
+	}
+	$percent_axis = join(",\\\n", @adp);
+
 	my $target_location = join(",", @target_area, @target_region);
-	my @select_items = ("total_vaccinations_per_hundred","people_fully_vaccinated_per_hundred");
+	#my @select_items = ("total_vaccinations_per_hundred","people_fully_vaccinated_per_hundred");
+	my @select_items = ("people_vaccinated_per_hundred","people_fully_vaccinated_per_hundred");
+	my $lank_width = int(0.99999 + ($#target_region + 1)/ 2);
+	dp::dp "[lank: $lank_width] " . $#target_region . "\n";
 	foreach my $target_item (@select_items){
-		my $lank_width = 10;
 		for(my $lank = 1; $lank <= $#target_region; $lank += $lank_width){
 			my $le = $lank + $lank_width - 1;
 			push(@$gp_list, csv2graph->csv2graph_list_gpmix(
 			{gdp => $defowid::OWID_VAC_GRAPH, dsc => "[$target_item](#$lank-$le) OWID Vaccine", start_date => $start_date, 
 				graph_tag => "World",
 				ylabel => "vaccine rate(%)",
-				ymin => 0, ymax => 100, y2min => 0,
+				ymin => 0, ymax => 100, y2min => 0, y2max => 100,
 				lank => [$lank, $le],
 				label_sub_from => '#.*', label_sub_to => '',	# change label "1:Israel#people_vaccinated_per_hundred" -> "1:Israel"
-				additional_plot => $add_plot,
+				additional_plot => $percent_axis,
 				graph_items => [
 					{cdp => $cdp,  item => {location => $target_location, item_name => $target_item}, static => "", graph_def => $line_thin, },
 				],
@@ -1000,24 +1044,14 @@ if($golist{owidvac})
 		push(@$gp_list, csv2graph->csv2graph_list_gpmix(
 		{gdp => $defowid::OWID_VAC_GRAPH, dsc => "[$region] OWID Vaccine", start_date => $start_date, 
 			ylabel => "vaccine rate(%)",
-			ymin => 0, ymax => 100, y2min => 0,
-			additional_plot => $add_plot,
+			ymin => 0, ymax => 100, y2min => 0,y2max => 100,
+			additional_plot => $percent_axis,
 			graph_items => [
 				{cdp => $cdp,  item => {location => $region,}, static => "", graph_def => $line_thick, },
 			],
 		}));
 	}
 
-	my @adp = ();
-	my $pct_gap = 10;
-	for(my $i = 1; ($i * $pct_gap) < 100; $i++){
-		my $pct = $i * $pct_gap; 
-		my $dt = (($pct % 20) == 0 ) ? "lc 'blue' dt (3,7)" : "lc 'blue' dt (2,8)";
-		#my $dt = "lc 'red' dt (6,4)";
-		my $title = "title '$pct%'";
-		push(@adp, "$pct axis x1y2 with lines notitle lw 1 $dt");
-	}
-	$add_plot = join(",\\\n", @adp);
 
 	$start_date = "2021-01-01";
 
@@ -1037,10 +1071,11 @@ if($golist{owidvac})
 		push(@$gp_list, csv2graph->csv2graph_list_gpmix(
 		{gdp => $defowid::OWID_VAC_GRAPH, dsc => "[$region] OWID Vaccine, Positive and Deaths(rlavr 7)", start_date => $start_date, 
 			ylabel => "confermed", y2label => "vaccine rate(%) and deaths/max(%)",
-			ymin => 0, y2min => 0,
-			additional_plot => $add_plot,
+			ymin => 0, y2min => 0,y2max => 100,
+			additional_plot => $percent_axis,
 			graph_items => [
-				{cdp => $cdp,  item => {location => $region, item_name => "total_vaccinations_per_hundred"}, static => "", graph_def => $box_fill, axis => "y2"},
+				#{cdp => $cdp,  item => {location => $region, item_name => "total_vaccinations_per_hundred"}, static => "", graph_def => $box_fill, axis => "y2"},
+				{cdp => $cdp,  item => {location => $region, item_name => "people_vaccinated_per_hundred"}, static => "", graph_def => $box_fill, axis => "y2"},
 				{cdp => $cdp,  item => {location => $region, item_name => "people_fully_vaccinated_per_hundred"}, static => "", graph_def => $box_fill, axis => "y2"},
 				{cdp => $positive_rlavr,  item => {"Country/Region" => "$ccse_reg"}, static => "", graph_def => $line_thick},
 				{cdp => $death_rlavr,  item => {"Country/Region" => "$ccse_reg--death_p"}, static => "", graph_def => $line_thick, axis => "y2"},
@@ -1059,7 +1094,7 @@ if($golist{owidvac})
 			data_source => $cdp->{src_info},
 		}
 	);
-	exit;
+	#exit;
 }
 sub	completing_zero
 {

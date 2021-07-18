@@ -486,7 +486,6 @@ sub	init_graph_params
 
 		$gp->{$k} = $gdp->{$k} // $DEFAULT_GRAPHDEF_PARAMS->{$k} // "";
 	}
-	return($gp);
 }
 
 #
@@ -641,6 +640,7 @@ sub gen_html_by_gp_list
 				if($gp->{label_sub_from}){
 					my $sub_from = $gp->{label_sub_from};
 					my $sub_to = $gp->{label_sub_to} // "";
+					#dp::dp "[$sub_from][$sub_to] $l \n";
 					$l =~ s/$sub_from/$sub_to/;
 				}
 				print HTML "<td>" . $l . "</td>";
@@ -1121,7 +1121,10 @@ sub	csv2graph_mix
 		#
 		my $sorted_keys = [];								# sort
 		if($lank_select){
-			@$sorted_keys = $cdp->sort_csv($cdp->{csv_data}, $target_keys, 0, $dates);
+			my $dt_start = $gp_mix->{sort_start} // 0;
+			$dt_start =  &csv_size($cdp->{csv_data}) if($dt_start eq "\$");
+			my $dt_end = $gp_mix->{sort_end} // $dates;
+			@$sorted_keys = $cdp->sort_csv($cdp->{csv_data}, $target_keys, $dt_start, $dt_end);
 		}
 		else {
 			my $load_order = $cdp->{load_order};
@@ -1276,9 +1279,10 @@ sub	sort_csv
 	if($dt_start < 0){											# 2021.03.15
 		$dt_start = &csv_size($csvp) + $dt_start;						# 2021.03.15
 	}															# 2021.03.15
-	if($dt_end < 0){											# 2021.03.15
+	if($dt_end <= 0){											# 2021.03.15
 		$dt_end = &csv_size($csvp) + $dt_end;					# 2021.03.15
 	}															# 2021.03.15
+	#dp::dp "sort [$dt_start, $dt_end] " . &csv_size($csvp) . "\n";
 	#my $dt_start = $gp->{dt_start};
 	#my $dt_end = $gp->{dt_end};
 
@@ -1286,7 +1290,8 @@ sub	sort_csv
 	my %SORT_VAL = ();
 	my $src_csv = $self->{src_csv} // "";
 	my $src_csv_count = scalar(keys %$src_csv);
-	#dp::dp "sort_csv: " . scalar(@$target_keysp) . "\n";
+	#dp::dp "sort_csv ($src_csv): " . scalar(@$target_keysp) . "\n";
+	#print Dumper $src_csv;
 	foreach my $key (@$target_keysp){
 		$dt_end = scalar(@{$csvp->{$key}} - 1) if(! $dt_end);
 		if(! $key){
@@ -1312,7 +1317,7 @@ sub	sort_csv
 		}
 	}
 	if(! $src_csv){		# Marged CSV
-		#dp::dp "--- no src_csv -- $gp->{dsc}\n";
+		dp::dp "--- no src_csv -- \n";
 		#csvlib::disp_caller(1..5);
 		@$sorted_keysp = (sort {$SORT_VAL{$b} <=> $SORT_VAL{$a}} keys %SORT_VAL);
 		#dp::dp "------------" . scalar(@$sorted_keysp) . "\n";
@@ -1323,13 +1328,17 @@ sub	sort_csv
 		foreach my $k (keys %SORT_VAL){
 			#dp::dp "$k: $SORT_VAL{$k}\n";
 			next if((defined $src_csv->{$k}) && (defined $SORT_VAL{$k}));
-
 			dp::dp "$k is not defined to src_csv or SORT_VAL\n";
 		}
 		#@$sorted_keysp = (sort {($src_csv->{$a}//0) <=> ($src_csv->{$b}//0) 
 		#				or ($SORT_VAL{$b}//0) <=> ($SORT_VAL{$a}//0)} keys %SORT_VAL);
 		@$sorted_keysp = (sort {$SORT_VAL{$b} <=> $SORT_VAL{$a}} keys %SORT_VAL);
 		#dp::dp "------------" . scalar(@$sorted_keysp) . "/" . keys(%SORT_VAL) . "\n";
+
+		foreach my $k (@$sorted_keysp){
+			my $csv = $csvp->{$k};
+			#dp::dp "$k($dt_start, $dt_end)\t". join(",", @$csv[$dt_start..$dt_end]) . "  " . $SORT_VAL{$k} . "\n";;
+		}
 	}
 
 ##	foreach my $k (@$sorted_keysp){
@@ -1375,8 +1384,8 @@ sub	graph
 
 	my $time_format = $gdp->{timefmt};
 	my $format_x = $gdp->{format_x};
-	my $term_x_size = $gdp->{term_x_size};
-	my $term_y_size = $gdp->{term_y_size};
+	my $term_x_size = $gp->{term_x_size} // $gdp->{term_x_size};
+	my $term_y_size = $gp->{term_y_size} // $gdp->{term_y_size};
 
 
 	my $start_ut = csvlib::ymds2tm($start_date);
