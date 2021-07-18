@@ -1527,12 +1527,14 @@ _EOD_
 
 		my $pl = "";
 		if($graph_def){
+			dp::dp "[$graph_def]\n";
 			if($graph_def =~ /notitle/){
 				$pl = sprintf("CSV_FILE using 1:%d $axis with $graph_def ", $i + 1);
 			}
 			else {
 				$pl = sprintf("CSV_FILE using 1:%d $axis with $graph_def title '%s' ", $i + 1, $key);
 			}
+			dp::dp "[$graph_def][$pl]\n";
 		}
 		else {
 			if($graph =~ /line/){
