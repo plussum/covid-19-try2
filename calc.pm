@@ -408,6 +408,7 @@ sub	calc_record
 	my $verbose = $p->{v}//0;
 	my $key_dlm = $self->{key_dlm};
 	my $csvp = $self->{csv_data};
+	my $date_list = $self->{date_list};
 	my $ko = [];
 	foreach my $k (@{$self->{keys}}){
 		next if($k =~ /^=/);
@@ -446,6 +447,7 @@ sub	calc_record
 	}
 
 	for(my $i = 0; $i <= $dates; $i++){
+		my $dt = $date_list->[$i];
 		my $reg = 0;
 		foreach my $op (@ops){
 			my $v = $op->{lb};			# static or label
@@ -458,6 +460,7 @@ sub	calc_record
 			if($op->{st} ne "="){		# label
 				$v = $csvp->{$v}->[$i] // 0;
 			}
+			my $vv = $v;
 
 			if($op->{op} eq "+"){
 				$reg += $v;
@@ -466,16 +469,18 @@ sub	calc_record
 				$reg -= $v;
 			}
 			elsif($op->{op} eq "/"){
+				#$v = 0.00001 if($v == 0);
+				$v = 99999 if($v == 0);
 				$reg /= $v;
 			}
 			elsif($op->{op} eq "*"){
 				$reg *= $v;
 			}
-			dp::dp "$i $reg = ($cumulative) $lreg $opp [$st] $lb [$v]\n" if($verbose > 2);
+			dp::dp "$dt $i $reg = ($cumulative) $lreg '$opp' [$st] $lb [$v:$vv] \n" if($verbose >= 2);
 		}
 		$reg += $target_csvp->[$i-1] if($cumulative && $i > 0);
 		$target_csvp->[$i] = $reg;
-		dp::dp "$result_key $i: $reg " . $target_csvp->[$i] . "\n" if($verbose > 1);
+		dp::dp "$dt $i $result_key = $reg " . $target_csvp->[$i] . "\n" if($verbose > 1);
 	}
 	dp::dp "$result_key : " . join(",", @$target_csvp) . "\n" if($verbose);
 	$self->add_record($record_key, [@dst_keys], [@$target_csvp]);

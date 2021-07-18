@@ -632,27 +632,50 @@ if($golist{mhlw}){
 	dp::dp "MHLW\n";
 	
 	my $mhlw_cdp = $defmhlw::MHLW_DEF;
-	&{$mhlw_cdp->{down_load}};
+	#&{$mhlw_cdp->{down_load}};
 
 	my $cdp = csv2graph->new($mhlw_cdp); 						# Load Johns Hopkings University CCSE
-	$cdp->load_csv($defmhlw::MHLW_DEF);
+	$cdp->load_csv({download => 1});
+	#$cdp->dump();
+	my $rlavr = $cdp->calc_rlavr();
+	$rlavr->calc_record({result => "#positive_percent", op => ["pcr_positive", "*=100", "/pcr_tested_people"], v => 0} );
 	#$cdp->dump();
 
 	push(@$gp_list, csv2graph->csv2graph_list_gpmix(
 	{gdp => $defmhlw::MHLW_GRAPH, dsc => "MHLW open Data", start_date => 0, 
-#		ymax => $ymax, y2max => $y2max, y2min => 0,
-#		ylabel => "confermed", y2label => "deaths (max=$y2y1rate% of rlavr confermed)",
+		y2max => 50, y2min => 0,
+		ylabel => "pcr_tested/positive", y2label => "positive rate(%)",
 		#additional_plot => $additional_plot_item{ern}, 
 		graph_items => [
-			{cdp => $cdp,  item => {"item" => "cases",}, static => "", graph_def => $line_thin_dot},
-			{cdp => $cdp,  item => {"item" => "cases",}, static => "rlavr", graph_def => $line_thick},
-			{cdp => $cdp,  item => {"item" => "pcr_positive",}, static => "", graph_def => $line_thin_dot},
-			{cdp => $cdp,  item => {"item" => "pcr_positive",}, static => "rlavr", graph_def => $line_thick},
-			{cdp => $cdp,  item => {"item" => "deaths",}, static => "", graph_def => $line_thin_dot, axis => "y2"},
-			{cdp => $cdp,  item => {"item" => "deaths",}, static => "rlavr", graph_def => $line_thick, axis => "y2"},
-			{cdp => $cdp,  item => {"item" => "pcr_tested_people",}, static => "", graph_def => $line_thin_dot},
-			{cdp => $cdp,  item => {"item" => "pcr_tested_people",}, static => "rlavr", graph_def => $line_thin},
+			{cdp => $rlavr,  item => {"item" => "pcr_tested_people",}, static => "", graph_def => $box_fill},
+			{cdp => $rlavr,  item => {"item" => "pcr_positive",}, static => "", graph_def => $box_fill},
+			{cdp => $rlavr,  item => {"item" => "positive_percent",}, static => "", graph_def => $line_thick, axis => "y2"},
 
+			{cdp => $cdp  ,  item => {"item" => "pcr_tested_people",}, static => "", graph_def => $line_thin_dot},
+			{cdp => $cdp  ,  item => {"item" => "pcr_positive",}, static => "", graph_def => $line_thin_dot},
+
+			#{cdp => $cdp,  item => {"item" => "cases",}, static => "", graph_def => $line_thin_dot},
+			#{cdp => $cdp,  item => {"item" => "cases",}, static => "rlavr", graph_def => $line_thick},
+			#{cdp => $cdp,  item => {"item" => "pcr_positive",}, static => "", graph_def => $line_thin_dot},
+			#{cdp => $cdp,  item => {"item" => "pcr_positive",}, static => "rlavr", graph_def => $line_thick},
+			#{cdp => $cdp,  item => {"item" => "deaths",}, static => "", graph_def => $line_thin_dot, axis => "y2"},
+			#{cdp => $cdp,  item => {"item" => "deaths",}, static => "rlavr", graph_def => $line_thick, axis => "y2"},
+			#{cdp => $cdp,  item => {"item" => "pcr_tested_people",}, static => "", graph_def => $line_thin_dot},
+			#{cdp => $cdp,  item => {"item" => "pcr_tested_people",}, static => "rlavr", graph_def => $line_thin},
+			#{cdp => $cdp,  item => {"item" => "severe",}, static => "", graph_def => $line_thin},
+		],
+	}
+	));
+
+	push(@$gp_list, csv2graph->csv2graph_list_gpmix(
+	{gdp => $defmhlw::MHLW_GRAPH, dsc => "MHLW open Data cases, severe, death", start_date => 0, 
+		y2min => 0,
+		ylabel => "positive", y2label => " severe/deaths",
+		#additional_plot => $additional_plot_item{ern}, 
+		graph_items => [
+			{cdp => $rlavr,  item => {"item" => "severe",}, static => "", graph_def => $box_fill, axis => "y2"},
+			{cdp => $rlavr,  item => {"item" => "cases",}, static => "", graph_def => $line_thick},
+			{cdp => $rlavr,  item => {"item" => "deaths",}, static => "", graph_def => $box_fill, axis => "y2"},
 		],
 	}
 	));
@@ -708,6 +731,7 @@ if($golist{tkocsv}){
 				{cdp => $cdp  ,  item => {"item" => "positive_percent",}, static => "", graph_def => $line_thin_dot, axis => "y2"},
 			],
 		}));
+
 	}
 #	"pcr_positive", "antigen_positive", "pcr_negative", "antigen_negative", "inspected", "positive_rate",
 #			"positive_number", "hospitalized", "mid-modelate", "severe", "residential", "home","adjusting", "deaths", "discharged",

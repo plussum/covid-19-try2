@@ -543,7 +543,7 @@ sub gen_html_by_gp_list
 	my $png_rel_path = $p->{png_rel_path} //"png_rel_path";
 	my $data_source = $p->{data_source} // "data_source";
 	my $dst_dlm = $p->{dst_dlm} // "\t";
-	my $row = $p->{row} // 0;
+	my $row = $p->{row} // 1;
 	my $no_lank_label = $p->{no_lank_label} // 0;
 	my $alt_graph = $p->{alt_graph}//"";
 

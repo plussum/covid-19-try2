@@ -76,12 +76,14 @@ our $MHLW_GRAPH = {
 
 sub	download
 {
+	my $self = shift;
 	my $urls = [		# for keep order of records
 		{pcr_positive => "https://www.mhlw.go.jp/content/pcr_positive_daily.csv"},
 		{pcr_tested_people => "https://www.mhlw.go.jp/content/pcr_tested_daily.csv"},
 		{cases => "https://www.mhlw.go.jp/content/cases_total.csv"},
 		{recovery => "https://www.mhlw.go.jp/content/recovery_total.csv"},
 		{deaths => "https://www.mhlw.go.jp/content/death_total.csv"},
+		{severe => "https://www.mhlw.go.jp/content/severe_daily.csv"},
 	#	{pcr_tested_cases => "https://www.mhlw.go.jp/content/pcr_case_daily.csv"},
 	];
 
@@ -90,22 +92,8 @@ sub	download
 	my $file_no = 0;
 	my $col_no = 0;
 	my @header = ();
-	my $download = 1;
 
-	dp::dp "DOWNLOAD  $MLW_DL_FLAG_FILE\n";
-	if(-f $MLW_DL_FLAG_FILE){
-		my $now = time;
-		my ($dev,$ino,$mode,$nlink,$uid,$gid,$rdev,$size, $atime,$mtime,$ctime,$blksize,$blocks) = stat($MLW_DL_FLAG_FILE);	
-		my $elpt = $now - $mtime;
-		dp::dp "$now $mtime $elpt " .sprintf("%.2f", $elpt / (60 * 60)) . "\n";
-		if($elpt < (2 * 60 * 60 )){
-			$download = 0;
-		}
-	}
-	dp::dp "Donwload: $download\n";
-	if($download){
-		system("touch $MLW_DL_FLAG_FILE");
-	}
+	my $download = $self->check_download();
 	foreach my $items (@$urls){
 		foreach my $item (keys %$items){
 			my $csvf = "$CSV_PATH/mhlw_" . "$item.csv";
