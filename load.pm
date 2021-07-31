@@ -678,6 +678,20 @@ sub	load_transaction
 	my $line = <FD>;
 	$line =~ s/[\r\n]+$//;
 	my @items = util::csv($line);
+	if( (defined $self->{item_names}) && scalar($self->{item_names} > 1)){
+		my $items_rew = $self->{item_names};
+		dp::dp "itemnames: " . join(",", @items) . "\n";
+		my $alias_auto = {};
+		for(my $i = 0; $i <= $#items; $i++){
+			my $item_org = $items[$i];
+			my $item_rew = $items_rew->[$i];
+			$alias_auto->{$item_org} = $i;
+			#$alias_auto->{$item_rew} = $i;
+		}
+		@items = @{$self->{item_names}};
+		dp::dp "itemnames: " . join(",", @items) . "\n";
+		$self->set_alias($alias_auto);		#
+	}
 
 ##	my $key_name = $self->{key_name} // "";
 ##	$key_name = $config::MAIN_KEY if(! $key_name);

@@ -547,6 +547,7 @@ sub gen_html_by_gp_list
 	my $no_lank_label = $p->{no_lank_label} // 0;
 	my $alt_graph = $p->{alt_graph}//"";
 
+	dp::dp "row: $row\n";
 	my $CSS = $config::CSS;
 	my $class = $config::CLASS;
 
@@ -994,7 +995,7 @@ sub	csv2graph_mix
 	foreach my $gpp (@$gp_list){
 		my $cdp = $gpp->{cdp} // $gp_mix->{cdp} // dp::ABORT "no CDP defined\n";
 		$gpp->{cdp} = $cdp;
-		dp::dp "cdp: " . join(",", $cdp->{id}, $cdp->{dates})  . "\n";
+		#dp::dp "cdp: " . join(",", $cdp->{id}, $cdp->{dates})  . "\n";
 	}
 
 	#

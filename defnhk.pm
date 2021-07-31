@@ -46,7 +46,11 @@ our $CDP =
 	key_dlm => "#",
 	keys => [2],		# PrefectureNameJ, and Column name
 	data_start => 3,
-	alias => {pref => 2, positive_new => 3, positive_cum => 4 , deaths_new => 5, deaths_cum => 6},
+		#日付,都道府県コード,都道府県名,各地の感染者数_1日ごとの発表数,各地の感染者数_累計,各地の死者数_1日ごとの発表数,各地の死者数_累計
+		# year,month,date,prefectureNameJ,prefectureNameE,testedPositive,peopleTested,hospitalized,serious,discharged,deaths,effectiveReproductionNumber
+	item_names => ["date", "area_code", "prefectureNameJ","testedPositive", "testedPositive_cum", "deaths", "deaths_cum"],
+	#alias => {pref => 2, positive_new => 3, positive_cum => 4 , deaths_new => 5, deaths_cum => 6},
+	alias => {},
 };
 our $DEF_GRAPH = {
 	html_title => $CDP->{src_info},

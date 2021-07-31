@@ -110,6 +110,7 @@ my $AVR = $defamt::AVR;
 
 my $prov = "Province/State";
 my $cntry = "Country/Region";
+
 my $positive = "testedPositive";
 my $deaths = "deaths";
 
@@ -316,17 +317,19 @@ if($golist{pref}){
 	}
 
 	#
-	#	Japan Prefectures
+	#	Japan Prefectures	NHK
 	#
-	my $jp_cdp = csv2graph->new($defjapan::JAPAN_DEF); 						# Load Apple Mobility Trends
-	$jp_cdp->load_csv($defjapan::JAPAN_DEF);
+	#my $jp_cdp = csv2graph->new($defjapan::JAPAN_DEF); 						# Load Apple Mobility Trends
+	#$jp_cdp->load_csv($defjapan::JAPAN_DEF);
+	my $jp_cdp = csv2graph->new($defnhk::CDP); 						# Load Johns Hopkings University CCSE
+	$jp_cdp->load_csv({download => 1});
 
 	my $jp_rlavr = $jp_cdp->calc_rlavr($jp_cdp);
 #	my $jp_ern   = $jp_cdp->calc_ern($jp_cdp);
 #	my $jp_pop   = $jp_cdp->calc_pop($jp_cdp);
 
-	my $positive = "testedPositive";
-	my $deaths = "deaths";
+	#my $positive = "testedPositive";
+	#my $deaths = "deaths";
 	#
 	#	Generate HTML FILE
 	#
@@ -791,40 +794,79 @@ if($golist{nhk}){
 	my $cdp = csv2graph->new($defnhk::CDP); 						# Load Johns Hopkings University CCSE
 	$cdp->load_csv({download => 1});
 	#my $rlavr_cdp = $cdp->calc_rlavr();
-	$cdp->dump({search_key => "東京都#各地の感染者数_1日ごとの発表数", lines => 10});
+	#$cdp->dump({search_key => "東京都#各地の感染者数_1日ごとの発表数", lines => 10});
 	#$cdp->dump();
 	#exit;	
 
-	my $start_date = 0;
-	
-	push(@$gp_list, csv2graph->csv2graph_list_gpmix(
-	{gdp => $defnhk::DEF_GRAPH, dsc => "NHK open Data positive", start_date => $start_date, 
-		ylabel => "confermed", y2label => "deaths",
-		ymin => 0, y2min => 0,
-		lank => [1,10],
-		label_sub_from => '#.*', label_sub_to => '',	# change label "1:Israel#people_vaccinated_per_hundred" -> "1:Israel"
-		graph_items => [
-			#{cdp => $cdp,item => {"item" => "各地の死者数_1日ごとの発表数",}, static => "rlavr", graph_def => $box_fill, axis => "y2",},
-			{cdp => $cdp, item => {"item" => "各地の感染者数_1日ごとの発表数",}, static => "rlavr", graph_def => $line_thick},
-			{cdp => $cdp, item => {"item" => "各地の感染者数_1日ごとの発表数",}, static => "", graph_def => $line_thin_dot},
-			#{cdp => $cdp, item => {"item" => "各地の感染者数_1日ごとの発表数", "都道府県名" => "東京都"}, static => "", graph_def => $line_thick},
-		],
-	}));
-	push(@$gp_list, csv2graph->csv2graph_list_gpmix(
-	{gdp => $defnhk::DEF_GRAPH, dsc => "NHK open Data deaths", start_date => $start_date, 
-		ylabel => "confermed", y2label => "deaths",
-		ymin => 0, y2min => 0,
-		lank => [1,10],
-		label_sub_from => '#.*', label_sub_to => '',	# change label "1:Israel#people_vaccinated_per_hundred" -> "1:Israel"
-		graph_items => [
-			{cdp => $cdp,item => {"item" => "各地の死者数_1日ごとの発表数",}, static => "rlavr", graph_def => $line_thick},
-			{cdp => $cdp,item => {"item" => "各地の死者数_1日ごとの発表数",}, static => "", graph_def => $line_thin_dot},
-		],
-	}));
 
+	my $lank_width = 5;
+	my $lank = 1;
+	my $lank_max = 20;
+	for($lank = 1; $lank < $lank_max; $lank += $lank_width){
+		my $le = $lank + $lank_width - 1;
+		foreach my $start_date (0, -28){
+			push(@$gp_list, csv2graph->csv2graph_list_gpmix(
+			{gdp => $defnhk::DEF_GRAPH, dsc => "NHK open Data positive[$lank-$le] rlavr" , start_date => $start_date, 
+				ylabel => "confermed", y2label => "deaths",
+				ymin => 0, y2min => 0,
+				lank => [$lank,$le],
+				label_sub_from => '#.*', label_sub_to => '',	# change label "1:Israel#people_vaccinated_per_hundred" -> "1:Israel"
+				graph_items => [
+					#{cdp => $cdp,item => {"item" => "deaths",}, static => "rlavr", graph_def => $box_fill, axis => "y2",},
+					{cdp => $cdp, item => {"item" => "testedPositive",}, static => "rlavr", graph_def => $line_thick},
+				#	{cdp => $cdp, item => {"item" => "testedPositive",}, static => "", graph_def => $line_thin_dot},
+					#{cdp => $cdp, item => {"item" => "testedPositive", "都道府県名" => "東京都"}, static => "", graph_def => $line_thick},
+				],
+			}));
+		}
+		foreach my $start_date (0, -28){
+			push(@$gp_list, csv2graph->csv2graph_list_gpmix(
+			{gdp => $defnhk::DEF_GRAPH, dsc => "NHK open Data positive[$lank-$le] " , start_date => $start_date, 
+				ylabel => "confermed", y2label => "deaths",
+				ymin => 0, y2min => 0,
+				lank => [$lank,$le],
+				label_sub_from => '#.*', label_sub_to => '',	# change label "1:Israel#people_vaccinated_per_hundred" -> "1:Israel"
+				graph_items => [
+					#{cdp => $cdp,item => {"item" => "deaths",}, static => "rlavr", graph_def => $box_fill, axis => "y2",},
+					{cdp => $cdp, item => {"item" => "testedPositive",}, static => "", graph_def => $line_thick},
+				#	{cdp => $cdp, item => {"item" => "testedPositive",}, static => "", graph_def => $line_thin_dot},
+				],
+			}));
+		}
+	}
 
+	for($lank = 1; $lank < $lank_max; $lank += $lank_width){
+		my $le = $lank + $lank_width - 1;
+		foreach my $start_date (0, -28){
+			push(@$gp_list, csv2graph->csv2graph_list_gpmix(
+			{gdp => $defnhk::DEF_GRAPH, dsc => "NHK open Data deaths[$lank-$le] rlavr", start_date => $start_date, 
+				ylabel => "confermed", y2label => "deaths",
+				ymin => 0, y2min => 0,
+				lank => [$lank,$le],
+				label_sub_from => '#.*', label_sub_to => '',	# change label "1:Israel#people_vaccinated_per_hundred" -> "1:Israel"
+				graph_items => [
+					{cdp => $cdp,item => {"item" => "deaths",}, static => "rlavr", graph_def => $line_thick},
+				#	{cdp => $cdp,item => {"item" => "deaths",}, static => "", graph_def => $line_thin_dot},
+				],
+			}));
+		}
+		foreach my $start_date (0, -28){
+			push(@$gp_list, csv2graph->csv2graph_list_gpmix(
+			{gdp => $defnhk::DEF_GRAPH, dsc => "NHK open Data deaths[$lank-$le] ", start_date => $start_date, 
+				ylabel => "confermed", y2label => "deaths",
+				ymin => 0, y2min => 0,
+				lank => [$lank,$le],
+				label_sub_from => '#.*', label_sub_to => '',	# change label "1:Israel#people_vaccinated_per_hundred" -> "1:Israel"
+				graph_items => [
+					{cdp => $cdp,item => {"item" => "deaths",}, static => "", graph_def => $line_thick},
+				#	{cdp => $cdp,item => {"item" => "deaths",}, static => "", graph_def => $line_thin_dot},
+				],
+			}));
+		}
+
+	}
 	csv2graph->gen_html_by_gp_list($gp_list, {						# Generate HTML file with graphs
-			row => 1,
+			row => 4,
 			html_tilte => "COVID-19 related data visualizer HNK ",
 			src_url => "src_url",
 			html_file => "$HTML_PATH/nhk_jp.html",
@@ -1404,6 +1446,8 @@ sub	japan_positive_death_ern
 { 
 	my($jp_cdp, $pref, $start_date, $pop) = @_;
 
+	#my $jp_pref = $jp_cdp->reduce_cdp_target({item => $positive, prefectureNameJ => $pref});
+	#my $death_pref = $jp_cdp->reduce_cdp_target({item => $deaths, prefectureNameJ => $pref});
 	my $jp_pref = $jp_cdp->reduce_cdp_target({item => $positive, prefectureNameJ => $pref});
 	my $death_pref = $jp_cdp->reduce_cdp_target({item => $deaths, prefectureNameJ => $pref});
 	my $p = "";
