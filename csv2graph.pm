@@ -994,6 +994,7 @@ sub	csv2graph_mix
 	foreach my $gpp (@$gp_list){
 		my $cdp = $gpp->{cdp} // $gp_mix->{cdp} // dp::ABORT "no CDP defined\n";
 		$gpp->{cdp} = $cdp;
+		dp::dp "cdp: " . join(",", $cdp->{id}, $cdp->{dates})  . "\n";
 	}
 
 	#
@@ -1008,7 +1009,7 @@ sub	csv2graph_mix
 		$start_max = $ds if($ds gt $start_max);
 		$end_min   = $de if($de lt $end_min);
 	}
-	#dp::dp join(",", $start_max, $end_min) . "\n";
+	dp::dp join(",", $start_max, $end_min) . "\n";
 	my $start_max_ut = csvlib::ymds2tm($start_max);
 	my $end_min_ut = csvlib::ymds2tm($end_min);
 	my $dates = ($end_min_ut - $start_max_ut) / (24*60*60);
@@ -1017,7 +1018,7 @@ sub	csv2graph_mix
 	#	Error date miss much
 	#
 	if($dates <= 0){
-		dp::WARNING "Date miss much \n";
+		dp::WARNING "Date miss much dates=$dates\n";
 		dp::dp "max_start, min_end: " . join(",", $start_max, $end_min, $dates) . "\n";
 		foreach my $gpp (@$gp_list){
 			my $cdp = $gpp->{cdp};
@@ -1527,14 +1528,14 @@ _EOD_
 
 		my $pl = "";
 		if($graph_def){
-			dp::dp "[$graph_def]\n";
+			#dp::dp "[$graph_def]\n";
 			if($graph_def =~ /notitle/){
 				$pl = sprintf("CSV_FILE using 1:%d $axis with $graph_def ", $i + 1);
 			}
 			else {
 				$pl = sprintf("CSV_FILE using 1:%d $axis with $graph_def title '%s' ", $i + 1, $key);
 			}
-			dp::dp "[$graph_def][$pl]\n";
+			#dp::dp "[$graph_def][$pl]\n";
 		}
 		else {
 			if($graph =~ /line/){

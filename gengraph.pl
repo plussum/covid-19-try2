@@ -47,6 +47,7 @@ use defmhlw;
 use deftkocsv;
 use defjpvac;
 use defowid;
+use defnhk;
 
 
 
@@ -85,6 +86,11 @@ my $box_fill_solid 	= 'boxes fill solid border lc rgb "white" lw 1';
 my $y2y1rate = 2.5;
 my $end_target = 0;
 my $CCSE_MAX = 119; # 99;
+
+my $POP_YMAX_NC_WW = 50;		# WW YMAX(positive) * pop100k, positive_death_ern
+my $POP_YMAX_ND_WW = 1.0;		# WW Y2MAX(deaths)  * pop100k, positive_death_ern
+my $POP_YMAX_NC_JP = 10;		# JP YMAX(positive) * pop100k, positive_death_ern
+my $POP_YMAX_ND_JP = 0.2;		# JP Y2MAX(deaths)  * pop100k, positive_death_ern
 
 #
 #	for APPLE Mobility Trends
@@ -158,7 +164,8 @@ my @TARGET_PREF = ("Tokyo", "Kanagawa", "Chiba", "Saitama", "Kyoto", "Osaka");
 
 my @cdp_list = ($defamt::AMT_DEF, $defccse::CCSE_DEF, $MARGE_CSV_DEF, 
 					$deftokyo::TOKYO_DEF, $defjapan::JAPAN_DEF, $deftkow::TKOW_DEF, $defdocomo::DOCOMO_DEF, 
-					$defmhlw::MHLW_DEF, $deftkocsv::TKOCSV_DEF, $defjpvac::VACCINE_DEF, $defowid::OWID_VAC_DEF); 
+					$defmhlw::MHLW_DEF, $deftkocsv::TKOCSV_DEF, $defjpvac::VACCINE_DEF, $defowid::OWID_VAC_DEF,
+					$defnhk::CDP); 
 
 my $cmd_list = {"amt-jp" => 1, "amt-jp-pref" => 1, "tkow-ern" => 1, try => 1, "pref-ern" => 1, pref => 1, docomo => 1, upload => 1, "ccse-tgt" => 1};
 my @REG_INFO_LIST = ();
@@ -275,6 +282,7 @@ csvlib::cnt_pop(\%POP);
 #
 my $gp_list = [];
 my $ccse_country = {};
+
 
 #
 #	Try for using 
@@ -628,9 +636,10 @@ sub	ccse
 #
 #	MHLW
 #
-if($golist{mhlw}){
+if($golist{mhlw}) {
 	dp::dp "MHLW\n";
 	
+	@$gp_list = ();
 	my $mhlw_cdp = $defmhlw::MHLW_DEF;
 	#&{$mhlw_cdp->{down_load}};
 
@@ -641,54 +650,64 @@ if($golist{mhlw}){
 	$rlavr->calc_record({result => "#positive_percent", op => ["pcr_positive", "*=100", "/pcr_tested_people"], v => 0} );
 	#$cdp->dump();
 
-	push(@$gp_list, csv2graph->csv2graph_list_gpmix(
-	{gdp => $defmhlw::MHLW_GRAPH, dsc => "MHLW open Data", start_date => 0, 
-		y2max => 50, y2min => 0,
-		ylabel => "pcr_tested/positive", y2label => "positive rate(%)",
-		#additional_plot => $additional_plot_item{ern}, 
-		graph_items => [
-			{cdp => $rlavr,  item => {"item" => "pcr_tested_people",}, static => "", graph_def => $box_fill},
-			{cdp => $rlavr,  item => {"item" => "pcr_positive",}, static => "", graph_def => $box_fill},
-			{cdp => $rlavr,  item => {"item" => "positive_percent",}, static => "", graph_def => $line_thick, axis => "y2"},
+	foreach my $start_date (0, -28){
+		push(@$gp_list, csv2graph->csv2graph_list_gpmix(
+		{gdp => $defmhlw::MHLW_GRAPH, dsc => "Japan PCR test results", start_date => $start_date, 
+			y2max => 35, y2min => 0,
+			ylabel => "pcr_tested/positive", y2label => "positive rate(%)",
+			#additional_plot => $additional_plot_item{ern}, 
+			graph_items => [
+				{cdp => $rlavr,  item => {"item" => "pcr_tested_people",}, static => "", graph_def => $box_fill},
+				{cdp => $rlavr,  item => {"item" => "pcr_positive",}, static => "", graph_def => $box_fill},
+				{cdp => $rlavr,  item => {"item" => "positive_percent",}, static => "", graph_def => $line_thick, axis => "y2"},
 
-			{cdp => $cdp  ,  item => {"item" => "pcr_tested_people",}, static => "", graph_def => $line_thin_dot},
-			{cdp => $cdp  ,  item => {"item" => "pcr_positive",}, static => "", graph_def => $line_thin_dot},
+				{cdp => $cdp  ,  item => {"item" => "pcr_tested_people",}, static => "", graph_def => $line_thin_dot},
+				{cdp => $cdp  ,  item => {"item" => "pcr_positive",}, static => "", graph_def => $line_thin_dot},
 
-			#{cdp => $cdp,  item => {"item" => "cases",}, static => "", graph_def => $line_thin_dot},
-			#{cdp => $cdp,  item => {"item" => "cases",}, static => "rlavr", graph_def => $line_thick},
-			#{cdp => $cdp,  item => {"item" => "pcr_positive",}, static => "", graph_def => $line_thin_dot},
-			#{cdp => $cdp,  item => {"item" => "pcr_positive",}, static => "rlavr", graph_def => $line_thick},
-			#{cdp => $cdp,  item => {"item" => "deaths",}, static => "", graph_def => $line_thin_dot, axis => "y2"},
-			#{cdp => $cdp,  item => {"item" => "deaths",}, static => "rlavr", graph_def => $line_thick, axis => "y2"},
-			#{cdp => $cdp,  item => {"item" => "pcr_tested_people",}, static => "", graph_def => $line_thin_dot},
-			#{cdp => $cdp,  item => {"item" => "pcr_tested_people",}, static => "rlavr", graph_def => $line_thin},
-			#{cdp => $cdp,  item => {"item" => "severe",}, static => "", graph_def => $line_thin},
-		],
-	}
-	));
-
-	push(@$gp_list, csv2graph->csv2graph_list_gpmix(
-	{gdp => $defmhlw::MHLW_GRAPH, dsc => "MHLW open Data cases, severe, death", start_date => 0, 
-		y2min => 0,
-		ylabel => "positive", y2label => " severe/deaths",
-		#additional_plot => $additional_plot_item{ern}, 
-		graph_items => [
-			{cdp => $rlavr,  item => {"item" => "severe",}, static => "", graph_def => $box_fill, axis => "y2"},
-			{cdp => $rlavr,  item => {"item" => "cases",}, static => "", graph_def => $line_thick},
-			{cdp => $rlavr,  item => {"item" => "deaths",}, static => "", graph_def => $box_fill, axis => "y2"},
-		],
-	}
-	));
-
-	csv2graph->gen_html_by_gp_list($gp_list, {						# Generate HTML file with graphs
-			html_tilte => "COVID-19 related data visualizer ",
-			src_url => "src_url",
-			html_file => "$HTML_PATH/mhlw.html",
-			png_path => $PNG_PATH // "png_path",
-			png_rel_path => $PNG_REL_PATH // "png_rel_path",
-			data_source => $cdp->{src_info},
+				#{cdp => $cdp,  item => {"item" => "cases",}, static => "", graph_def => $line_thin_dot},
+				#{cdp => $cdp,  item => {"item" => "cases",}, static => "rlavr", graph_def => $line_thick},
+				#{cdp => $cdp,  item => {"item" => "pcr_positive",}, static => "", graph_def => $line_thin_dot},
+				#{cdp => $cdp,  item => {"item" => "pcr_positive",}, static => "rlavr", graph_def => $line_thick},
+				#{cdp => $cdp,  item => {"item" => "deaths",}, static => "", graph_def => $line_thin_dot, axis => "y2"},
+				#{cdp => $cdp,  item => {"item" => "deaths",}, static => "rlavr", graph_def => $line_thick, axis => "y2"},
+				#{cdp => $cdp,  item => {"item" => "pcr_tested_people",}, static => "", graph_def => $line_thin_dot},
+				#{cdp => $cdp,  item => {"item" => "pcr_tested_people",}, static => "rlavr", graph_def => $line_thin},
+				#{cdp => $cdp,  item => {"item" => "severe",}, static => "", graph_def => $line_thin},
+			],
 		}
-	);
+		));
+	}
+
+	foreach my $start_date (0,-28){
+		push(@$gp_list, csv2graph->csv2graph_list_gpmix(
+		{gdp => $defmhlw::MHLW_GRAPH, dsc => "Japan need hospitalization, severe, death", start_date => $start_date, 
+			y2min => 0,
+			ylabel => "positive", y2label => " severe/deaths",
+			#additional_plot => $additional_plot_item{ern}, 
+			graph_items => [
+				{cdp => $cdp,  item => {"item" => "severe",}, static => "", graph_def => $box_fill, axis => "y2"},
+				#{cdp => $cdp,  item => {"item" => "cases",}, static => "", graph_def => $line_thick},
+				{cdp => $rlavr,  item => {"item" => "deaths",}, static => "", graph_def => $box_fill, axis => "y2"},
+				{cdp => $cdp,  item => {"item" => "need_hospitalization",}, static => "", graph_def => $line_thick},
+
+				#{cdp => $cdp,  item => {"item" => "severe",}, static => "", graph_def => $line_thin_dot, axis => "y2"},
+				#{cdp => $cdp,  item => {"item" => "cases",}, static => "", graph_def => "$line_thin_dot lc rgb 'green'"},
+				{cdp => $cdp,  item => {"item" => "deaths",}, static => "", graph_def => $line_thin_dot, axis => "y2"},
+			],
+		}
+		));
+	}
+
+#	csv2graph->gen_html_by_gp_list($gp_list, {						# Generate HTML file with graphs
+#			row => 2,
+#			html_tilte => "COVID-19 related data visualizer ",
+#			src_url => "src_url",
+#			html_file => "$HTML_PATH/mhlw.html",
+#			png_path => $PNG_PATH // "png_path",
+#			png_rel_path => $PNG_REL_PATH // "png_rel_path",
+#			data_source => $cdp->{src_info},
+#		}
+#	);
 }
 
 #
@@ -696,7 +715,7 @@ if($golist{mhlw}){
 #	"pcr_positive", "antigen_positive", "pcr_negative", "antigen_negative", "inspected", "positive_rate",
 #			"positive_number", "hospitalized", "mid-modelate", "severe", "residential", "home","adjusting", "deaths", "discharged",
 #
-if($golist{tkocsv}){
+if($golist{tkocsv} || $golist{mhlw}){
 	my $cdp = csv2graph->new($deftkocsv::TKOCSV_DEF); 						# Load Johns Hopkings University CCSE
 	$cdp->load_csv({download => 1});
 	my $rlavr = $cdp->calc_rlavr();
@@ -704,10 +723,10 @@ if($golist{tkocsv}){
 	$rlavr->calc_record({result => "#total_positive", op => ["pcr_positive", "+antigen_positive"]});
 	$rlavr->calc_record({result => "#total_tested", op => ["pcr_negative", "+antigen_negative", "+pcr_positive", "+antigen_positive"]});
 	$rlavr->calc_record({result => "#total_pcr", op => ["pcr_positive", "+pcr_negative"]});
-	$rlavr->calc_record({result => "#positive_percent", op => ["positive_rate", "*=100"], v => 1} );
+	$rlavr->calc_record({result => "#positive_percent", op => ["positive_rate", "*=100"], v => 0} );
 
 	#$rlavr->dump({search_key => "positive_percent"});
-	$rlavr->dump({lines => 20});
+	#$rlavr->dump({lines => 20});
 	# $rlavr->dump({items => 10, lines => 20});
 
 	$cdp->calc_record({result => "#total_positive", op => ["pcr_positive", "+antigen_positive"]});
@@ -722,8 +741,8 @@ if($golist{tkocsv}){
 			ylabel => "confermed", y2label => "positive rate(%)",
 			ymin => 0, y2min => 0,
 			graph_items => [
-				{cdp => $rlavr,  item => {"item" => "total_tested",}, static => "", graph_def => $box},
-				{cdp => $rlavr,  item => {"item" => "total_positive",}, static => "", graph_def => $box},
+				{cdp => $rlavr,  item => {"item" => "total_tested",}, static => "", graph_def => $box_fill},
+				{cdp => $rlavr,  item => {"item" => "total_positive",}, static => "", graph_def => $box_fill},
 				{cdp => $rlavr,  item => {"item" => "positive_percent",}, static => "", graph_def => $line_thick, axis => "y2"},
 
 				{cdp => $cdp  ,  item => {"item" => "total_tested",}, static => "", graph_def => $line_thin_dot},
@@ -753,7 +772,62 @@ if($golist{tkocsv}){
 			row => 2,
 			html_tilte => "COVID-19 related data visualizer ",
 			src_url => "src_url",
-			html_file => "$HTML_PATH/tkocsv.html",
+			#html_file => "$HTML_PATH/tkocsv.html",
+			html_file => "$HTML_PATH/mhlw.html",
+			png_path => $PNG_PATH // "png_path",
+			png_rel_path => $PNG_REL_PATH // "png_rel_path",
+			data_source => $cdp->{src_info},
+		}
+	);
+}
+
+
+#
+#	NHK
+#
+if($golist{nhk}){
+	@$gp_list = ();
+
+	my $cdp = csv2graph->new($defnhk::CDP); 						# Load Johns Hopkings University CCSE
+	$cdp->load_csv({download => 1});
+	#my $rlavr_cdp = $cdp->calc_rlavr();
+	$cdp->dump({search_key => "東京都#各地の感染者数_1日ごとの発表数", lines => 10});
+	#$cdp->dump();
+	#exit;	
+
+	my $start_date = 0;
+	
+	push(@$gp_list, csv2graph->csv2graph_list_gpmix(
+	{gdp => $defnhk::DEF_GRAPH, dsc => "NHK open Data positive", start_date => $start_date, 
+		ylabel => "confermed", y2label => "deaths",
+		ymin => 0, y2min => 0,
+		lank => [1,10],
+		label_sub_from => '#.*', label_sub_to => '',	# change label "1:Israel#people_vaccinated_per_hundred" -> "1:Israel"
+		graph_items => [
+			#{cdp => $cdp,item => {"item" => "各地の死者数_1日ごとの発表数",}, static => "rlavr", graph_def => $box_fill, axis => "y2",},
+			{cdp => $cdp, item => {"item" => "各地の感染者数_1日ごとの発表数",}, static => "rlavr", graph_def => $line_thick},
+			{cdp => $cdp, item => {"item" => "各地の感染者数_1日ごとの発表数",}, static => "", graph_def => $line_thin_dot},
+			#{cdp => $cdp, item => {"item" => "各地の感染者数_1日ごとの発表数", "都道府県名" => "東京都"}, static => "", graph_def => $line_thick},
+		],
+	}));
+	push(@$gp_list, csv2graph->csv2graph_list_gpmix(
+	{gdp => $defnhk::DEF_GRAPH, dsc => "NHK open Data deaths", start_date => $start_date, 
+		ylabel => "confermed", y2label => "deaths",
+		ymin => 0, y2min => 0,
+		lank => [1,10],
+		label_sub_from => '#.*', label_sub_to => '',	# change label "1:Israel#people_vaccinated_per_hundred" -> "1:Israel"
+		graph_items => [
+			{cdp => $cdp,item => {"item" => "各地の死者数_1日ごとの発表数",}, static => "rlavr", graph_def => $line_thick},
+			{cdp => $cdp,item => {"item" => "各地の死者数_1日ごとの発表数",}, static => "", graph_def => $line_thin_dot},
+		],
+	}));
+
+
+	csv2graph->gen_html_by_gp_list($gp_list, {						# Generate HTML file with graphs
+			row => 1,
+			html_tilte => "COVID-19 related data visualizer HNK ",
+			src_url => "src_url",
+			html_file => "$HTML_PATH/nhk_jp.html",
 			png_path => $PNG_PATH // "png_path",
 			png_rel_path => $PNG_REL_PATH // "png_rel_path",
 			data_source => $cdp->{src_info},
@@ -1031,6 +1105,7 @@ if($golist{owidvac})
 			"Israel", 
 
 			"United Kingdom", 
+			#"England", "Scotland","Northern Ireland","Wales",	#####  No data in Johns Hopkins
 			"France", 
 			"Germany", 
 			"Italy",
@@ -1063,11 +1138,20 @@ if($golist{owidvac})
 	foreach my $wcdp ($ccse_cdp, $death_cdp){
 		foreach my $country ("Canada", "China", "Australia"){
 			$wcdp->calc_items("sum", 
-						{"Province/State" => "", "Country/Region" => $country},				# All Province/State with Canada, ["*","Canada",]
-						{"Province/State" => "null", "Country/Region" => "="}				# total gos ["","Canada"] null = "", = keep
+						{"Province/State" => "", "Country/Region" => $country},		
+						{"Province/State" => "null", "Country/Region" => "="}	
 			);
 		}
 	}
+#	foreach my $wcdp ($ccse_cdp, $death_cdp){
+#		foreach my $country ("England", "Scotland","Northern Ireland","Wales"){
+#			$wcdp->calc_items("sum", 
+#						{"Province/State" => "$country", "Country/Region" => "United Kingdom"},			
+#						{"Province/State" => "null", "Country/Region" => "$country"}		
+#			);
+#			$wcdp->dump({search_key => "$country", items => 200});
+#		}
+#	}
 	my $ccse_country = $ccse_cdp->reduce_cdp_target({"Province/State" => "NULL"});	# Select Country
 	my $death_country = $death_cdp->reduce_cdp_target({"Province/State" => "NULL"});	# Select Country
 
@@ -1311,7 +1395,7 @@ sub	ccse_positive_death_ern
 	my $conf_region = $conf_cdp->reduce_cdp_target({$prov => "", $cntry => $region});
 	my $death_region = $death_cdp->reduce_cdp_target({$prov => "", $cntry => $region});
 	my $p = "";
-	$p = {pop_ymax_nc => 50, pop_ymax_nd => 2} if($pop);
+	$p = {pop_ymax_nc => $POP_YMAX_NC_WW, pop_ymax_nd => $POP_YMAX_ND_WW, start_date => $start_date} if($pop);		# 2 -> 1 2021.07.29
 
 	return &positive_death_ern($conf_region, $death_region, $region, $start_date, "--conf", "--death", $p);
 }
@@ -1323,7 +1407,8 @@ sub	japan_positive_death_ern
 	my $jp_pref = $jp_cdp->reduce_cdp_target({item => $positive, prefectureNameJ => $pref});
 	my $death_pref = $jp_cdp->reduce_cdp_target({item => $deaths, prefectureNameJ => $pref});
 	my $p = "";
-	$p = {pop_ymax_nc => 10, pop_ymax_nd => 0.5} if($pop);
+
+	$p = {pop_ymax_nc => $POP_YMAX_NC_JP, pop_ymax_nd => $POP_YMAX_ND_JP, start_date => $start_date} if($pop);
 
 	return &positive_death_ern($jp_pref, $death_pref, $pref, $start_date, "#testedPositive", "#deaths", $p);
 }
@@ -1491,25 +1576,28 @@ sub	positive_death_ern
 	my @d100k_list = (0.5, 0.2, 0.1, 0.05, 0.02, 0.01);
 	my $rg = $region;
 	$rg =~ s/,*$//;
+	my $d_max = ($nd_max < $y2max) ? $nd_max : $y2max ;		# $nd_max;
+	#my $d_max = $nd_max;									# moving scale seems wrong
+
+	dp::dp "$d_max  $nd_max : $y2max\n";
 	for(my $i = 0; $i <= $#d100k_list; $i++){
 		#$dn_unit = csvlib::calc_max2($nd_max) / 2;			# try to set reasonable max 
 		$d100k = $d100k_list[$i];
-		$dn_unit = $pop_100k * $d100k;		
-		$unit_no = int(0.99999999 + $nd_max / $dn_unit);
+		$dn_unit = $pop_100k * $d100k;	
+		$unit_no = int(0.99999999 + $d_max / $dn_unit);
 		@color = ($bcl[$i*2], $bcl[$i*2+1]);
-		#dp::dp "$rg: $d100k : $unit_no $nd_max / $dn_unit " . sprintf("%.2f", $nd_max / $dn_unit) . "\n";
-		if(($nd_max / $dn_unit) >= 2.5){
-			dp::dp "LAST\n";
+		#dp::dp "$rg: $d100k : $unit_no $d_max / $dn_unit => " . sprintf("%.2f", $d_max / $dn_unit) . "\n";
+		if(($d_max / $dn_unit) >= 2.5){
+			#dp::dp "LAST\n";
 			last;
 		}
 	}
 	if($dn_unit < 1){
 		$dn_unit = 1 ;
-		$unit_no = int(0.99999999 + $nd_max / $dn_unit);
+		$unit_no = int(0.99999999 + $d_max / $dn_unit);
 	}
 
-
-	dp::dp "nd_max: $nd_max, pop_100k: $pop_100k, dn_unit: $dn_unit, unit_no: $unit_no\n";
+	#dp::dp "d_max: $d_max, pop_100k: $pop_100k, dn_unit: $dn_unit, unit_no: $unit_no\n";
 	my $dkey = &search_cdp_key($death_region, $region, $death_post_fix);
 	my $nd_last 	 = $death_rlavr->last_data($dkey);
 	my $nd_last_week = $death_rlavr->last_data($dkey, {end_date => ($week_pos)});
@@ -1525,7 +1613,7 @@ sub	positive_death_ern
 		#dp::dp "[$csvp]\n";
 		#$death_pop[$i]->dump();
 		my $dmax = $death_pop[$i]->{dates};
-		#dp::dp "[$i] $du0 : $nd_max:";
+		#dp::dp "[$i] $du0 : $d_max:";
 		for(my $dt = 0; $dt <= $dmax; $dt++){
 			my $v = $csvp->[$dt];
 			if($v < $du){
@@ -1569,12 +1657,12 @@ sub	positive_death_ern
 	);
 
 	my @list = ();
-	my $dmax_pop = $nd_max / $pop_100k;
+	my $dmax_pop = $d_max / $pop_100k;
 	my $dlst_pop = $nd_last / $pop_100k;
-	my $drate_max = 100 * $nd_max / $nc_max;
+	my $drate_max = 100 * $d_max / $nc_max;
 	my $drate_last = 100 * $nd_last / $nc_last;
 	my $pop_dsc = sprintf("pp[%.1f,%.1f] dp[%.2f,%.2f](max,lst) pop:%d",
-		$pop_max, $pop_last, $nd_max / $pop_100k, $nd_last / $pop_100k, $pop_100k);
+		$pop_max, $pop_last, $d_max / $pop_100k, $nd_last / $pop_100k, $pop_100k);
 	if($pop_ymax_nc){
 		$pop_dsc = sprintf("pop[%d, nc:%.1f, nd:%.1f]", $pop_100k, $pop_ymax_nc, $pop_ymax_nd);
 	}
@@ -1593,7 +1681,7 @@ sub	positive_death_ern
 
 	my $nc_week_diff = $nc_last / $nc_last_week;
 	my $nd_week_diff = $nd_last / $nd_last_week;
-	dp::dp "deaths: $nd_last, $nd_max\n";
+	dp::dp "deaths: $nd_last, $d_max\n";
 	#my $rg = $key;
 	#$rg =~ s/--.*$//;
 	#$rg =~ s/#.*$//;
@@ -1636,7 +1724,7 @@ sub	positive_death_ern
 			$REG_INFO_LIST[$w] = {} if(! defined $REG_INFO_LIST[$w]);
 			#dp::dp "### $w $start_date [$reg] $_nc_last, $_nd_last\n";
 			$REG_INFO_LIST[$w]->{$reg} = {	
-					nc_max => sprintf("%.3f", $nc_max), nd_max => sprintf("%.3f", $nd_max), 
+					nc_max => sprintf("%.3f", $nc_max), nd_max => sprintf("%.3f", $d_max), 
 					nc_week_diff => sprintf("%.3f", $_nc_week_diff), nd_week_diff => sprintf("%.3f", $_nd_week_diff), 
 					nc_last => sprintf("%.3f", $_nc_last), nd_last => sprintf("%.3f", $_nd_last), 
 					nc_pop_max => sprintf("%.3f", $pop_max), nc_pop_last => sprintf("%.3f", $_pop_last), 
@@ -1781,15 +1869,45 @@ if($golist{amt}){
 	);
 	#$amt_pref->dump();
 	push(@$gp_list, csv2graph->csv2graph_list_gpmix(
-		{gdp => $AMT_GRAPH, dsc => "Worldwide Apple Mobility Trends World Wilde", start_date => 0, 
+		{gdp => $AMT_GRAPH, dsc => "Worldwide Apple Mobility Trends World Wilde avr", start_date => 0, 
+			term_y_size => 400,
 			graph_items => [
-			{cdp => $amt_country, item => { transportation_type => "avr"}, static => ""},
-			{cdp => $amt_country, item => { transportation_type => "driving"}, static => "", graph_def => $line_thin},
-			{cdp => $amt_country, item => { transportation_type => "walking"}, static => "", graph_def => $line_thin},
-			{cdp => $amt_country, item => { transportation_type => "transit"}, static => "", graph_def => $line_thin},
+			{cdp => $amt_country, item => { transportation_type => "avr"}, static => "rlavr", graph_def => $line_thick},
 			],
 		},
-		{gdp => $AMT_GRAPH, dsc => "Japan Apple Mobility Trends", start_date => 0, 
+		{gdp => $AMT_GRAPH, dsc => "Worldwide Apple Mobility Trends World Wilde driving", start_date => 0, 
+			term_y_size => 400,
+			graph_items => [
+			{cdp => $amt_country, item => { transportation_type => "driving"}, static => "rlavr", graph_def => $line_thick},
+			],
+		},
+		{gdp => $AMT_GRAPH, dsc => "Worldwide Apple Mobility Trends World Wilde walking", start_date => 0, 
+			term_y_size => 400,
+			graph_items => [
+			{cdp => $amt_country, item => { transportation_type => "walking"}, static => "rlavr", graph_def => $line_thick},
+			],
+		},
+		{gdp => $AMT_GRAPH, dsc => "Worldwide Apple Mobility Trends World Wilde transit", start_date => 0, 
+			term_y_size => 400,
+			graph_items => [
+			{cdp => $amt_country, item => { transportation_type => "transit"}, static => "rlavr", graph_def => $line_thick},
+			],
+		},
+
+		{gdp => $AMT_GRAPH, dsc => "Japan Apple Mobility Trends Simple", start_date => 0, 
+			graph_items => [
+			{cdp => $amt_country, static => "rlavr", target_col => {region => "Japan", transportation_type => "avr"} , graph_def => $line_thick},
+			{cdp => $amt_country, static => "rlavr", target_col => {region => "Japan", transportation_type => "!avr"} , graph_def => $line_thin},
+			],
+		},
+		{gdp => $AMT_GRAPH, dsc => "Japan Apple Mobility Trends Simple", start_date => -90, 
+			graph_items => [
+			{cdp => $amt_country, static => "rlavr", target_col => {region => "Japan", transportation_type => "avr"} , graph_def => $line_thick},
+			{cdp => $amt_country, static => "rlavr", target_col => {region => "Japan", transportation_type => "!avr"} , graph_def => $line_thin},
+			],
+		},
+
+		{gdp => $AMT_GRAPH, dsc => "Japan Apple Mobility Trends", start_date => -90, 
 			graph_items => [
 			{cdp => $amt_country, static => "rlavr", target_col => {region => "Japan", transportation_type => "avr"} , graph_def => $line_thick},
 			{cdp => $amt_country, static => "rlavr", target_col => {region => "Japan", transportation_type => "!avr"} , graph_def => $line_thin},
@@ -1797,16 +1915,17 @@ if($golist{amt}){
 			{cdp => $amt_country, static => "", target_col => {region => "Japan", transportation_type => "!avr"} , graph_def => $line_thin_dot},
 			],
 		},
+
 		{gdp => $AMT_GRAPH, dsc => "EU Apple Mobility Trends", start_date => 0, 
 			graph_items => [
 			{cdp => $amt_country, static => "", target_col => {region => $EU, transportation_type => "avr"}, static => "rlavr"},
 			],
 		},
-		{gdp => $AMT_GRAPH, dsc => "Japan Apple Mobility Trends Prefs", start_date => 0, 
-			graph_items => [
-			{cdp => $amt_pref, static => "", target_col => {country => "Japan", transportation_type => "avr"}, static => "rlavr"},
-			],
-		},
+#		{gdp => $AMT_GRAPH, dsc => "Japan Apple Mobility Trends Prefs ", start_date => 0, 
+#			graph_items => [
+#			{cdp => $amt_pref, static => "", target_col => {country => "Japan", transportation_type => "avr"}, static => "rlavr"},
+#			],
+#		},
 	));
 }
 

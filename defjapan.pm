@@ -69,7 +69,7 @@ our $JAPAN_GRAPH = {
 	END_OF_DATA => $END_OF_DATA,
 	graph => "line",
 
-	timefmt => '%Y-%m-%d', format_x => '%m/%d',
+	timefmt => '%Y-%m-%d', format_x => '%m/%d',		#### 2021.07.31
 	term_x_size => 1000, term_y_size => 350,
 
 	#y2label => 'ERN', y2min => 0, y2max => 3, y2_source => 0,		# soruce csv definition for y2

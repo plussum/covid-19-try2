@@ -77,13 +77,14 @@ our $MHLW_GRAPH = {
 sub	download
 {
 	my $self = shift;
-	my $urls = [		# for keep order of records
+	my $urls = [		# https://www.mhlw.go.jp/stf/covid-19/open-data.html, for keep order of records
 		{pcr_positive => "https://www.mhlw.go.jp/content/pcr_positive_daily.csv"},
 		{pcr_tested_people => "https://www.mhlw.go.jp/content/pcr_tested_daily.csv"},
 		{cases => "https://www.mhlw.go.jp/content/cases_total.csv"},
 		{recovery => "https://www.mhlw.go.jp/content/recovery_total.csv"},
 		{deaths => "https://www.mhlw.go.jp/content/death_total.csv"},
 		{severe => "https://www.mhlw.go.jp/content/severe_daily.csv"},
+		{need_hospitalization  => "https://www.mhlw.go.jp/content/cases_total.csv"},
 	#	{pcr_tested_cases => "https://www.mhlw.go.jp/content/pcr_case_daily.csv"},
 	];
 
@@ -99,7 +100,7 @@ sub	download
 			my $csvf = "$CSV_PATH/mhlw_" . "$item.csv";
 			my $csvf_txt = "$csvf.txt";
 			my $cmd = "wget " . $items->{$item} . " -O $csvf";
-			&do($cmd) if($download);
+			&do($cmd) if($download || !(-f $csvf));
 			&do("nkf -w80 $csvf > $csvf_txt");
 
 			dp::dp $csvf . "\n";

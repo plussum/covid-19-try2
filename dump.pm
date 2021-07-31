@@ -47,8 +47,8 @@ sub	dump_cdp
 	}
 	print "##### HASH ######\n";
 	foreach my $k (@$csv2graph::cdp_hashs){
-		my $vals = $cdp->{$k} // "";
-		if($vals){
+		my $p = $cdp->{$k} // "";
+		if($p){
 			my $sc = scalar(keys %$p);
 			print "$k($sc)\t" . &print_hash($p, $items) . "\n";
 			#my @ar = %$p;
@@ -182,7 +182,7 @@ sub	dump_csv_data
 			if($src_csv) {
 				$scv = $src_csv->{$k} // "-" ;
 			}
-
+			#dp::dp "[$k][$search_key]\n";
 			my $itm = ($items <= $#w) ? $items : $#w;
 			if($search_key && $k =~ /$search_key/){
 				print "[$ln] " . join(", ", $k, "[$scv]", @w[0..$itm]) . " [$search_key]\n";

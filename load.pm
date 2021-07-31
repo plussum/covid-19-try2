@@ -692,25 +692,40 @@ sub	load_transaction
 ##	$key_name = $config::MAIN_KEY if(! $key_name);
 	$self->add_key_items([$config::MAIN_KEY, @items[0..($data_start-1)], "item"]);		# "item_name"
 	$self->set_alias($self->{alias});		#
+	dp::dp csvlib::join_array(",", $self->{alias}) . "\n";
 
 	#dp::dp join(",", "# " , @key_list) . "\n";
 	dp::dp "load_transaction: " . join(", ", @items) . "\n";
 
 	my $added_key = select::added_key($self);
-	my $dt_end = -1;
+	my $dt_end = 0;
+	my %date_col = ();
 	while(<FD>){
 		#dp::dp $_;
 		my (@vals)  = util::csv($_);
 
-		$vals[0] += 2000 if($vals[0] < 100);
-		my $ymd = sprintf("%04d-%02d-%02d", $vals[0], $vals[1], $vals[2]);		# 2020/01/03 Y/M/D
+		my @date = ();
+		if($self->{timefmt} eq '%Y/%m/%d'){			# comverbt to %Y-%m-%d
+			@date = split(/\//, $vals[0]);
+		}
+		elsif($self->{timefmt} eq '%Y:0-%m:1-%d:2'){
+			push(@date, $vals[0], $vals[1], $vals[2]);
+		}		# comverbt to %Y-%m-%d
+		#dp::dp join(", ", @vals) . "\n";
+		#exit;
 
-		if($dt_end < 0 || ($date_list->[$dt_end] // "") ne $ymd){
-			$date_list->[++$dt_end] = $ymd;
+		$date[0] += 2000 if($date[0] < 100);
+		my $ymd = sprintf("%04d-%02d-%02d", $date[0], $date[1], $date[2]);		# 2020/01/03 Y/M/D
+
+		#if($dt_end < 0 || ($date_list->[$dt_end] // "") ne $ymd){
+		if(! defined $date_col{$ymd}){
+			$date_col{$ymd} = $dt_end;
+			$date_list->[$dt_end++] = $ymd;
 		}
 
 		my @gen_key = ();			# Generate key
 		foreach my $n (@keys){
+			#dp::dp "[$n]\n";
 			if($n =~ /\D/){			# not number
 				my $nn = $self->{item_name_hash}->{$n} // -1;
 				if($nn < 0){
@@ -718,6 +733,7 @@ sub	load_transaction
 				}
 				$n = $nn - 1;		# added "mainkey" and "item"
 			}
+			#dp::dp "[$n]\n";
 			#dp::dp "$n: " . csvlib::join_array(",", @vals) . "\n";
 			my $itm = $vals[$n];
 			push(@gen_key, $itm);
@@ -737,14 +753,19 @@ sub	load_transaction
 				$self->add_record($master_key,
 						 [$master_key, @vals[0..($data_start-1)], $item_name], []);		# add record without data
 			}
-			my $v = $vals[$i] // 0;
+			my $v = $vals[$i];
+			#:dp::dp "[$master_key] $v\n";
+			#my $v = $vals[$i] // 0;
 			$v = 0 if(!$v || $v eq "-");
-			$csv_data->{$master_key}->[$dt_end] = $v;
-			#dp::dp "load_transaction: $ymd " . join(",", $k, $dt_end, $v, "#", @{$csv_data->{$k}}) . "\n";
+
+			my $dcol = $date_col{$ymd};
+			$csv_data->{$master_key}->[$dcol] = $v;
+			#dp::dp "[$master_key] $v\n";
+			#dp::dp "load_transaction: $ymd " . join(",", $master_key, $dt_end, $v, "#", @{$csv_data->{$master_key}}) . "\n";
 		}
 	}
 	close(FD);
-	dp::dp "##### data_end at transaction: $self->{id} $dt_end: $date_list->[$dt_end]\n";
+	#dp::dp "##### data_end at transaction: $self->{id} $dt_end: $date_list->[$dt_end]\n";
 
 	#
 	#	Set unassgined data with 0
@@ -754,9 +775,10 @@ sub	load_transaction
 		for(my $i = 0; $i <= $dt_end; $i++){
 			$dp->[$i] = $dp->[$i] // 0;
 		}
+		#dp::dp join(",", "$k: ", @{$csv_data->{$k}}) . "\n";
 	}
 
-	$self->{dates} = $dt_end;
+	$self->{dates} = $dt_end - 1;
 	$FIRST_DATE = $date_list->[0];
 	$LAST_DATE = $date_list->[$dt_end];
 
