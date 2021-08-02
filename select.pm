@@ -242,10 +242,11 @@ sub	select_keys
 		#dp::dp "Key_itmes: " . csvlib::join_array(",", $key_items) . "\n";
 		foreach my $key (keys %$key_items){
 			my $key_in_data = $key_items->{$key};
+			#dp::dp "key [$key] " . csvlib::join_array(",", @target_col_array) . "\n";
 			#dp::dp Dumper $key_in_data;
 			my $res = &check_keys($key_in_data, \@target_col_array, \@non_target_col_array, $key, $verbose);
 			#dp::dp "[$key:$condition:$res]\n" ;#if($verbose  > 1);
-			dp::dp "### " . join(", ", (($res >= $condition) ? "O" : "-"), $key, $res, $condition, "[".join(",", @$key_in_data)."]") . "\n" if($verbose > 1) ;
+			#dp::dp "### " . join(", ", (($res >= $condition) ? "O" : "-"), $key, $res, $condition, "[".join(",", @$key_in_data)."]") . "\n" if($verbose > 1) ;
 					### -, key:最高気温(), res:0, condition:1, key_in_data:[mainkey]
 			next if ($res < 0);
 
@@ -258,7 +259,7 @@ sub	select_keys
 		}
 	}
 
-	if(0 && $verbose){
+	if($verbose){
 		my $size = scalar(@$target_keys) - 1;
 		dp::dp "SIZE: $size\n";
 		$size = 5 if($size > 5);

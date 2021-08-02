@@ -34,27 +34,66 @@ my $MLW_DL_FLAG_FILE = "$CSV_PATH/mhlw_flag";
 #my $TKO_PATH = "$WIN_PATH/tokyokeizai";
 #my $BASE_DIR = "$TKO_PATH/covid19/data";
 #our $transaction = "$BASE_DIR/prefectures.csv";
+my %defs = (
+	severe => {src_file => "$CSV_PATH/mhlw_severe.csv", 
+				src_url => "https://covid19.mhlw.go.jp/public/opendata/severe_cases_daily.csv",
+				data_start => 2, keys => ["Prefecture"],
+				item_names => ["Date", "Prefecture", "Severe"]},
+	hosp => {src_file => "$CSV_PATH/mhlw_hospitalaized.csv", 
+				src_url => "https://covid19.mhlw.go.jp/public/opendata/requiring_inpatient_care_etc_daily.csv",
+				data_start => 2, keys => ["Prefecture"],
+				item_names => ["Date", "Prefecture", "Inpatient", "Discharged", "ToBeConfirmed"] },
+	tested => {src_file => "$CSV_PATH/mhlw_tested.csv", 
+				src_url => "https://www.mhlw.go.jp/content/pcr_tested_daily.csv",
+				data_start => 1, keys => [],
+				item_names => ["Date", "Tested"]},
+	deaths => {src_file => "$CSV_PATH/mhlw_deaths.csv", 
+				src_url => "https://covid19.mhlw.go.jp/public/opendata/deaths_cumulative_daily.csv", 
+				data_start => 2, keys => ["Prefecture"],
+				item_names => ["Date", "Prefecture", "Deaths"], cumrative => "init0",},
+	positive =>	{src_file => "$CSV_PATH/mhlw_newcases.csv", 
+				src_url => "https://covid19.mhlw.go.jp/public/opendata/newly_confirmed_cases_daily.csv",
+				data_start => 2, keys => ["Prefecture"],
+				item_names => ["Date", "Prefecture", "Positive"] },
+
+
+);
+my @defs_none = (
+);
+
 my $MHLW_CSV = "$CSV_PATH/mhlw.csv";
-our $MHLW_DEF = 
+our $MHLW_TAG = 
 {
 	id => "mhlw",
-	src_info => "Japan COVID-19 data (MHLW)",
-	main_url => "-- Kosei Roudousyou --- ",
-	src_file => $MHLW_CSV,
-	src_url => 	"--- src url ---",		# set
+	src_info => "Japan COVID-19 data (MHLW) new cases",
+	main_url => "",
+	src_file => "",
+	src_url => 	"",
+	cumrative => 0,
+
 	down_load => \&download,
 
-	direct => "holizontal",		# vertical or holizontal(Default)
-	cumrative => 0,
-	timefmt => '%Y-%m-%d',		# comverbt to %Y-%m-%d
+	direct => "transaction",		# vertical or holizontal(Default)
+	timefmt => '%Y/%m/%d',		# comverbt to %Y-%m-%d
 	src_dlm => ",",
 	key_dlm => "#",
 	keys => ["item"],		# PrefectureNameJ, and Column name
 	data_start => 1,
 	alias => {},
 };
+
+our %MHLW_DEFS = ();
+foreach my $k(keys %defs){
+	my $def = {%$MHLW_TAG};
+	my $p = $defs{$k};
+	foreach my $k (keys %$p){
+		$def->{$k} = $p->{$k};
+	}
+	$MHLW_DEFS{$k} = $def;
+}
+
 our $MHLW_GRAPH = {
-	html_title => $MHLW_DEF->{src_info},
+	html_title => $MHLW_TAG->{src_info},
 	png_path   => "$PNG_PATH",
 	png_rel_path => $PNG_REL_PATH,
 	html_file => "$HTML_PATH/mhlw_open_data.html",
@@ -77,94 +116,20 @@ our $MHLW_GRAPH = {
 sub	download
 {
 	my $self = shift;
-	my $urls = [		# https://www.mhlw.go.jp/stf/covid-19/open-data.html, for keep order of records
-		{pcr_positive => "https://www.mhlw.go.jp/content/pcr_positive_daily.csv"},
-		{pcr_tested_people => "https://www.mhlw.go.jp/content/pcr_tested_daily.csv"},
-		{cases => "https://www.mhlw.go.jp/content/cases_total.csv"},
-		{recovery => "https://www.mhlw.go.jp/content/recovery_total.csv"},
-		{deaths => "https://www.mhlw.go.jp/content/death_total.csv"},
-		{severe => "https://www.mhlw.go.jp/content/severe_daily.csv"},
-		{need_hospitalization  => "https://www.mhlw.go.jp/content/cases_total.csv"},
-	#	{pcr_tested_cases => "https://www.mhlw.go.jp/content/pcr_case_daily.csv"},
-	];
+	my ($p) = @_;
 
-	my $csv = {};
-	my @date = ();
-	my $file_no = 0;
-	my $col_no = 0;
-	my @header = ();
+	my $item = $p->{item};
+	dp::ABORT "download [$item]" if(! defined $MHLW_DEFS{$item});
 
 	my $download = $self->check_download();
-	foreach my $items (@$urls){
-		foreach my $item (keys %$items){
-			my $csvf = "$CSV_PATH/mhlw_" . "$item.csv";
-			my $csvf_txt = "$csvf.txt";
-			my $cmd = "wget " . $items->{$item} . " -O $csvf";
-			&do($cmd) if($download || !(-f $csvf));
-			&do("nkf -w80 $csvf > $csvf_txt");
-
-			dp::dp $csvf . "\n";
-			open(FD, "$csvf") || die "canot open $csvf.txt";
-			binmode(FD, ":utf8");
-			my @data = ();
-			my $rn = 0;
-			my $vn = 0;
-			for($rn = 0; <FD>; $rn++){
-				#print;
-				s/[\r\n]+$//;;
-				my ($dt, @vals) = split(/,/, $_);
-				if($rn <= 0){
-					s/^[^,]+,//;
-					push(@header, $item);
-					next;
-				}
-				my ($y, $m, $d) = split(/\//, $dt);
-				$dt = sprintf("%04d-%02d-%02d", $y, $m, $d);
-				$csv->{$dt} = [] if(! defined $csv->{$dt});
-				$vn = $#vals if($#vals > $vn);
-				if($file_no == 0){
-					#dp::dp "[$dt]\n";
-					push(@date, $dt);
-				}
-				#dp::dp "[$dt] $vn $_\n";
-				#dp::dp $#vals . "\n";
-				for(my $i = 0; $i <= $#vals; $i++){
-					my $n = $col_no + $i;
-					$csv->{$dt}->[$n] = $vals[$i];
-				}
-			}
-			close(FD);
-			$col_no += $vn + 1;
-			$file_no++;
-		}
-	}
-	open(OUT, "> $MHLW_CSV") || die "cannot create $MHLW_CSV";
-	binmode(OUT, ":utf8");
-	my @date_list = (sort keys %$csv);
-	print OUT join(",", "item", @date_list) . "\n";
-	for(my $i = 0; $i <= $#header; $i++){
-		my @data = ();
-		foreach my $dt (@date_list){
-			push(@data, sprintf("%.2f", $csv->{$dt}->[$i] // 0));
-		}
-		if($header[$i] eq "deaths"){
-			for(my $i = $#date_list; $i > 0; $i--){
-				$data[$i] = $data[$i] - $data[$i-1];
-			}
-		} 
-		print OUT join(",", $header[$i], @data) . "\n";
-	}
-			
-	#print OUT join(",", @header) . "\n";
-	#foreach my $dt (sort keys %$csv){
-	#	my  @data = ();
-	#	for(my $i = 0; $i < $col_no; $i++){
-	#		push(@data, $csv->{$dt}->[$i] // 0);
-	#	}
-	#	print OUT join(",", $dt, @data) . "\n";
-	#	#dp::dp join(",", $date[$dt]) . "\n";
-	#}
-	close(OUT);
+	# severe => {src_file => "$CSV_PATH/mhlw_severe.csv", src_url => "https://covid19.mhlw.go.jp/public/opendata/severe_cases_daily.csv"},
+	my $def = $MHLW_DEFS{$item};
+	my $csvf = $def->{src_file};
+	my $csvf_txt = "$csvf.txt";
+	my $cmd = "wget " . $def->{src_url} . " -O $csvf";
+	&do($cmd) if($download || !(-f $csvf));
+	&do("nkf -w80 $csvf > $csvf_txt");
+	dp::dp "download done\n";
 }
 
 sub	do

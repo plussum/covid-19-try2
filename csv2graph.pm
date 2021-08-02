@@ -206,6 +206,7 @@ our $GRAPH_KIND = {
 
 #	data_start => "",	# Data start colum, ex, 4 : Province,Region, Lat, Long, 2021-01-23, 
 #	down_load => "", 	# Download function
+
 	
 # set dump
 sub	dump_cdp { return dump::dump_cdp(@_); }
@@ -357,15 +358,15 @@ sub	add_key_items
 		}
 		#my $new_key = join($self->{dlm}, $key_name, $label);	# change master key seems messsy...
 	}
-	my $item_name_list = $self->{item_name_list};
 
 	#dp::dp join(",", @$key_names) . "\n";
+	my $item_name_list = $self->{item_name_list};
 	my $item_order = scalar(@$item_name_list);
 	push(@$item_name_list, @$key_names);		# set item_name 
 	foreach my $kn (@$key_names){
 		$self->{item_name_hash}->{$kn} = $item_order++;
 	}
-	#dp::dp "add key : " . join(",", @$item_name_list) . "\n";
+	#dp::dp "add key : " . csvlib::join_array(",", @$item_name_list) . "\n";
 
 	return 1;
 }
@@ -1486,6 +1487,7 @@ set output '$pngf'
 plot #PLOT_PARAM#
 exit
 _EOD_
+	my @label_subs = ($label[0]);
 	for(my $i = 1; $i <= $#label; $i++){
 		my $graph = $gp->{graph} // ($gdp->{graph} // $DEFAULT_GRAPH);
 		my $y2_graph = "";
@@ -1495,6 +1497,7 @@ _EOD_
 			my $sub_to = $gp->{label_sub_to} // "";
 			$key =~ s/$sub_from/$sub_to/;
 		}
+		$label_subs[$i] = $key;
 		#dp::dp "[$graph_def]\n";
 		if($graph_def =~ /^#D#/){
 			if(defined $GRAPH_KIND->{$graph_def}){
@@ -1618,6 +1621,25 @@ _EOD_
 	#dp::dp "gnuplot $plotf\n";
 	system("gnuplot $plotf");
 	#dp::dp "-- Done\n";
+
+	#
+	#	Rewarite csvfile 
+	#
+	unlink("$csvf.lbl");
+	rename($csvf, "$csvf.lbl");
+
+	open(CSV, "$csvf.lbl") || die "cannot open $csvf.lbl";
+	open(LBL, ">$csvf") || die "cannot create $csvf";
+	binmode(CSV, ":utf8");
+	binmode(LBL, ":utf8");
+	<CSV>;						# rewrite first line 
+	print LBL join($dlm, @label_subs) . "\n";
+	while(<CSV>){
+		print LBL $_;
+	} 
+	close(CSV);
+	close(LBL);
+
 }
 
 #

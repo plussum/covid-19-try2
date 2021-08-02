@@ -17,6 +17,9 @@ use csvlib;
 use dump;
 use util;
 
+# set csvlib
+sub	ja {return csvlib::join_array(@_);}
+
 my $VERBOSE = 0;
 
 my $FIRST_DATE = "";
@@ -38,7 +41,7 @@ sub	load_csv
 	if(($download // "")){
 		my $download = $self->{download};
 		#$download->($self);
-		&{$self->{down_load}}($self);
+		&{$self->{down_load}}($self, $p);
 	}
 	if(! $src_file){
 		dp::WARNING "load_csv: no src_file information\n";
@@ -675,6 +678,10 @@ sub	load_transaction
 	dp::dp "$src_file\n";
 	open(FD, $src_file) || die "cannot open $src_file";
 	binmode(FD, ":utf8");
+
+	#
+	#	Set items
+	#
 	my $line = <FD>;
 	$line =~ s/[\r\n]+$//;
 	my @items = util::csv($line);
@@ -685,35 +692,45 @@ sub	load_transaction
 		for(my $i = 0; $i <= $#items; $i++){
 			my $item_org = $items[$i];
 			my $item_rew = $items_rew->[$i];
-			$alias_auto->{$item_org} = $i;
-			#$alias_auto->{$item_rew} = $i;
+			$alias_auto->{$item_org} = $i + 1;
+			$alias_auto->{$item_rew} = $i + 1;
+			dp::dp "[$item_org][$item_rew]\n";
 		}
 		@items = @{$self->{item_names}};
-		dp::dp "itemnames: " . join(",", @items) . "\n";
+		#dp::dp "itemnames: " . csvlib::join_array(",", @items) . "\n";
 		$self->set_alias($alias_auto);		#
+		#dp::dp "alias_auto: " . csvlib::join_array(",", $alias_auto) . "\n";
+		#dp::dp csvlib::join_array(",", $self->{alias}) . "\n";
 	}
 
-##	my $key_name = $self->{key_name} // "";
-##	$key_name = $config::MAIN_KEY if(! $key_name);
-##	@{$self->{item_name_list}} = (@items[0..($data_start-1)], $key_name);	# set item_name 
-##	my $kn = 0;
-##	foreach my $k (@items[0..($data_start-1)], $key_name){
-##		#dp::dp "$k: $kn\n";
-##		$self->{item_name_hash}->{$k} = $kn++;
-##	}
-
-##	my $key_name = $self->{key_name} // "";			# set key name as "key" or $self->{key_name}
-##	$key_name = $config::MAIN_KEY if(! $key_name);
 	$self->add_key_items([$config::MAIN_KEY, @items[0..($data_start-1)], "item"]);		# "item_name"
 	$self->set_alias($self->{alias});		#
-	dp::dp csvlib::join_array(",", $self->{alias}) . "\n";
+	#dp::dp csvlib::join_array(",", $self->{alias}) . "\n";
 
 	#dp::dp join(",", "# " , @key_list) . "\n";
-	dp::dp "load_transaction: " . join(", ", @items) . "\n";
+	#dp::dp "load_transaction: " . join(", ", @items) . "\n";
 
+	#	Set key to key number
+	my @keys_no = ();
+	foreach my $n (@keys){
+		if($n =~ /^=/){
+			$n =~ s/^=//;
+		}
+		elsif($n =~ /\D/){			# not number
+			my $nn = $self->{item_name_hash}->{$n} // -1;
+			if($nn < 0){
+				dp::WARNING "key: no defined key[$n] " . join(",", @keys) . "\n";
+			}
+			$n = $nn;  # - 1;		# added "mainkey" and "item"
+			#dp::dp "key $n\n";
+		}
+		push(@keys_no, $n);
+	}
 	my $added_key = select::added_key($self);
 	my $dt_end = 0;
 	my %date_col = ();
+	my $ln = 0;
+	my $dt_start = -1;
 	while(<FD>){
 		#dp::dp $_;
 		my (@vals)  = util::csv($_);
@@ -731,32 +748,27 @@ sub	load_transaction
 		$date[0] += 2000 if($date[0] < 100);
 		my $ymd = sprintf("%04d-%02d-%02d", $date[0], $date[1], $date[2]);		# 2020/01/03 Y/M/D
 
-		#if($dt_end < 0 || ($date_list->[$dt_end] // "") ne $ymd){
-		if(! defined $date_col{$ymd}){
-			$date_col{$ymd} = $dt_end;
-			$date_list->[$dt_end++] = $ymd;
-		}
+		my $dt_sn = int(csvlib::ymd2tm($date[0], $date[1], $date[2], 0, 0, 0) / (24 * 60 * 60));
+		$dt_start = $dt_sn if($dt_start < 0);
+		my $dt = $dt_sn - $dt_start;
+		#dp::dp "dt: $dt, $dt_sn, $dt_start\n";
+		$date_list->[$dt] = $ymd;
+		$dt_end = $dt if($dt > $dt_end);
+		$date_col{$ymd} = $dt;
+		#if(! defined $date_col{$ymd}){
+		#	$date_col{$ymd} = $dt_end;
+		#	$dt_end++ = $ymd;
+		#}
 
 		my @gen_key = ();			# Generate key
-		foreach my $n (@keys){
-			#dp::dp "[$n]\n";
-			if($n =~ /\D/){			# not number
-				my $nn = $self->{item_name_hash}->{$n} // -1;
-				if($nn < 0){
-					dp::WARNING "key: no defined key[$n] " . join(",", @keys) . "\n";
-				}
-				$n = $nn - 1;		# added "mainkey" and "item"
-			}
-			#dp::dp "[$n]\n";
-			#dp::dp "$n: " . csvlib::join_array(",", @vals) . "\n";
-			my $itm = $vals[$n];
-			push(@gen_key, $itm);
+		foreach my $n (@keys_no){
+			my $v = ($n =~ /^\D/) ? $n : $vals[$n-1];
+			push(@gen_key, $v);
 		}
-		#dp::dp "$ymd: " . join(",", @gen_key) . "\n";
+		
+		#dp::dp "$ymd: " . &ja(",", @gen_key) . "  #   " . &ja(",", @keys_no) . "#" . &ja(",", @vals) . "\n" ;# if($ln++ < 9999);
 
 		#
-		#		year,month,prefJ,PrefE,testedPositive,PeopleTested,Hospitalzed....
-		#		2020,2,東京,Tokyo,3,130,,,,,
 		#
 		for(my $i = $data_start; $i <= $#items; $i++){
 			my $item_name = $items[$i];
@@ -792,7 +804,7 @@ sub	load_transaction
 		#dp::dp join(",", "$k: ", @{$csv_data->{$k}}) . "\n";
 	}
 
-	$self->{dates} = $dt_end - 1;
+	$self->{dates} = $dt_end;
 	$FIRST_DATE = $date_list->[0];
 	$LAST_DATE = $date_list->[$dt_end];
 
@@ -815,6 +827,7 @@ sub	cumrative2daily
 		for(my $i = $dates; $i > 0; $i--){
 			$dp->[$i] = $dp->[$i] - $dp->[$i-1];
 		}
+		$dp->[0] = 0 if($self->{cumrative} eq "init0");
 	}
 }
 
