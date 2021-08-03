@@ -702,8 +702,20 @@ sub	load_transaction
 		#dp::dp "alias_auto: " . csvlib::join_array(",", $alias_auto) . "\n";
 		#dp::dp csvlib::join_array(",", $self->{alias}) . "\n";
 	}
+	my @add_key_item = ();
+	my @add_key_val = ();
+	my %add_key_hash = ();
+	if(defined $self->{add_keys}){
+		foreach my $ak (@{$self->{add_keys}}){
+			my ($item, $v) = split(/ *= */, $ak);
+			push(@add_key_item, $item);
+			push(@add_key_val, $v);
+			$add_key_hash{$item} = $v;
+		}
+	}
+	#dp::dp "add_key: " . join(",", @add_key_val) . "\n";
+	$self->add_key_items([$config::MAIN_KEY, @items[0..($data_start-1)], "item", @add_key_item]);		# "item_name"
 
-	$self->add_key_items([$config::MAIN_KEY, @items[0..($data_start-1)], "item"]);		# "item_name"
 	$self->set_alias($self->{alias});		#
 	#dp::dp csvlib::join_array(",", $self->{alias}) . "\n";
 
@@ -712,21 +724,37 @@ sub	load_transaction
 
 	#	Set key to key number
 	my @keys_no = ();
+	my $static = 0;
+	my @static_val = ();
 	foreach my $n (@keys){
-		if($n =~ /^=/){
-			$n =~ s/^=//;
-		}
-		elsif($n =~ /\D/){			# not number
-			my $nn = $self->{item_name_hash}->{$n} // -1;
-			if($nn < 0){
+		#if($n =~ /=/){
+		#	my($item, $val) = split(/ *= */, $n);
+		#	my $nn = $self->{item_name_hash}->{$item} // -1;
+		#	if($nn < 0){
+		#		dp::WARNING "key: no defined key[$n] " . join(",", @keys) . "\n";
+		#	}
+		#	$n = --$static;
+		#	push(@static_val, $val);
+		#}
+		dp::dp "keys [$n]\n";
+		if($n =~ /\D/){			# not number
+			if(defined $add_key_hash{$n}){
+				dp::dp "add_key_hash [$n]   $add_key_hash{$n}\n";
+			}
+			elsif(defined $self->{item_name_hash}->{$n}){
+				my $nn = $self->{item_name_hash}->{$n};
+				dp::dp "[[$nn]]\n";
+				$n = $nn;  # - 1;		# added "mainkey" and "item"
+			}
+			else {
 				dp::WARNING "key: no defined key[$n] " . join(",", @keys) . "\n";
 			}
-			$n = $nn;  # - 1;		# added "mainkey" and "item"
-			#dp::dp "key $n\n";
+			dp::dp "key [$n]\n";
 		}
 		push(@keys_no, $n);
 	}
-	my $added_key = select::added_key($self);
+	my $added_key = ""; #select::added_key($self);
+
 	my $dt_end = 0;
 	my %date_col = ();
 	my $ln = 0;
@@ -762,36 +790,58 @@ sub	load_transaction
 
 		my @gen_key = ();			# Generate key
 		foreach my $n (@keys_no){
-			my $v = ($n =~ /^\D/) ? $n : $vals[$n-1];
+			my $v = 0; 
+			if($n =~ /^\D/){
+				$v = $n;
+			}
+			else {	
+				$v =  $vals[$n-1]//"UNDEF";
+			}
 			push(@gen_key, $v);
+			#dp::dp ">>>> [$n] $v " . join(",", $vals[$n-1]//"-UNDEF-", @keys) . "\n";
 		}
 		
-		#dp::dp "$ymd: " . &ja(",", @gen_key) . "  #   " . &ja(",", @keys_no) . "#" . &ja(",", @vals) . "\n" ;# if($ln++ < 9999);
+		#dp::dp "$ymd: " . &ja(",", @gen_key) . "  #   " . &ja(",", @keys_no) . "   |   " . &ja(",", @vals) . "\n" ;# if($ln++ < 9999);
 
 		#
 		#
 		for(my $i = $data_start; $i <= $#items; $i++){
 			my $item_name = $items[$i];
-			my $master_key = join($key_dlm, @gen_key, $item_name) . $added_key;				# set key_name
+			my @mks = ($item_name);
+			push(@mks, @add_key_val) if($#add_key_val >= 0);
+			#dp::dp csvlib::join_array($key_dlm, @gen_key, @mks) . "\n";
+			my $master_key = join($key_dlm, @gen_key, @mks);				# set key_name
 			if(! defined $csv_data->{$master_key}){
 				#dp::dp "load_transaction: assinge csv_data [$master_key]\n";
 
 				$self->add_record($master_key,
-						 [$master_key, @vals[0..($data_start-1)], $item_name], []);		# add record without data
+						 [$master_key, @vals[0..($data_start-1)], @mks], []);		# add record without data
 			}
 			my $v = $vals[$i];
-			#:dp::dp "[$master_key] $v\n";
+			#dp::dp "[$master_key] $v\n";
 			#my $v = $vals[$i] // 0;
 			$v = 0 if(!$v || $v eq "-");
 
 			my $dcol = $date_col{$ymd};
 			$csv_data->{$master_key}->[$dcol] = $v;
 			#dp::dp "[$master_key] $v\n";
-			#dp::dp "load_transaction: $ymd " . join(",", $master_key, $dt_end, $v, "#", @{$csv_data->{$master_key}}) . "\n";
+			# dp::dp "$ymd " . "[$master_key] = $v  ($dt_end)" . "\n"; #, @{$csv_data->{$master_key}}) . "\n";
 		}
 	}
 	close(FD);
 	#dp::dp "##### data_end at transaction: $self->{id} $dt_end: $date_list->[$dt_end]\n";
+	for(my $i = 0; $i <= $dt_end; $i++){
+		next if(defined $date_list->[$i]);
+
+		my $dt = $dt_start + $i * 24 * 60 * 60;
+		my $ymd = csvlib::ut2d($dt, "-");
+		$date_list->[$i] = $ymd;
+		dp::dp "set $ymd\n";
+		foreach my $mk (keys %$csv_data){
+			my $cdpw = $csv_data->{$mk};
+			$cdpw->[$i] = "NaN";
+		}
+	}
 
 	#
 	#	Set unassgined data with 0

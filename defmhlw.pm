@@ -35,30 +35,36 @@ my $MLW_DL_FLAG_FILE = "$CSV_PATH/mhlw_flag";
 #my $BASE_DIR = "$TKO_PATH/covid19/data";
 #our $transaction = "$BASE_DIR/prefectures.csv";
 my %defs = (
-	severe => {src_file => "$CSV_PATH/mhlw_severe.csv", 
-				src_url => "https://covid19.mhlw.go.jp/public/opendata/severe_cases_daily.csv",
-				data_start => 2, keys => ["Prefecture"],
-				item_names => ["Date", "Prefecture", "Severe"]},
-	hosp => {src_file => "$CSV_PATH/mhlw_hospitalaized.csv", 
-				src_url => "https://covid19.mhlw.go.jp/public/opendata/requiring_inpatient_care_etc_daily.csv",
-				data_start => 2, keys => ["Prefecture"],
-				item_names => ["Date", "Prefecture", "Inpatient", "Discharged", "ToBeConfirmed"] },
-	tested => {src_file => "$CSV_PATH/mhlw_tested.csv", 
+	tested => {	mid => "t",
+				src_file => "$CSV_PATH/mhlw_tested.csv", 
 				src_url => "https://www.mhlw.go.jp/content/pcr_tested_daily.csv",
-				data_start => 1, keys => [],
+				data_start => 1, keys => ["Prefecture"], add_keys => ["Prefecture=ALL"],
 				item_names => ["Date", "Tested"]},
-	deaths => {src_file => "$CSV_PATH/mhlw_deaths.csv", 
-				src_url => "https://covid19.mhlw.go.jp/public/opendata/deaths_cumulative_daily.csv", 
-				data_start => 2, keys => ["Prefecture"],
-				item_names => ["Date", "Prefecture", "Deaths"], cumrative => "init0",},
-	positive =>	{src_file => "$CSV_PATH/mhlw_newcases.csv", 
+	positive =>	{mid => "p",
+				src_file => "$CSV_PATH/mhlw_newcases.csv", 
 				src_url => "https://covid19.mhlw.go.jp/public/opendata/newly_confirmed_cases_daily.csv",
 				data_start => 2, keys => ["Prefecture"],
 				item_names => ["Date", "Prefecture", "Positive"] },
-
-
 );
 my @defs_none = (
+	severe => {	mid => "s",
+				src_file => "$CSV_PATH/mhlw_severe.csv", 
+				src_url => "https://covid19.mhlw.go.jp/public/opendata/severe_cases_daily.csv",
+				data_start => 2, keys => ["Prefecture"],
+				item_names => ["Date", "Prefecture", "Severe"]},
+	hosp => {	mid => "h",
+				src_file => "$CSV_PATH/mhlw_hospitalaized.csv", 
+				src_url => "https://covid19.mhlw.go.jp/public/opendata/requiring_inpatient_care_etc_daily.csv",
+				data_start => 2, keys => ["Prefecture"],
+				item_names => ["Date", "Prefecture", "Inpatient", "Discharged", "ToBeConfirmed"] },
+
+	deaths => {	mid => "d",
+				src_file => "$CSV_PATH/mhlw_deaths.csv", 
+				src_url => "https://covid19.mhlw.go.jp/public/opendata/deaths_cumulative_daily.csv", 
+				data_start => 2, keys => ["Prefecture"],
+				item_names => ["Date", "Prefecture", "Deaths"], cumrative => "init0",},
+
+
 );
 
 my $MHLW_CSV = "$CSV_PATH/mhlw.csv";
@@ -66,7 +72,7 @@ our $MHLW_TAG =
 {
 	id => "mhlw",
 	src_info => "Japan COVID-19 data (MHLW) new cases",
-	main_url => "",
+	main_url => "https://www.mhlw.go.jp/stf/covid-19/open-data.html",
 	src_file => "",
 	src_url => 	"",
 	cumrative => 0,

@@ -646,30 +646,67 @@ if($golist{mhlw}) {
 	@$gp_list = ();
 	# positive,  reqcare, deaths, severe
 	my %cdp_raw = ();
-	my %cdp_rlavr = ();
+	my @cdps = ();
 	foreach my $item (keys %defmhlw::MHLW_DEFS){
 		dp::dp "[$item]\n";
 		$cdp_raw{$item} = csv2graph->new($defmhlw::MHLW_DEFS{$item}); 						# Load Johns Hopkings University CCSE
 		$cdp_raw{$item}->load_csv({download => 1, item => $item});
-		$cdp_rlavr{$item} = $cdp_raw{$item}->calc_rlavr();
-		$cdp_raw{$item}->dump({search_key => "ALL"});
+		#$cdp_rla{$item} = $cdp_raw{$item}->calc_rlavr();
+		push(@cdps, $cdp_raw{$item});
+		#$cdp_raw{$item}->dump();
 	}
+	my $cdp = csv2graph->new($defmhlw::MHLW_TAG);
+	$cdp = $cdp->marge_csv(@cdps);
+	$cdp->dump();
+	my $cdp_rlavr = $cdp->calc_rlavr();
+
+	my $result_name = "percent";
+	my @dm_key = ();
+	my $item_sz = scalar(@{$cdp->{item_name_list}});
+	for(my $i = 0; $i < $item_sz; $i++){
+		push(@dm_key, "NaN");
+	}
+	$cdp->add_key_items([$config::MAIN_KEY, $result_name]);		# "item_name"
+	my $csv_positive = $cdp_rlavr->{csv_data}->{"ALL#Positive"};
+	my $csv_tested = $cdp_rlavr->{csv_data}->{"Prefecture#Tested#ALL"};
+	my $master_key = join($cdp->{key_dlm}, $result_name);				# set key_name
+	$cdp->add_record($master_key, [@dm_key, $result_name, $result_name],[$result_name]);		# add record without data 
+	my $csv_pct = $cdp->{csv_data}->{$master_key};
+
+	my $dates = $cdp_raw{positive}->{dates};
+	dp::dp "positive: (" . scalar(@$csv_positive) . ")" . join(",",  @$csv_positive) . "\n";
+	dp::dp "tested  : (" . scalar(@$csv_tested)   . ")" . join(",",  @$csv_tested) . "\n";
+	for(my $i = 0; $i <= $dates; $i++){
+		my $p =  $csv_positive->[$i] // 0;
+		my $t = $csv_tested->[$i] // 999999;
+		my $v = sprintf("%.3f", $p * 100 / $t);
+		$csv_pct->[$i] = $v;
+	}
+	$cdp->dump({search_key => $result_name});
+	#$cdp->calc_record({result => "ALL#percent", op => ["item-p", "*=100" , "/item-t"], v => 2});
+	#$cdp->dump();
+	#$cdp->dump({search_key => "percent"});
+#
 	#my $rlavr = $cdp->calc_rlavr();
 	#$rlavr->calc_record({result => "#positive_percent", op => ["pcr_positive", "*=100", "/pcr_tested_people"], v => 0} );
 	#$cdp->dump();
+	
 
 	foreach my $start_date (0, -28){
 		push(@$gp_list, csv2graph->csv2graph_list_gpmix(
 		{gdp => $defmhlw::MHLW_GRAPH, dsc => "Japan PCR test results", start_date => $start_date, 
-			ymin => 0, y2min => 0,
+			ymin => 0, y2min => 0,y2max => 20,
 			ylabel => "pcr_tested/positive", y2label => "positive rate(%)",
 			#additional_plot => $additional_plot_item{ern}, 
 			graph_items => [
-				{cdp => $cdp_rlavr{tested},  item => {}, static => "", graph_def => $box_fill},
-				{cdp => $cdp_rlavr{positive},  item => {"item" => "Positive","Prefecture" => "ALL"}, static => "", graph_def => $line_thick},
-				{cdp => $cdp_rlavr{hosp},  item => {"Prefecture" => "ALL", "item" => "Inpatient"}, static => "", graph_def => $line_thick, axis => "y2"},
-				{cdp => $cdp_rlavr{severe},  item => {"Prefecture" => "ALL"}, static => "", graph_def => $line_thick, axis => "y2"},
-				{cdp => $cdp_rlavr{deaths},  item => {"item" => "Deaths","Prefecture" => "ALL"}, static => "", graph_def => $line_thick, axis => "y2"},
+				{cdp => $cdp,  item => {"Prefecture-t" => "ALL",  "item-t" => "Tested"}, static => "rlavr", graph_def => $box_fill},
+				{cdp => $cdp,  item => {"Prefecture-p" => "ALL", "item-p" => "Positive"}, static => "rlavr", graph_def => $box_fill},
+				{cdp => $cdp,  item => {"percent" => "percent"}, static => "", graph_def => $line_thick, axis => "y2"},
+				#{cdp => $cdp,  item => {"Prefecture-p" => "ALL", "item-p" => "Positive"}, static => "", graph_def => $line_thin},
+				#{cdp => $cdp_rlavr{positive},  item => {"item" => "Positive","Prefecture" => "ALL"}, static => "", graph_def => $line_thick},
+				#{cdp => $cdp_rlavr{hosp},  item => {"Prefecture" => "ALL", "item" => "Inpatient"}, static => "", graph_def => $line_thick, axis => "y2"},
+				#{cdp => $cdp_rlavr{severe},  item => {"Prefecture" => "ALL"}, static => "", graph_def => $line_thick, axis => "y2"},
+				#{cdp => $cdp_rlavr{deaths},  item => {"item" => "Deaths","Prefecture" => "ALL"}, static => "", graph_def => $line_thick, axis => "y2"},
 
 				#{cdp => $cdp_rlavr,  item => {"item" => "positive_percent",}, static => "", graph_def => $line_thick, axis => "y2"},
 				#{cdp => $cdp_raw{tested}  ,  item => {"item" => "Tested",}, static => "", graph_def => $line_thin_dot},

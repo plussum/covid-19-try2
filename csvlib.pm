@@ -333,6 +333,9 @@ sub search_listn
 	}
     for(my $i = 0; $i <= $#w; $i++){
 		my $ntc = $w[$i];
+		if((! defined $ntc) || ! $ntc){
+			dp::WARNING "$i:[" . ($ntc//"undef") . "]\n"
+		}
 
 		if($ntc eq "NULL" || $ntc eq "null"){
 			#dp::dp "$ntc: [$sk]]\n";

@@ -41,7 +41,7 @@ sub	marge_csv
 	my $self = shift;
 	my (@src_csv_list) = @_;
 
-	@src_csv_list = ($self, @src_csv_list);
+	#@src_csv_list = ($self, @src_csv_list);
 
 	#
 	#	init marge csv, set marge cdp from src_csvs
@@ -83,7 +83,7 @@ sub	marge_csv
 			$dt = $src_cdp->{date_list}->[$dn];
 		}
 		$date_end = $dt if($dt le $date_end );
-		dp::dp "date_end[$dt] $date_end [$src_cdp->{id}] $dates\n";
+		dp::dp "date_start[" . $src_cdp->{date_list}->[0], "] date_end[$dt] $date_end [$src_cdp->{id}] $dates\n";
 	}
 	my $dates = csvlib::date2ut($date_end, "-") - csvlib::date2ut($date_start, "-");
 	$dates /= 60 * 60 * 24;
@@ -91,6 +91,12 @@ sub	marge_csv
 	$marge->{dates} = int($dates);
 	$marge->{date_start_subs} = $date_start;
 	$marge->{date_end_subs} = $date_end;
+    my $dt_start = csvlib::date2ut($date_start, "-");
+    for(my $i = 0; $i <= $dates; $i++){
+        my $ut = $dt_start + $i * 24 * 60 * 60;
+        my $ymd = csvlib::ut2date($ut, "-");
+        $marge->{date_list}->[$i] = $ymd;
+    }
 	#dp::dp join(", ", $date_start, $date_end, $dates) . "\n" ;# if($DEBUG);
 
 	#
@@ -110,6 +116,7 @@ sub	marge_csv
 		}
 		$infop->{date_start} = $dt_start;
 
+        #dp::dp "date_list:[$date_end] " . csvlib::join_array(",", @$date_list). "\n";
 		my $dt_end = csvlib::search_listn($date_end, @$date_list);
 		if($dt_end < 0){
 			dp::WARNING "Date $date_end is not in the data [$src_cdp->{id}]\n";
@@ -137,44 +144,76 @@ sub	marge_csv
 	#
 	my $n = 0;
 	$marge->{marge_item_pos} = [];
+	$marge->{keys} = [];
+
 	dp::dp "MARGE: " . join(",", $marge->{item_name_list}, $marge->{item_name_hash}) . "\n";
 	#$marge->{item_name_list} = [] if(! defined $marge->{item_name_list});
 	#$marge->{item_name_hash} = {} if(! defined $marge->{item_name_hash});
 	my $m_in_list = $marge->{item_name_list};
 	my $m_in_hash = $marge->{item_name_hash};
 
+    dp::dp "LIST: " . csvlib::join_array(",", @{$marge->{item_name_list}}) . "\n";
+    dp::dp "HASH: " . csvlib::join_array(",", $marge->{item_name_hash}) . "\n";
 	for(my $cdn = 0; $cdn <= $#src_csv_list; $cdn++){
 		my $src_cdp = $src_csv_list[$cdn];
+        $src_cdp->dump();
+        my $id =  $src_cdp->{mid} // $src_cdp->{id}//"no-id";
+
+        my @w = @{$src_cdp->{keys}};
+        push(@w, "item") if($#w < 0);
+        dp::dp "######## " . csvlib::join_array(@w). "\n";
+        foreach my $k (@w){
+            push(@{$marge->{keys}}, $k .= "-$id"); #sprintf("$k-%02d", $cdn+1) ;
+        }
 
 		push(@{$marge->{load_order}}, @{$src_cdp->{load_order}});
 
 		my $arp = scalar(@{$marge->{item_name_list}});		# key positon (where to add key)
 		push(@{$marge->{marge_item_pos}}, $arp);
 
-		my @w = ();
-		push(@w, @{$src_cdp->{item_name_list}});
-		$w[0] .= sprintf("-%02d", $cdn+1) if($cdn > 0 && $w[0] eq $config::MAIN_KEY);
-		push(@$m_in_list, @w);		# add item_name_list
+		#push(@$m_in_list, @w);		# add item_name_list
 		dp::dp "ITEM_NAME_LIST: " . join(",", scalar(@$m_in_list), @$m_in_list, "list:$m_in_list") . "\n";
 
 		my $src_hash = $src_cdp->{item_name_hash};
+        my $src_list = $src_cdp->{item_name_list};
+		for(my $i = 0; $i < scalar(@$src_list); $i++){ #  foreach my $k (keys %$src_hash){					# operate item_name_hash for alias, 
+            my $k = $src_list->[$i];
+            if(! defined $src_hash->{$k}){
+                dp::ABORT "undefined hash [$k]\n";
+            }
+            #dp::dp "m_in_hash $k($cdn) : " . ((defined $m_in_hash->{$k}) ? $m_in_hash->{$k} : "undef") . "  [$arp]\n";
+			#if((defined $m_in_hash->{$k})){ # $skn eq $config::MAIN_KEY){  # 2021.08.03
+            #    $k .= "-" . $src_cdp->{id}; #sprintf("$k-%02d", $cdn+1) ;
+            #    #dp::dp "LIST: $k $i\n";
+            #:}
+            $k .= "-" . ($src_cdp->{mid} // $src_cdp->{id}); #sprintf("$k-%02d", $cdn+1) ;
+            push(@$m_in_list, $k);
+        }
 		foreach my $k (keys %$src_hash){					# operate item_name_hash for alias, 
 			my $skn = $src_hash->{$k};
-			$skn .= sprintf("-%02d", $cdn+1) if($cdn > 0 && $skn eq $config::MAIN_KEY);
-			$m_in_hash->{$k} = $src_hash->{$k} + $arp;
+			#if((defined $m_in_hash->{$k})){ # $skn eq $config::MAIN_KEY){  # 2021.08.03
+            #    $k .= "-" . $src_cdp->{id}; #sprintf("$k-%02d", $cdn+1) ;
+            #    #dp::dp "HASH: $k: $skn\n";
+            #}
+            $k .= "-" . ($src_cdp->{mid} // $src_cdp->{id}); #sprintf("$k-%02d", $cdn+1) ;
+            $skn += $arp;
+            #dp::dp "m_in_hash: $k: [$skn][$arp] \n";
+			$m_in_hash->{$k} = $skn; # $src_hash->{$k} + $arp;
 		}
-		dp::dp "MARGE: " . csvlib::join_array(",", @{$marge->{item_name_list}}) . "\n";
-		dp::dp "MARGE: " . csvlib::join_array(",", $marge->{item_name_hash}) . "\n";
+		#dp::dp "LIST: " . csvlib::join_array(",", @{$marge->{item_name_list}}) . "\n";
+		#dp::dp "HASH: " . csvlib::join_array(",", $marge->{item_name_hash}) . "\n";
+
 	}
+
 	#push(@{$marge->{marge_item_pos}}, scalar(@{$marge->{item_name_list}}) - 1);
 	dp::dp join(",",  @{$marge->{marge_item_pos}}) . "\n";
 
-	my $item_name = "marge_key";
-	push(@$m_in_list, $item_name);
-	$m_in_hash->{$item_name} = scalar(@$m_in_list) - 1;
+	#my $item_name = "marge_key";
+	#push(@$m_in_list, $item_name);
+	#$m_in_hash->{$item_name} = scalar(@$m_in_list) - 1;
 
-	dp::dp "ITEM_NAME_LIST: " . csvlib::join_arrayn(",", @$m_in_list) . join(",", $m_in_list, scalar(@$m_in_list)) . "\n";
-	dp::dp "ITEM_NAME_LIST: " . join(",", @{$marge->{item_name_list}}, $marge->{item_name_list}) . "\n";
+	dp::dp "ITEM_NAME_LIST: " . csvlib::join_arrayn(",", @$m_in_list) . " / " .join(",", $m_in_list, scalar(@$m_in_list)) . "\n";
+	#dp::dp "ITEM_NAME_LIST: " . join(",", @{$marge->{item_name_list}}, $marge->{item_name_list}) . "\n";
 	#$n = 0;
 	#foreach my $k (@$m_in_list){		# SET HASH
 	#	$m_in_hash->{$k} = $n++;
@@ -209,10 +248,10 @@ sub	marge_csv
 		my $start_subs = $infop->{date_start} // "UNDEF";
 		my $end_subs   = $infop->{date_end} // "UNDEF";
 		dp::dp "marge [$csvn] date $start_subs to $end_subs\n" if($DEBUG);
-		if($csvn == 0){
-			my $date_list = $src_cdp->{date_list};
-			@{$m_date_list} = @{$date_list}[$start_subs..$end_subs];
-		}
+		#if($csvn == 0){
+		#	my $date_list = $src_cdp->{date_list};
+		##	@{$m_date_list} = @{$date_list}[$start_subs..$end_subs];
+		#}
 
 		my $marge_item_pos = $marge->{marge_item_pos}->[$csvn];
 		my $item_number = scalar(@{$marge->{item_name_list}}) - 1;
@@ -221,16 +260,17 @@ sub	marge_csv
 		dp::dp "MARGE_INFO:" . csvlib::join_array(",", @{$marge->{item_name_list}}) . "\n";
 		foreach my $k (keys %$csv_data){
 			$m_src_csv->{$k} = $csvn;						# set source csv number
+            $m_key_items->{$k} = [];
 			my $m_key = $m_key_items->{$k};
 			
 			#dp::dp "[$csvn] $k\n";
 			for(my $i = 0; $i <= $item_number; $i++){		# Intial key items by ""
-				$m_key->[$i] = "";		
+				$m_key->[$i] = "NaN";		
 			}
-			for(my $i = 0; $i < $src_item_number; $i++){	# copy key items
-				$m_key->[$i + $marge_item_pos] = $src_key_items->{$k}->[$i]; 
+			for(my $i = 0; $i <= $src_item_number; $i++){	# copy key items
+				$m_key->[$i + $marge_item_pos] = $src_key_items->{$k}->[$i] ;# . "-" . $src_cdp->{id}; 
 			}
-			$m_key->[$item_number] = $csvn;		
+			#$m_key->[$item_number] = $csvn;		
 			#dp::dp "key_items:$csvn:$marge_item_pos:$item_number:$k " . csvlib::join_array(",", @$m_key) . "\n";
 
 			my $src_dp = $csv_data->{$k};	# refarence of csv_data
