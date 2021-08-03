@@ -648,7 +648,7 @@ if($golist{mhlw}) {
 	my %cdp_raw = ();
 	my @cdps = ();
 	foreach my $item (keys %defmhlw::MHLW_DEFS){
-		dp::dp "[$item]\n";
+		#dp::dp "[$item]\n";
 		$cdp_raw{$item} = csv2graph->new($defmhlw::MHLW_DEFS{$item}); 						# Load Johns Hopkings University CCSE
 		$cdp_raw{$item}->load_csv({download => 1, item => $item});
 		#$cdp_rla{$item} = $cdp_raw{$item}->calc_rlavr();
@@ -657,9 +657,12 @@ if($golist{mhlw}) {
 	}
 	my $cdp = csv2graph->new($defmhlw::MHLW_TAG);
 	$cdp = $cdp->marge_csv(@cdps);
-	$cdp->dump();
+	#$cdp->dump();
 	my $cdp_rlavr = $cdp->calc_rlavr();
 
+	#
+	#	Calc percent, use marged data because of date gap
+	#
 	my $result_name = "percent";
 	my @dm_key = ();
 	my $item_sz = scalar(@{$cdp->{item_name_list}});
@@ -674,15 +677,15 @@ if($golist{mhlw}) {
 	my $csv_pct = $cdp->{csv_data}->{$master_key};
 
 	my $dates = $cdp_raw{positive}->{dates};
-	dp::dp "positive: (" . scalar(@$csv_positive) . ")" . join(",",  @$csv_positive) . "\n";
-	dp::dp "tested  : (" . scalar(@$csv_tested)   . ")" . join(",",  @$csv_tested) . "\n";
+	#dp::dp "positive: (" . scalar(@$csv_positive) . ")" . join(",",  @$csv_positive) . "\n";
+	#dp::dp "tested  : (" . scalar(@$csv_tested)   . ")" . join(",",  @$csv_tested) . "\n";
 	for(my $i = 0; $i <= $dates; $i++){
 		my $p =  $csv_positive->[$i] // 0;
 		my $t = $csv_tested->[$i] // 999999;
 		my $v = sprintf("%.3f", $p * 100 / $t);
 		$csv_pct->[$i] = $v;
 	}
-	$cdp->dump({search_key => $result_name});
+	#$cdp->dump({search_key => $result_name});
 	#$cdp->calc_record({result => "ALL#percent", op => ["item-p", "*=100" , "/item-t"], v => 2});
 	#$cdp->dump();
 	#$cdp->dump({search_key => "percent"});
@@ -695,14 +698,15 @@ if($golist{mhlw}) {
 	foreach my $start_date (0, -28){
 		push(@$gp_list, csv2graph->csv2graph_list_gpmix(
 		{gdp => $defmhlw::MHLW_GRAPH, dsc => "Japan PCR test results", start_date => $start_date, 
-			ymin => 0, y2min => 0,y2max => 20,
+			ymin => 0, y2min => 0,y2max => 35,
 			ylabel => "pcr_tested/positive", y2label => "positive rate(%)",
 			#additional_plot => $additional_plot_item{ern}, 
 			graph_items => [
 				{cdp => $cdp,  item => {"Prefecture-t" => "ALL",  "item-t" => "Tested"}, static => "rlavr", graph_def => $box_fill},
-				{cdp => $cdp,  item => {"Prefecture-p" => "ALL", "item-p" => "Positive"}, static => "rlavr", graph_def => $box_fill},
+				{cdp => $cdp,  item => {"Prefecture-p" => "ALL", "item-p" => "Positive"}, static => "rlavr", graph_def => $box_fill_solid},
 				{cdp => $cdp,  item => {"percent" => "percent"}, static => "", graph_def => $line_thick, axis => "y2"},
-				#{cdp => $cdp,  item => {"Prefecture-p" => "ALL", "item-p" => "Positive"}, static => "", graph_def => $line_thin},
+				{cdp => $cdp,  item => {"Prefecture-t" => "ALL", "item-t" => "Tested"}, static => "", graph_def => $line_thin_dot},
+				{cdp => $cdp,  item => {"Prefecture-p" => "ALL", "item-p" => "Positive"}, static => "", graph_def => $line_thin_dot},
 				#{cdp => $cdp_rlavr{positive},  item => {"item" => "Positive","Prefecture" => "ALL"}, static => "", graph_def => $line_thick},
 				#{cdp => $cdp_rlavr{hosp},  item => {"Prefecture" => "ALL", "item" => "Inpatient"}, static => "", graph_def => $line_thick, axis => "y2"},
 				#{cdp => $cdp_rlavr{severe},  item => {"Prefecture" => "ALL"}, static => "", graph_def => $line_thick, axis => "y2"},
@@ -782,7 +786,7 @@ if($golist{tkocsv} || $golist{mhlw}){
 			ymin => 0, y2min => 0,
 			graph_items => [
 				{cdp => $rlavr,  item => {"item" => "total_tested",}, static => "", graph_def => $box_fill},
-				{cdp => $rlavr,  item => {"item" => "total_positive",}, static => "", graph_def => $box_fill},
+				{cdp => $rlavr,  item => {"item" => "total_positive",}, static => "", graph_def => $box_fill_solid},
 				{cdp => $rlavr,  item => {"item" => "positive_percent",}, static => "", graph_def => $line_thick, axis => "y2"},
 
 				{cdp => $cdp  ,  item => {"item" => "total_tested",}, static => "", graph_def => $line_thin_dot},

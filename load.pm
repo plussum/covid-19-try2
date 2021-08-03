@@ -687,14 +687,14 @@ sub	load_transaction
 	my @items = util::csv($line);
 	if( (defined $self->{item_names}) && scalar($self->{item_names} > 1)){
 		my $items_rew = $self->{item_names};
-		dp::dp "itemnames: " . join(",", @items) . "\n";
+		#dp::dp "itemnames: " . join(",", @items) . "\n";
 		my $alias_auto = {};
 		for(my $i = 0; $i <= $#items; $i++){
 			my $item_org = $items[$i];
 			my $item_rew = $items_rew->[$i];
 			$alias_auto->{$item_org} = $i + 1;
 			$alias_auto->{$item_rew} = $i + 1;
-			dp::dp "[$item_org][$item_rew]\n";
+			#dp::dp "[$item_org][$item_rew]\n";
 		}
 		@items = @{$self->{item_names}};
 		#dp::dp "itemnames: " . csvlib::join_array(",", @items) . "\n";
@@ -736,20 +736,20 @@ sub	load_transaction
 		#	$n = --$static;
 		#	push(@static_val, $val);
 		#}
-		dp::dp "keys [$n]\n";
+		#dp::dp "keys [$n]\n";
 		if($n =~ /\D/){			# not number
 			if(defined $add_key_hash{$n}){
 				dp::dp "add_key_hash [$n]   $add_key_hash{$n}\n";
 			}
 			elsif(defined $self->{item_name_hash}->{$n}){
 				my $nn = $self->{item_name_hash}->{$n};
-				dp::dp "[[$nn]]\n";
+				#dp::dp "[[$nn]]\n";
 				$n = $nn;  # - 1;		# added "mainkey" and "item"
 			}
 			else {
 				dp::WARNING "key: no defined key[$n] " . join(",", @keys) . "\n";
 			}
-			dp::dp "key [$n]\n";
+			#dp::dp "key [$n]\n";
 		}
 		push(@keys_no, $n);
 	}
@@ -775,10 +775,9 @@ sub	load_transaction
 
 		$date[0] += 2000 if($date[0] < 100);
 		my $ymd = sprintf("%04d-%02d-%02d", $date[0], $date[1], $date[2]);		# 2020/01/03 Y/M/D
-
-		my $dt_sn = int(csvlib::ymd2tm($date[0], $date[1], $date[2], 0, 0, 0) / (24 * 60 * 60));
-		$dt_start = $dt_sn if($dt_start < 0);
-		my $dt = $dt_sn - $dt_start;
+		my $dt_sn = int(csvlib::ymd2tm($date[0], $date[1], $date[2], 0, 0, 0));
+		$dt_start = $dt_sn if($dt_start < 0);# || $dt_sn < $dt_start);
+		my $dt = ($dt_sn - $dt_start) / (24 * 60 * 60);
 		#dp::dp "dt: $dt, $dt_sn, $dt_start\n";
 		$date_list->[$dt] = $ymd;
 		$dt_end = $dt if($dt > $dt_end);
@@ -830,13 +829,14 @@ sub	load_transaction
 	}
 	close(FD);
 	#dp::dp "##### data_end at transaction: $self->{id} $dt_end: $date_list->[$dt_end]\n";
+	dp::dp "dt_start: $dt_start: " .  csvlib::ut2date($dt_start, "-") . "\n";
 	for(my $i = 0; $i <= $dt_end; $i++){
 		next if(defined $date_list->[$i]);
 
 		my $dt = $dt_start + $i * 24 * 60 * 60;
-		my $ymd = csvlib::ut2d($dt, "-");
+		my $ymd = csvlib::ut2date($dt, "-");
 		$date_list->[$i] = $ymd;
-		dp::dp "set $ymd\n";
+		dp::dp "set[$i] $ymd\n";
 		foreach my $mk (keys %$csv_data){
 			my $cdpw = $csv_data->{$mk};
 			$cdpw->[$i] = "NaN";
