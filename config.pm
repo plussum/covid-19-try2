@@ -41,6 +41,8 @@ our $POPF = "$WIN_PATH/pop.csv";
 our $POP_BASE = 100 * 1000;			# 10万人当たりのケース数
 our $POP_THRESH = 100 * 1000;		# 人口が少ないと振れ幅が大きいので、この人口より少ない国は対象外にする
 
+our $SYNONYM_FILE = "$WIN_PATH/synonym.csv";
+our	%SYNONYM = ();
 
 our $DLM = "\t";
 our $DLM_OUT = "\t";

@@ -54,7 +54,7 @@ use defnhk;
 binmode(STDOUT, ":utf8");
 
 my $VERBOSE = 0;
-my $DOWN_LOAD = 0;
+my $DOWNLOAD = 0;
 
 my $WIN_PATH = $config::WIN_PATH;
 my $HTML_PATH = "$WIN_PATH/HTML2",
@@ -68,6 +68,8 @@ my $END_OF_DATA = "###EOD###";
 my $WEEK_BEFORE = 4;
 my $THRESH_POP_NC_LAST = 1.0; #0.5;
 my $mainkey = $config::MAIN_KEY;
+
+my $DOWN_LOAD = 1;
 
 #my 	$line_thick = $csv2graph::line_thick;
 #my	$line_thin = $csv2graph::line_thin;
@@ -169,7 +171,7 @@ my @cdp_list = ($defamt::AMT_DEF, $defccse::CCSE_DEF, $MARGE_CSV_DEF,
 					$defnhk::CDP); 
 
 my $cmd_list = {"amt-jp" => 1, "amt-jp-pref" => 1, "tkow-ern" => 1, try => 1, "pref-ern" => 1, 
-				pref => 1, mhlw => 1, docomo => 1, upload => 1, "ccse-tgt" => 1, };
+				pref => 1, mhlw => 1, docomo => 1, upload => 1, "ccse-tgt" => 1, "mhlw-pref" => 1};
 my @REG_INFO_LIST = ();
 
 #
@@ -226,6 +228,10 @@ if($#ARGV >= 0){
 			system("cat $config::POPF");
 			print "$config::POPF\n";
 			exit;
+		}
+		if(/-DL/){
+			$DOWNLOAD = $ARGV[++$i];
+			next;
 		}
 		if($_ eq "try"){
 			$golist{pref} = 1;
@@ -323,7 +329,7 @@ if($golist{pref}){
 	#my $jp_cdp = csv2graph->new($defjapan::JAPAN_DEF); 						# Load Apple Mobility Trends
 	#$jp_cdp->load_csv($defjapan::JAPAN_DEF);
 	my $jp_cdp = csv2graph->new($defnhk::CDP); 						# Load Johns Hopkings University CCSE
-	$jp_cdp->load_csv({download => 1});
+	$jp_cdp->load_csv({download => $DOWNLOAD});
 
 	my $jp_rlavr = $jp_cdp->calc_rlavr($jp_cdp);
 #	my $jp_ern   = $jp_cdp->calc_ern($jp_cdp);
@@ -650,14 +656,14 @@ if($golist{mhlw}) {
 	foreach my $item (keys %defmhlw::MHLW_DEFS){
 		#dp::dp "[$item]\n";
 		$cdp_raw{$item} = csv2graph->new($defmhlw::MHLW_DEFS{$item}); 						# Load Johns Hopkings University CCSE
-		$cdp_raw{$item}->load_csv({download => 1, item => $item});
+		$cdp_raw{$item}->load_csv({download => $DOWNLOAD, item => $item});
 		#$cdp_rla{$item} = $cdp_raw{$item}->calc_rlavr();
 		push(@cdps, $cdp_raw{$item});
 		#$cdp_raw{$item}->dump();
 	}
 	my $cdp = csv2graph->new($defmhlw::MHLW_TAG);
 	$cdp = $cdp->marge_csv(@cdps);
-	#$cdp->dump();
+	#$cdp->dump({search_key => "Tokyo", items => 10});
 	my $cdp_rlavr = $cdp->calc_rlavr();
 
 	#
@@ -685,16 +691,10 @@ if($golist{mhlw}) {
 		my $v = sprintf("%.3f", $p * 100 / $t);
 		$csv_pct->[$i] = $v;
 	}
-	#$cdp->dump({search_key => $result_name});
-	#$cdp->calc_record({result => "ALL#percent", op => ["item-p", "*=100" , "/item-t"], v => 2});
-	#$cdp->dump();
-	#$cdp->dump({search_key => "percent"});
-#
-	#my $rlavr = $cdp->calc_rlavr();
-	#$rlavr->calc_record({result => "#positive_percent", op => ["pcr_positive", "*=100", "/pcr_tested_people"], v => 0} );
-	#$cdp->dump();
-	
 
+	#
+	#	Japan all data
+	#
 	foreach my $start_date (0, -28){
 		push(@$gp_list, csv2graph->csv2graph_list_gpmix(
 		{gdp => $defmhlw::MHLW_GRAPH, dsc => "Japan PCR test results", start_date => $start_date, 
@@ -710,99 +710,64 @@ if($golist{mhlw}) {
 		}
 		));
 	}
-
+	my $pref = "ALL";
 	foreach my $start_date (0, -28){
 		push(@$gp_list, csv2graph->csv2graph_list_gpmix(
-		{gdp => $defmhlw::MHLW_GRAPH, dsc => "Japan hospitalized and severe", start_date => $start_date, 
+		{gdp => $defmhlw::MHLW_GRAPH, dsc => "Japan $pref hospitalized,severe and deaths", start_date => $start_date, 
 			ymin => 0, y2min => 0,
 			ylabel => "hospitalzed/servere", 
 			graph_items => [
-				{cdp => $cdp,  item => {"Prefecture-s" => "ALL", "item-s" => "Severe"}, static => "", graph_def => $box_fill, axis => "y2"},
-				{cdp => $cdp,  item => {"Prefecture-h" => "ALL", "item-h" => "Inpatient"}, static => "", graph_def => $line_thick,},
-				{cdp => $cdp,  item => {"Prefecture-d" => "ALL", "item-d" => "Deaths"}, static => "rlavr", graph_def => $box_fill_solid, axis => "y2"},
-				{cdp => $cdp,  item => {"Prefecture-d" => "ALL", "item-d" => "Deaths"}, static => "", graph_def => $line_thin_dot, axis => "y2"},
+				{cdp => $cdp,  item => {"Prefecture-s" => "$pref", "item-s" => "Severe"}, static => "", graph_def => $box_fill, axis => "y2"},
+				{cdp => $cdp,  item => {"Prefecture-h" => "$pref", "item-h" => "Inpatient"}, static => "", graph_def => $line_thick,},
+				{cdp => $cdp,  item => {"Prefecture-d" => "$pref", "item-d" => "Deaths"}, static => "rlavr", graph_def => $box_fill_solid, axis => "y2"},
+				{cdp => $cdp,  item => {"Prefecture-d" => "$pref", "item-d" => "Deaths"}, static => "", graph_def => $line_thin_dot, axis => "y2"},
 			],
 		}
 		));
 	}
 
-#	foreach my $start_date (0,-28){
-#		push(@$gp_list, csv2graph->csv2graph_list_gpmix(
-#		{gdp => $defmhlw::MHLW_GRAPH, dsc => "Japan need hospitalization, severe, death", start_date => $start_date, 
-#			y2min => 0,
-#			ylabel => "positive", y2label => " severe/deaths",
-#			#additional_plot => $additional_plot_item{ern}, 
-#			graph_items => [
-#				{cdp => $cdp,  item => {"item" => "severe",}, static => "", graph_def => $box_fill, axis => "y2"},
-#				#{cdp => $cdp,  item => {"item" => "cases",}, static => "", graph_def => $line_thick},
-#				{cdp => $rlavr,  item => {"item" => "deaths",}, static => "", graph_def => $box_fill, axis => "y2"},
-#				{cdp => $cdp,  item => {"item" => "need_hospitalization",}, static => "", graph_def => $line_thick},
-#
-#				#{cdp => $cdp,  item => {"item" => "severe",}, static => "", graph_def => $line_thin_dot, axis => "y2"},
-#				#{cdp => $cdp,  item => {"item" => "cases",}, static => "", graph_def => "$line_thin_dot lc rgb 'green'"},
-#				{cdp => $cdp,  item => {"item" => "deaths",}, static => "", graph_def => $line_thin_dot, axis => "y2"},
-#			],
-#		}
-##		));
-#	}
 
-#	csv2graph->gen_html_by_gp_list($gp_list, {						# Generate HTML file with graphs
-#			row => 2,
-#			html_tilte => "COVID-19 related data visualizer ",
-#			src_url => "src_url",
-#			html_file => "$HTML_PATH/mhlw.html",
-#			png_path => $PNG_PATH // "png_path",
-#			png_rel_path => $PNG_REL_PATH // "png_rel_path",
-#			data_source => $cdp->{src_info},
-#		}
-#	);
+	#
+	#	NHK - Tokyo
+	#
+	my $cdp_tko = csv2graph->new($deftkocsv::TKOCSV_DEF); 						# Load Johns Hopkings University CCSE
+	$cdp_tko->load_csv({download => $DOWNLOAD});
+	my $rlavr_tko = $cdp_tko->calc_rlavr();
 
-}
+	$rlavr_tko->calc_record({result => "#total_positive", op => ["pcr_positive", "+antigen_positive"]});
+	$rlavr_tko->calc_record({result => "#total_tested", op => ["pcr_negative", "+antigen_negative", "+pcr_positive", "+antigen_positive"]});
+	$rlavr_tko->calc_record({result => "#total_pcr", op => ["pcr_positive", "+pcr_negative"]});
+	$rlavr_tko->calc_record({result => "#positive_percent", op => ["positive_rate", "*=100"], v => 0} );
 
-#
-#
-#	"pcr_positive", "antigen_positive", "pcr_negative", "antigen_negative", "inspected", "positive_rate",
-#			"positive_number", "hospitalized", "mid-modelate", "severe", "residential", "home","adjusting", "deaths", "discharged",
-#
-if($golist{tkocsv} || $golist{mhlw}){
-	my $cdp = csv2graph->new($deftkocsv::TKOCSV_DEF); 						# Load Johns Hopkings University CCSE
-	$cdp->load_csv({download => 1});
-	my $rlavr = $cdp->calc_rlavr();
+	#$rlavr_tko->dump({search_key => "positive_percent"});
+	#$rlavr_tko->dump({lines => 20});
+	# $rlavr_tko->dump({items => 10, lines => 20});
 
-	$rlavr->calc_record({result => "#total_positive", op => ["pcr_positive", "+antigen_positive"]});
-	$rlavr->calc_record({result => "#total_tested", op => ["pcr_negative", "+antigen_negative", "+pcr_positive", "+antigen_positive"]});
-	$rlavr->calc_record({result => "#total_pcr", op => ["pcr_positive", "+pcr_negative"]});
-	$rlavr->calc_record({result => "#positive_percent", op => ["positive_rate", "*=100"], v => 0} );
-
-	#$rlavr->dump({search_key => "positive_percent"});
-	#$rlavr->dump({lines => 20});
-	# $rlavr->dump({items => 10, lines => 20});
-
-	$cdp->calc_record({result => "#total_positive", op => ["pcr_positive", "+antigen_positive"]});
-	$cdp->calc_record({result => "#total_tested", op => ["pcr_negative", "+antigen_negative", "+pcr_positive", "+antigen_positive"]});
-	$cdp->calc_record({result => "#total_pcr", op => ["pcr_positive", "+pcr_negative"]});
-	$cdp->calc_record({result => "#positive_percent", op => ["positive_rate", "*=100"]});
+	$cdp_tko->calc_record({result => "#total_positive", op => ["pcr_positive", "+antigen_positive"]});
+	$cdp_tko->calc_record({result => "#total_tested", op => ["pcr_negative", "+antigen_negative", "+pcr_positive", "+antigen_positive"]});
+	$cdp_tko->calc_record({result => "#total_pcr", op => ["pcr_positive", "+pcr_negative"]});
+	$cdp_tko->calc_record({result => "#positive_percent", op => ["positive_rate", "*=100"]});
 
 	foreach my $start_date (0, -28){
 		my $box = ($start_date >= 0) ? $box_fill : $box_fill_solid;
 		push(@$gp_list, csv2graph->csv2graph_list_gpmix(
-		{gdp => $deftkocsv::TKOCSV_GRAPH, dsc => "TKOCSV open Data tested", start_date => $start_date, 
+		{gdp => $deftkocsv::TKOCSV_GRAPH, dsc => "Tokyo open Data tested", start_date => $start_date, 
 			ylabel => "confermed", y2label => "positive rate(%)",
 			ymin => 0, y2min => 0, y2max => 35,
 			graph_items => [
-				{cdp => $rlavr,  item => {"item" => "total_tested",}, static => "", graph_def => $box_fill},
-				{cdp => $rlavr,  item => {"item" => "total_positive",}, static => "", graph_def => $box_fill_solid},
-				{cdp => $rlavr,  item => {"item" => "positive_percent",}, static => "", graph_def => $line_thick, axis => "y2"},
+				{cdp => $rlavr_tko,  item => {"item" => "total_tested",}, static => "", graph_def => $box_fill},
+				{cdp => $rlavr_tko,  item => {"item" => "total_positive",}, static => "", graph_def => $box_fill_solid},
+				{cdp => $rlavr_tko,  item => {"item" => "positive_percent",}, static => "", graph_def => $line_thick, axis => "y2"},
 
-				{cdp => $cdp  ,  item => {"item" => "total_tested",}, static => "", graph_def => $line_thin_dot},
-				{cdp => $cdp  ,  item => {"item" => "total_positive",}, static => "", graph_def => $line_thin_dot},
-				{cdp => $cdp  ,  item => {"item" => "positive_percent",}, static => "", graph_def => $line_thin_dot, axis => "y2"},
+				{cdp => $cdp_tko  ,  item => {"item" => "total_tested",}, static => "", graph_def => $line_thin_dot},
+				{cdp => $cdp_tko  ,  item => {"item" => "total_positive",}, static => "", graph_def => $line_thin_dot},
+				{cdp => $cdp_tko  ,  item => {"item" => "positive_percent",}, static => "", graph_def => $line_thin_dot, axis => "y2"},
 			],
 		}));
 
 	}
-#	"pcr_positive", "antigen_positive", "pcr_negative", "antigen_negative", "inspected", "positive_rate",
-#			"positive_number", "hospitalized", "mid-modelate", "severe", "residential", "home","adjusting", "deaths", "discharged",
+	#	"pcr_positive", "antigen_positive", "pcr_negative", "antigen_negative", "inspected", "positive_rate",
+	#			"positive_number", "hospitalized", "mid-modelate", "severe", "residential", "home","adjusting", "deaths", "discharged",
 	foreach my $start_date (0, -28){
 		my $box = ($start_date >= 0) ? $box_fill : $box_fill_solid;
 		push(@$gp_list, csv2graph->csv2graph_list_gpmix(
@@ -810,20 +775,18 @@ if($golist{tkocsv} || $golist{mhlw}){
 			ylabel => "confermed", y2label => "positive rate(%)",
 			ymin => 0, y2min => 0,
 			graph_items => [
-				{cdp => $cdp  ,  item => {"item" => "severe",}, static => "", graph_def => $box_fill, axis => "y2",},
-				{cdp => $cdp  ,  item => {"item" => "hospitalized",}, static => "", graph_def => $line_thick},
-				{cdp => $cdp  ,  item => {"item" => "deaths",}, static => "rlavr", graph_def => $box_fill_solid, axis => "y2"},
-				{cdp => $cdp  ,  item => {"item" => "deaths",}, static => "", graph_def => $line_thin_dot, axis => "y2"},
+				{cdp => $cdp_tko  ,  item => {"item" => "severe",}, static => "", graph_def => $box_fill, axis => "y2",},
+				{cdp => $cdp_tko  ,  item => {"item" => "hospitalized",}, static => "", graph_def => $line_thick},
+				{cdp => $cdp_tko  ,  item => {"item" => "deaths",}, static => "rlavr", graph_def => $box_fill_solid, axis => "y2"},
+				{cdp => $cdp_tko  ,  item => {"item" => "deaths",}, static => "", graph_def => $line_thin_dot, axis => "y2"},
 				#{cdp => $cdp  ,  item => {"item" => "mid-modelate",}, static => "", graph_def => $line_thick},
 			],
 		}));
 	}
-
 	csv2graph->gen_html_by_gp_list($gp_list, {						# Generate HTML file with graphs
 			row => 2,
 			html_tilte => "COVID-19 related data visualizer ",
 			src_url => "src_url",
-			#html_file => "$HTML_PATH/tkocsv.html",
 			html_file => "$HTML_PATH/mhlw.html",
 			png_path => $PNG_PATH // "png_path",
 			png_rel_path => $PNG_REL_PATH // "png_rel_path",
@@ -832,6 +795,88 @@ if($golist{tkocsv} || $golist{mhlw}){
 	);
 }
 
+#
+#
+#
+if($golist{"mhlw-pref"}) {
+	dp::dp "MHLW^\-PREF\n";
+	
+	@$gp_list = ();
+	# positive,  reqcare, deaths, severe
+	my %cdp_raw = ();
+	my @cdps = ();
+	foreach my $item (keys %defmhlw::MHLW_DEFS){
+		#dp::dp "[$item]\n";
+		$cdp_raw{$item} = csv2graph->new($defmhlw::MHLW_DEFS{$item}); 						# Load Johns Hopkings University CCSE
+		$cdp_raw{$item}->load_csv({download => $DOWNLOAD, item => $item});
+		#$cdp_rla{$item} = $cdp_raw{$item}->calc_rlavr();
+		push(@cdps, $cdp_raw{$item});
+		#$cdp_raw{$item}->dump();
+	}
+	my $cdp = csv2graph->new($defmhlw::MHLW_TAG);
+	$cdp = $cdp->marge_csv(@cdps);
+	#$cdp->dump({search_key => "Tokyo", items => 10});
+	my $cdp_rlavr = $cdp->calc_rlavr();
+
+	#
+	#	Prefectures from MHLW
+	#
+	my $target_keys = [$cdp_rlavr->select_keys({"item-h" => "Inpatient"}, 0)];	# select data for target_keys
+	my $sorted_keys = [$cdp->sort_csv($cdp_rlavr->{csv_data}, $target_keys, -28, 0)];
+	my $target_region = $sorted_keys;
+	#@$target_region = ("Tokyo", "Osaka", "Okinawa", "Hyogo");
+	dp::dp join(",", @$target_region) . "\n";
+	my $end = scalar(@$target_region) - 1; 
+	$end = $end_target if($end_target > 0 && $end > $end_target);
+
+	foreach my $pref (@$target_region[0..$end]){
+		$pref =~ s/#.*$//;
+		next if($pref eq "ALL");
+
+		my $nc = 250;
+		my $ns = 5;
+		dp::dp "SYNOMYM: $config::SYNONYM{$pref} \n";
+		my $population = $POP{$pref} // $POP{$config::SYNONYM{$pref}}// dp::ABORT "no POP data [$pref]\n";
+		dp::dp "[" . $config::SYNONYM{$pref} // "UNDEF:$pref" . "]\n";
+		my $pop_100k = $population / 100000;
+		my $ymax = $nc * $pop_100k;
+		$ymax = csvlib::calc_max2($ymax);			# try to set reasonable max 
+		my $y2max = $ns * $pop_100k;
+		$y2max = csvlib::calc_max2($y2max);			# try to set reasonable max 
+		my $pop_disp = int(0.5 + $population / 10000);
+
+		my $add_plot = &gen_pop_scale({pop_100k => $pop_100k, pop_max => ($y2max / $pop_100k), init_dlt => 1,
+								lc => "navy", title_tag => 'Severe %.1f/100K', axis => "x1y2"});
+
+		foreach my $start_date (0, -28){
+			push(@$gp_list, csv2graph->csv2graph_list_gpmix(
+			{gdp => $defmhlw::MHLW_GRAPH, dsc => "$pref hospitalized,severe and deaths [nc:$nc,ns:$ns] $pop_disp*10K", start_date => $start_date, 
+				ymin => 0, y2min => 0, ymax => $ymax, y2max => $y2max,
+				ylabel => "hospitalzed/servere", 
+				additional_plot => $add_plot,
+				graph_items => [
+					{cdp => $cdp,  item => {"Prefecture-s" => "$pref", "item-s" => "Severe"}, static => "", graph_def => $box_fill, axis => "y2"},
+					{cdp => $cdp,  item => {"Prefecture-h" => "$pref", "item-h" => "Inpatient"}, static => "", graph_def => $line_thick,},
+					{cdp => $cdp,  item => {"Prefecture-d" => "$pref", "item-d" => "Deaths"}, static => "rlavr", graph_def => $box_fill_solid, axis => "y2"},
+					{cdp => $cdp,  item => {"Prefecture-d" => "$pref", "item-d" => "Deaths"}, static => "", graph_def => $line_thin_dot, axis => "y2"},
+				],
+			}
+			));
+		}
+	}
+
+	csv2graph->gen_html_by_gp_list($gp_list, {						# Generate HTML file with graphs
+			row => 2,
+			html_tilte => "COVID-19 related data visualizer ",
+			src_url => "src_url",
+			html_file => "$HTML_PATH/mhlw_pref.html",
+			png_path => $PNG_PATH // "png_path",
+			png_rel_path => $PNG_REL_PATH // "png_rel_path",
+			data_source => $cdp->{src_info},
+		}
+	);
+
+}
 
 #
 #	NHK
@@ -840,7 +885,7 @@ if($golist{nhk}){
 	@$gp_list = ();
 
 	my $cdp = csv2graph->new($defnhk::CDP); 						# Load Johns Hopkings University CCSE
-	$cdp->load_csv({download => 1});
+	$cdp->load_csv({download => $DOWNLOAD});
 	#my $rlavr_cdp = $cdp->calc_rlavr();
 	#$cdp->dump({search_key => "東京都#各地の感染者数_1日ごとの発表数", lines => 10});
 	#$cdp->dump();
@@ -955,7 +1000,7 @@ if($golist{jpvac})
 
 	my $cdp_def = $defjpvac::VACCINE_DEF;
 	my $cdp = csv2graph->new($cdp_def); 						# Load Johns Hopkings University CCSE
-	$cdp->load_csv({download => 1});
+	$cdp->load_csv({download => $DOWNLOAD});
 
 ###############
 if(0){
@@ -1183,7 +1228,7 @@ if(0){
 if($golist{owidvac})
 {
 	my $cdp = csv2graph->new($defowid::OWID_VAC_DEF); 						# Load Apple Mobility Trends
-	$cdp->load_csv({download => 1});
+	$cdp->load_csv({download => $DOWNLOAD});
 	&completing_zero($cdp);
 
 	@$gp_list = ();
@@ -1594,66 +1639,35 @@ sub	positive_death_ern
 	#dp::dp "[$pop_key]: $pop_100k\n";
 	my $pop_max = $ymax / $pop_100k;
 	my $nc_last = $rlavr->last_data($key);
-	my $week_pos = -7;
 	if($nc_last <= 0){
-#		$week_pos--;
-#		dp::WARNING "nc_last [$nc_last] $key\n";
-#		$nc_last = $rlavr->last_data($key, {end_date => -1});
-#		dp::dp "nc_last [$nc_last] $key\n";
 		$nc_last = 0.9999; # 1 / ($population * 2));
 	}
+	my $week_pos = -7;
 	my $nc_last_week = $rlavr->last_data($key, {end_date => ($week_pos)});
-	#my $nc_last_week = $nc_last;
-	#dp::dp "===== nc_last_week: $nc_last_week, $nc_last\n";
-
-	#dp::dp "[$pop_last]\n";
 	my $pop_last  = $nc_last / $pop_100k;
-	my $pop_dlt = 2.5;
-	#dp::dp "$pop_max\n";
-	if($pop_max > 15){
-		my $pmx = csvlib::calc_max2($pop_max);			# try to set reasonable max 
 
-		my $digit = int(log($pmx)/log(10));
-		$digit -- if($digit > 1);
-		$pop_dlt =  10**($digit);
-		dp::dp sprintf("POL_DLT: %.3f %.3f\n", $pop_dlt, $pop_max / $pop_dlt);
-		if(($pop_max / $pop_dlt) >= 5){
-			$pop_dlt *= 2;
-		}
-		elsif(($pop_max / $pop_dlt) < 3){
-			$pop_dlt /= 2;
-		}
-		dp::dp sprintf("POL_DLT: %.3f %.3f\n", $pop_dlt, $pop_max / $pop_dlt);
-		#dp::dp "$pop_max, $pmx: $digit : $pop_dlt\n";
-	}
-	#dp::dp "POP/100k : $region: $pop_100k "  . sprintf("    %.2f", $pop_max) . "\n";
-	my $ln = 0;
-	for(my $i = $pop_dlt; $i < $pop_max; $i +=  $pop_dlt, $ln++){
-		my $pop = $i * $pop_100k;
-		my $dt = "lc 'navy' dt (5,5)";
-		my $lw = 1;
-		#if((($i*10) % 10) == 0){
-		if(($ln % 2) == 1){
-			$dt =~ s/dt.*$//;
-			if(($pop_max / $pop_dlt) < 5 ){
-				$lw = 1.5 if(($ln % 2) == 1);
-			}
-			else {
-				$lw = 1.5 if(($ln % 4 ) == 3);
-			}
-			#$dt =~ s/\(.\)/(5,5)/;
-			#dp::dp "line: $i, $pop_dlt\n";
-			#dp::dp "====> line: $i, $pop_dlt, $lw $ln\n";
-		}
-		if(($i % 10) == 0){
-			$dt =~ s/dt.*$//;
-		}
-		#dp::dp "---> line: $i, $pop_dlt, $lw, $ln\n";
-		my $title = sprintf("title 'Positive %.1f/100K'", $i);
-		push(@adp, "$pop axis x1y1 with lines $title lw $lw $dt");
-	}
-	my $add_plot = join(",\\\n", @adp);
-	#$pop_max = sprintf("%.1f", $pop_max);
+#	my $pop_dlt = 2.5;
+#	#dp::dp "$pop_max\n";
+#	if($pop_max > 15){
+#		my $pmx = csvlib::calc_max2($pop_max);			# try to set reasonable max 
+#
+#		my $digit = int(log($pmx)/log(10));
+#		$digit -- if($digit > 1);
+#		$pop_dlt =  10**($digit);
+#		dp::dp sprintf("POL_DLT: %.3f %.3f\n", $pop_dlt, $pop_max / $pop_dlt);
+#		if(($pop_max / $pop_dlt) >= 5){
+#			$pop_dlt *= 2;
+#		}
+#		elsif(($pop_max / $pop_dlt) < 3){
+#			$pop_dlt /= 2;
+#		}
+#		dp::dp sprintf("POL_DLT: %.3f %.3f\n", $pop_dlt, $pop_max / $pop_dlt);
+#		#dp::dp "$pop_max, $pmx: $digit : $pop_dlt\n";
+#	}
+#
+#	#dp::dp "POP/100k : $region: $pop_100k "  . sprintf("    %.2f", $pop_max) . "\n";
+	my $add_plot = &gen_pop_scale({pop_100k => $pop_100k, pop_max => $pop_max, 
+					lc => "navy", title_tag => 'Positive %.1f/100K', axis => "x1y1"});
 
 	#
 	#	POP Death
@@ -1830,6 +1844,91 @@ sub	positive_death_ern
 	}
 	return (@list);
 }
+
+
+#
+#
+#
+sub	calc_dlt
+{
+	my($pop_max) = @_;
+	#my @dlt = (10, 5, 2.5, 2, 1); 
+	my @dlt = (1, 2, 2.5, 5, 10); 
+
+	for(my $dlt_dig = 0; $dlt_dig < 5; $dlt_dig++){
+		my $dig = 10**($dlt_dig);
+		foreach my $d (@dlt){
+			my $dd = $d * $dig;
+			my  $dlt = $pop_max / $dd;
+			#dp::dp "digit: $dlt $dd, $dig * $dlt_dig [$pop_max]\n";
+			return $dd if($dlt < 5.9);
+		}
+	}
+	dp::ABORT "$pop_max\n";
+	return "";
+}
+
+#
+#
+#
+sub	gen_pop_scale
+{
+	my($p) = @_;
+	my $pop_100k = $p->{pop_100k} // dp::ABORT "pop_100k";
+	my $pop_max  = $p->{pop_max} // dp::ABORT "pop_max";
+	my $lc = $p->{lc} // "navy";
+	my $title_tag = $p->{title_tag}// "csv2graph";
+	my $axis = $p->{axis} // "x1y1";
+	#my $pop_dlt = $p->{init_dlt} // 2.5;
+
+	my $line_def = "lc '$lc' dt (5,5)";
+
+	my $pop_dlt = &calc_dlt($pop_max);
+	dp::dp "dlt: $pop_max -> $pop_dlt\n";
+
+#	if($pop_max > 15){
+#		my $pmx = csvlib::calc_max2($pop_max);			# try to set reasonable max 
+#
+#		my $digit = int(log($pmx)/log(10));
+#		$digit -- if($digit > 1);
+#		$pop_dlt =  10**($digit);
+#		dp::dp sprintf("POL_DLT: %.3f %.3f\n", $pop_dlt, $pop_max / $pop_dlt);
+#		if(($pop_max / $pop_dlt) >= 5){
+#			$pop_dlt *= 2;
+#		}
+#		elsif(($pop_max / $pop_dlt) < 3){
+#			$pop_dlt /= 2;
+#		}
+#		dp::dp sprintf("POL_DLT: %.3f %.3f\n", $pop_dlt, $pop_max / $pop_dlt);
+#		#dp::dp "$pop_max, $pmx: $digit : $pop_dlt\n";
+#	}
+
+	my @adp = ();
+	my $ln = 0;
+	for(my $i = $pop_dlt; $i < $pop_max; $i +=  $pop_dlt, $ln++){
+		my $pop = $i * $pop_100k;
+		my $lw = 1;
+		my $dt = $line_def;
+		if(($ln % 2) == 1){
+			$dt =~ s/dt.*$//;
+			if(($pop_max / $pop_dlt) < 5 ){
+				$lw = 1.5 if(($ln % 2) == 1);
+			}
+			else {
+				$lw = 1.5 if(($ln % 4 ) == 3);
+			}
+		}
+		if(($i % 10) == 0){
+			$dt =~ s/dt.*$//;
+		}
+		#my $title = sprintf("title 'Positive %.1f/100K'", $i);
+		my $title = sprintf("title '$title_tag'", $i);
+		push(@adp, "$pop axis $axis with lines $title lw $lw $dt");
+	}
+	my $add_plot = join(",\\\n", @adp);
+	return $add_plot;
+}
+
 sub	zd
 {
 	my($v) = @_;

@@ -71,7 +71,7 @@ my $MHLW_CSV = "$CSV_PATH/mhlw.csv";
 our $MHLW_TAG = 
 {
 	id => "mhlw",
-	src_info => "Japan COVID-19 data (MHLW) new cases",
+	src_info => "MHLW open data",
 	main_url => "https://www.mhlw.go.jp/stf/covid-19/open-data.html",
 	src_file => "",
 	src_url => 	"",
@@ -128,6 +128,8 @@ sub	download
 	dp::ABORT "download [$item]" if(! defined $MHLW_DEFS{$item});
 
 	my $download = $self->check_download();
+	$download = 1 if($p->{download} > 1);
+
 	# severe => {src_file => "$CSV_PATH/mhlw_severe.csv", src_url => "https://covid19.mhlw.go.jp/public/opendata/severe_cases_daily.csv"},
 	my $def = $MHLW_DEFS{$item};
 	my $csvf = $def->{src_file};

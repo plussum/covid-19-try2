@@ -56,7 +56,7 @@ my $TKOCSV_CSV = "$CSV_PATH/tkocsv.csv";
 our $TKOCSV_DEF = 
 {
 	id => "tkocsv",
-	src_info => "Tokyo  COVID-19 data (CSV)",
+	src_info => "Tokyo COVID-19 open data ",
 	main_url => "https://stopcovid19.metro.tokyo.lg.jp/",
 	src_file => $TKOCSV_CSV,
 	src_url => 	"--- src url ---",		# set

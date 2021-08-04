@@ -509,6 +509,17 @@ sub	cnt_pop
 		#dp::dp "$name:$pn\n" if($name =~ /Seychelles/);
 	}
 	close(FD);
+
+	open(FD, $config::SYNONYM_FILE) || die "Cannot open [$config::SYNOMYM_FILE]";
+	binmode(FD, ":utf8");
+	while(<FD>){
+		s/[\r\n]+$//;
+		my ($val, $syn) = split(/ *, */, $_);
+		$config::SYNONYM{$val} = $syn;
+		$config::SYNONYM{$syn} = $val;
+	}
+	close(FD);
+	dp::dp "[" . $config::SYNONYM{Hokkaido} . "]\n";
 }
 
 #
