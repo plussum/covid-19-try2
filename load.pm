@@ -11,6 +11,9 @@ use warnings;
 use utf8;
 use Encode 'decode';
 use JSON qw/encode_json decode_json/;
+use open qw/:utf8/;
+use File::Slurp;
+
 use Data::Dumper;
 use config;
 use csvlib;
@@ -679,10 +682,19 @@ sub	load_transaction
 	open(FD, $src_file) || die "cannot open $src_file";
 	binmode(FD, ":utf8");
 
+	my $text = read_file($src_file, binmode => ':utf8');
+	my @load_data = split(/[\r\n]+/, $text);
+	undef $text;
+	dp::dp "lines[" . $#load_data . "] $load_data[0]\n";
+#	for(my $i = 0; $i < 10; $i++){
+#		dp::dp $load_data[$i]. "\n";
+#	}
+	
+
 	#
 	#	Set items
 	#
-	my $line = <FD>;
+	my $line = shift(@load_data); #<FD>;
 	$line =~ s/[\r\n]+$//;
 	my @items = util::csv($line);
 	if( (defined $self->{item_names}) && scalar($self->{item_names} > 1)){
@@ -759,8 +771,8 @@ sub	load_transaction
 	my %date_col = ();
 	my $ln = 0;
 	my $dt_start = -1;
-	while(<FD>){
-		#dp::dp $_;
+	for(@load_data){	#  while(<FD>)
+		#dp::dp "[$_]\n";
 		my (@vals)  = util::csv($_);
 
 		my @date = ();
@@ -775,17 +787,21 @@ sub	load_transaction
 
 		$date[0] += 2000 if($date[0] < 100);
 		my $ymd = sprintf("%04d-%02d-%02d", $date[0], $date[1], $date[2]);		# 2020/01/03 Y/M/D
-		my $dt_sn = int(csvlib::ymd2tm($date[0], $date[1], $date[2], 0, 0, 0));
-		$dt_start = $dt_sn if($dt_start < 0);# || $dt_sn < $dt_start);
-		my $dt = ($dt_sn - $dt_start) / (24 * 60 * 60);
-		#dp::dp "dt: $dt, $dt_sn, $dt_start\n";
+		my $dt = -1;
+		my $dt_sn = -1;
+		if(! defined $date_col{$ymd}){
+			$dt_sn = int(csvlib::ymd2tm($date[0], $date[1], $date[2], 0, 0, 0));
+			$dt_start = $dt_sn if($dt_start < 0);# || $dt_sn < $dt_start);
+			$dt = ($dt_sn - $dt_start) / (24 * 60 * 60);
+			$dt_end = $dt if($dt > $dt_end);
+			#$dt_end++ = $ymd;
+			$date_col{$ymd} = $dt;
+			#dp::dp "dt: $dt, $dt_sn, $dt_start $ymd\n";
+		}
+		$dt = $date_col{$ymd};
+		#dp::dp "[$dt] $ymd\n";
 		$date_list->[$dt] = $ymd;
-		$dt_end = $dt if($dt > $dt_end);
 		$date_col{$ymd} = $dt;
-		#if(! defined $date_col{$ymd}){
-		#	$date_col{$ymd} = $dt_end;
-		#	$dt_end++ = $ymd;
-		#}
 
 		my @gen_key = ();			# Generate key
 		foreach my $n (@keys_no){
@@ -817,17 +833,13 @@ sub	load_transaction
 						 [$master_key, @vals[0..($data_start-1)], @mks], []);		# add record without data
 			}
 			my $v = $vals[$i];
-			#dp::dp "[$master_key] $v\n";
-			#my $v = $vals[$i] // 0;
 			$v = 0 if(!$v || $v eq "-");
 
 			my $dcol = $date_col{$ymd};
 			$csv_data->{$master_key}->[$dcol] = $v;
-			#dp::dp "[$master_key] $v\n";
-			# dp::dp "$ymd " . "[$master_key] = $v  ($dt_end)" . "\n"; #, @{$csv_data->{$master_key}}) . "\n";
 		}
 	}
-	close(FD);
+	# close(FD);
 	#dp::dp "##### data_end at transaction: $self->{id} $dt_end: $date_list->[$dt_end]\n";
 	dp::dp "dt_start: $dt_start: " .  csvlib::ut2date($dt_start, "-") . "\n";
 	for(my $i = 0; $i <= $dt_end; $i++){

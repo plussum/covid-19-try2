@@ -44,7 +44,7 @@ our $CDP =
 	timefmt => '%Y/%m/%d',			# comverbt to %Y-%m-%d
 	src_dlm => ",",
 	key_dlm => "#",
-	keys => [2],		# PrefectureNameJ, and Column name
+	keys => ["prefectureNameJ"],		# PrefectureNameJ, and Column name
 	data_start => 3,
 		#日付,都道府県コード,都道府県名,各地の感染者数_1日ごとの発表数,各地の感染者数_累計,各地の死者数_1日ごとの発表数,各地の死者数_累計
 		# year,month,date,prefectureNameJ,prefectureNameE,testedPositive,peopleTested,hospitalized,serious,discharged,deaths,effectiveReproductionNumber

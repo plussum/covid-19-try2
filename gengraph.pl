@@ -700,22 +700,27 @@ if($golist{mhlw}) {
 		{gdp => $defmhlw::MHLW_GRAPH, dsc => "Japan PCR test results", start_date => $start_date, 
 			ymin => 0, y2min => 0,y2max => 35,
 			ylabel => "pcr_tested/positive", y2label => "positive rate(%)",
-			#additional_plot => $additional_plot_item{ern}, 
 			graph_items => [
 				{cdp => $cdp,  item => {"Prefecture-t" => "ALL",  "item-t" => "Tested"}, static => "rlavr", graph_def => $box_fill},
 				{cdp => $cdp,  item => {"Prefecture-p" => "ALL", "item-p" => "Positive"}, static => "rlavr", graph_def => $box_fill_solid},
 				{cdp => $cdp,  item => {"percent" => "percent"}, static => "", graph_def => $line_thick, axis => "y2"},
 				{cdp => $cdp,  item => {"Prefecture-t" => "ALL", "item-t" => "Tested"}, static => "", graph_def => $line_thin_dot},
 				{cdp => $cdp,  item => {"Prefecture-p" => "ALL", "item-p" => "Positive"}, static => "", graph_def => $line_thin_dot},
-				#{cdp => $cdp_rlavr{positive},  item => {"item" => "Positive","Prefecture" => "ALL"}, static => "", graph_def => $line_thick},
-				#{cdp => $cdp_rlavr{hosp},  item => {"Prefecture" => "ALL", "item" => "Inpatient"}, static => "", graph_def => $line_thick, axis => "y2"},
-				#{cdp => $cdp_rlavr{severe},  item => {"Prefecture" => "ALL"}, static => "", graph_def => $line_thick, axis => "y2"},
-				#{cdp => $cdp_rlavr{deaths},  item => {"item" => "Deaths","Prefecture" => "ALL"}, static => "", graph_def => $line_thick, axis => "y2"},
+			],
+		}
+		));
+	}
 
-				#{cdp => $cdp_rlavr,  item => {"item" => "positive_percent",}, static => "", graph_def => $line_thick, axis => "y2"},
-				#{cdp => $cdp_raw{tested}  ,  item => {"item" => "Tested",}, static => "", graph_def => $line_thin_dot},
-				#{cdp => $cdp_raw{positive}  ,  item => {"item" => "Positive","Prefecture" => "ALL"}, static => "", graph_def => $line_thin_dot},
-
+	foreach my $start_date (0, -28){
+		push(@$gp_list, csv2graph->csv2graph_list_gpmix(
+		{gdp => $defmhlw::MHLW_GRAPH, dsc => "Japan hospitalized and severe", start_date => $start_date, 
+			ymin => 0, y2min => 0,
+			ylabel => "hospitalzed/servere", 
+			graph_items => [
+				{cdp => $cdp,  item => {"Prefecture-s" => "ALL", "item-s" => "Severe"}, static => "", graph_def => $box_fill, axis => "y2"},
+				{cdp => $cdp,  item => {"Prefecture-h" => "ALL", "item-h" => "Inpatient"}, static => "", graph_def => $line_thick,},
+				{cdp => $cdp,  item => {"Prefecture-d" => "ALL", "item-d" => "Deaths"}, static => "rlavr", graph_def => $box_fill_solid, axis => "y2"},
+				{cdp => $cdp,  item => {"Prefecture-d" => "ALL", "item-d" => "Deaths"}, static => "", graph_def => $line_thin_dot, axis => "y2"},
 			],
 		}
 		));
@@ -783,7 +788,7 @@ if($golist{tkocsv} || $golist{mhlw}){
 		push(@$gp_list, csv2graph->csv2graph_list_gpmix(
 		{gdp => $deftkocsv::TKOCSV_GRAPH, dsc => "TKOCSV open Data tested", start_date => $start_date, 
 			ylabel => "confermed", y2label => "positive rate(%)",
-			ymin => 0, y2min => 0,
+			ymin => 0, y2min => 0, y2max => 35,
 			graph_items => [
 				{cdp => $rlavr,  item => {"item" => "total_tested",}, static => "", graph_def => $box_fill},
 				{cdp => $rlavr,  item => {"item" => "total_positive",}, static => "", graph_def => $box_fill_solid},
@@ -805,8 +810,10 @@ if($golist{tkocsv} || $golist{mhlw}){
 			ylabel => "confermed", y2label => "positive rate(%)",
 			ymin => 0, y2min => 0,
 			graph_items => [
-				{cdp => $cdp  ,  item => {"item" => "severe",}, static => "", graph_def => $box, axis => "y2",},
+				{cdp => $cdp  ,  item => {"item" => "severe",}, static => "", graph_def => $box_fill, axis => "y2",},
 				{cdp => $cdp  ,  item => {"item" => "hospitalized",}, static => "", graph_def => $line_thick},
+				{cdp => $cdp  ,  item => {"item" => "deaths",}, static => "rlavr", graph_def => $box_fill_solid, axis => "y2"},
+				{cdp => $cdp  ,  item => {"item" => "deaths",}, static => "", graph_def => $line_thin_dot, axis => "y2"},
 				#{cdp => $cdp  ,  item => {"item" => "mid-modelate",}, static => "", graph_def => $line_thick},
 			],
 		}));
@@ -1489,6 +1496,7 @@ sub	japan_positive_death_ern
 
 	#my $jp_pref = $jp_cdp->reduce_cdp_target({item => $positive, prefectureNameJ => $pref});
 	#my $death_pref = $jp_cdp->reduce_cdp_target({item => $deaths, prefectureNameJ => $pref});
+	#dp::dp $jp_cdp->dump();
 	my $jp_pref = $jp_cdp->reduce_cdp_target({item => $positive, prefectureNameJ => $pref});
 	my $death_pref = $jp_cdp->reduce_cdp_target({item => $deaths, prefectureNameJ => $pref});
 	my $p = "";
