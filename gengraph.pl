@@ -411,7 +411,7 @@ if($golist{pref}){
 	&gen_reginfo("$HTML_PATH/japanpref_ri_", $reg_param, "nc_week_diff", "nd_week_diff");
 	&gen_reginfo("$HTML_PATH/japanpref_ri_", $reg_param, "nd_week_diff", "nc_week_diff");
 	my $reg_param_th = {graph_html => ($reg_param->{graph_html}), thresh => $THRESH_POP_NC_LAST, thresh_item => "nc_pop_last"};
-	&gen_reginfo("$HTML_PATH/japanpref_th_ri_", $reg_param_th, "nc_week_diff", "nd_week_diff");
+	&gen_reginfo("$HTML_PATH/japanpref_ri_th_", $reg_param_th, "nc_week_diff", "nd_week_diff");
 }
 
 #
@@ -446,10 +446,13 @@ sub	gen_reginfo
 	#binmode(HTML, ':encoding(cp932)');
 	print HTML "<html><head></head><body>\n";
 
+	
+	my $now = csvlib::ut2t(time());
 	print HTML "<span class=\"c\">\n";
-	print HTML "<h1>$sort_key</h1>\n";
+	print HTML "<h1>$sort_key $thresh_item $thresh [$now]</h1>\n";
 	my %DISPF = ();
-	my @keys_list = ("nc_pop_last","nd_pop_last", "drate_last", 
+	my @keys_list = ("nc_pop_last", "nc_pop_1", "nd_pop_last", "nd_pop_1", "drate_last", 
+					"nc_last", "nc_last_1", "nd_last", "nd_last_1",
 					"nc_pop_max",  "nd_pop_max",  "drate_max",  "nc_max", "nd_max", 
 					"nc_week_diff", "nd_week_diff",
 					"pop_100k",
@@ -834,7 +837,7 @@ if($golist{"mhlw-pref"}) {
 		next if($pref eq "ALL");
 
 		my $nc = 250;
-		my $ns = 5;
+		my $ns = 3;
 		dp::dp "SYNOMYM: $config::SYNONYM{$pref} \n";
 		my $population = $POP{$pref} // $POP{$config::SYNONYM{$pref}}// dp::ABORT "no POP data [$pref]\n";
 		dp::dp "[" . $config::SYNONYM{$pref} // "UNDEF:$pref" . "]\n";
@@ -1756,6 +1759,7 @@ sub	positive_death_ern
 			{cdp => $death_pop[$i], item => {}, static => "", axis => "y2", graph_def => $graph_type}
 		);
 	}
+
 	push(@$graph_items, 
 			{cdp => $conf_region, item => {}, static => "rlavr", graph_def => ("$line_thick lc rgb \"" . $gcl[3] . "\"")},
 			{cdp => $ern,  item => {}, static => "", axis => "y2", graph_def => ("$line_thick_dot lc rgb \"" . $gcl[0] . "\"")},
@@ -1803,44 +1807,46 @@ sub	positive_death_ern
 		},
 	));
 
+	#
+	#	Data, diff from week
+	#
+	my $reg = "$region#$start_date";
+	for(my $w = 0; $w < $WEEK_BEFORE; $w++){
+		my $wd = -$w * 7;
+		my $p = ($w == 0) ? {end_date => ""} : {end_date => $wd};
+		my $lp = {end_date => ($wd - 7)};
+		my $_nc_last 	  = $rlavr->last_data($key, $p);
+		my $_nc_last_week = $rlavr->last_data($key, $lp);
+		my $_nd_last 	  = $death_rlavr->last_data($dkey, $p);
+		my $_nd_last_week = $death_rlavr->last_data($dkey, $lp);
+		my $_pop_last  = $_nc_last / $pop_100k;
+		my $_dlst_pop = $_nd_last / $pop_100k;
+		my $_drate_last = 100 * $_nd_last / &zd($_nc_last);
 
-	if($start_date >= 0){
-		my $reg = "$region#$start_date";
-		for(my $w = 0; $w < $WEEK_BEFORE; $w++){
-			my $wd = -$w * 7;
-			my $p = ($w == 0) ? {end_date => ""} : {end_date => $wd};
-			my $lp = {end_date => ($wd - 7)};
-			my $_nc_last 	  = $rlavr->last_data($key, $p);
-			my $_nc_last_week = $rlavr->last_data($key, $lp);
-			my $_nd_last 	  = $death_rlavr->last_data($dkey, $p);
-			my $_nd_last_week = $death_rlavr->last_data($dkey, $lp);
-			my $_pop_last  = $_nc_last / $pop_100k;
-			my $_dlst_pop = $_nd_last / $pop_100k;
-			my $_drate_last = 100 * $_nd_last / &zd($_nc_last);
-
-			if($_nc_last_week <= 0){
-				$_nc_last_week = (($_nc_last == 0) ? 1 : $_nc_last) / 999;
-			}
-			if($_nd_last_week <= 0){
-				$_nd_last = 1 if($_nd_last == 0);
-				$_nd_last_week = $_nd_last / 999 ;
-			}
-			my $_nc_week_diff = $_nc_last / $_nc_last_week;
-			my $_nd_week_diff = $_nd_last / $_nd_last_week;
-
-			$REG_INFO_LIST[$w] = {} if(! defined $REG_INFO_LIST[$w]);
-			#dp::dp "### $w $start_date [$reg] $_nc_last, $_nd_last\n";
-			$REG_INFO_LIST[$w]->{$reg} = {	
-					nc_max => sprintf("%.3f", $nc_max), nd_max => sprintf("%.3f", $d_max), 
-					nc_week_diff => sprintf("%.3f", $_nc_week_diff), nd_week_diff => sprintf("%.3f", $_nd_week_diff), 
-					nc_last => sprintf("%.3f", $_nc_last), nd_last => sprintf("%.3f", $_nd_last), 
-					nc_pop_max => sprintf("%.3f", $pop_max), nc_pop_last => sprintf("%.3f", $_pop_last), 
-					nd_pop_max => sprintf("%.3f", $dmax_pop), nd_pop_last => sprintf("%.3f", $_dlst_pop),
-					drate_max => sprintf("%.3f", $drate_max) , drate_last => sprintf("%.3f", $_drate_last),
-					pop_100k => sprintf("%.1f", $pop_100k), 
-			};
-		
+		if($_nc_last_week <= 0){
+			$_nc_last_week = (($_nc_last == 0) ? 1 : $_nc_last) / 999;
 		}
+		if($_nd_last_week <= 0){
+			$_nd_last = 1 if($_nd_last == 0);
+			$_nd_last_week = $_nd_last / 999 ;
+		}
+		my $_nc_week_diff = $_nc_last / $_nc_last_week;
+		my $_nd_week_diff = $_nd_last / $_nd_last_week;
+
+		$REG_INFO_LIST[$w] = {} if(! defined $REG_INFO_LIST[$w]);
+		#dp::dp "### $w $start_date [$reg] $_nc_last, $_nd_last\n";
+		$REG_INFO_LIST[$w]->{$reg} = {	
+				nc_max => sprintf("%.3f", $nc_max), nd_max => sprintf("%.3f", $d_max), 
+				nc_week_diff => sprintf("%.3f", $_nc_week_diff), nd_week_diff => sprintf("%.3f", $_nd_week_diff), 
+				nc_last => sprintf("%.3f", $_nc_last), nd_last => sprintf("%.3f", $_nd_last), 
+				nc_pop_max => sprintf("%.3f", $pop_max), nc_pop_last => sprintf("%.3f", $_pop_last), 
+				nd_pop_max => sprintf("%.3f", $dmax_pop), nd_pop_last => sprintf("%.3f", $_dlst_pop),
+				drate_max => sprintf("%.3f", $drate_max) , drate_last => sprintf("%.3f", $_drate_last),
+				nc_last_1 => sprintf("%.3f", $_nc_last_week), nd_last_1 => sprintf("%.3f", $_nd_last_week),
+				nc_pop_1 => sprintf("%.3f", $_nc_last_week / $pop_100k), nd_pop_1 => sprintf("%.3f", $_nd_last_week / $pop_100k),
+				pop_100k => sprintf("%.1f", $pop_100k), 
+		};
+	
 	}
 	return (@list);
 }
