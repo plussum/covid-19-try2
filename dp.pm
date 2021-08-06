@@ -5,6 +5,13 @@ use Exporter;
 @ISA = (Exporter);
 @EXOIORT = qw(dp);
 
+my $DP_ID = "";
+sub	set_dp_id
+{
+	my ($id) = @_;
+	$DP_ID = $id;
+}
+
 #
 #
 #
@@ -14,7 +21,7 @@ sub	dp
 
 	my ($p1, $f1, $l1, $s1, @w1) = caller;
 	my ($package_name, $file_name, $line, $sub, @w) = caller(1);
-	print "#[$l1]$f1:$sub " . join("", @p);
+	print "$DP_ID#[$l1]$f1:$sub " . join("", @p);
 	#print "#[$line]$file_name " . join("", @p);
 }
 
@@ -25,7 +32,7 @@ sub	WARNING
 	#dp:dp "-" x 10 . " WARNING " . "-" x 10 . "\n";
 	my ($p1, $f1, $l1, $s1, @w1) = caller;
 	my ($package_name, $file_name, $line, $sub, @w) = caller(1);
-	my $info = "#[$l1]$f1;$sub " ;
+	my $info = "$DP_ID#[$l1]$f1;$sub " ;
 
 	my $info = "$info WARNING: ";
 	print $info . "-" x 30 . "\n";
@@ -43,7 +50,7 @@ sub	ABORT
 	#dp:dp "-" x 10 . " WARNING " . "-" x 10 . "\n";
 	my ($p1, $f1, $l1, $s1, @w1) = caller;
 	my ($package_name, $file_name, $line, $sub, @w) = caller(1);
-	my $info = "#[$l1]$f1;$sub " ;
+	my $info = "$DP_ID#[$l1]$f1;$sub " ;
 
 	my $info = "$info ABORT: ";
 	print $info . "-" x 30 . "\n";
@@ -63,7 +70,7 @@ sub disp_caller
         my ($package_name, $file_name, $line, $sub) = caller($i);
 		last if(! $package_name);
 
-        print "called from[$i]: $package_name :: $file_name #$line $sub\n";
+        print "$DP_ID:called from[$i]: $package_name :: $file_name #$line $sub\n";
     }
 }
 1;

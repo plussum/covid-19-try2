@@ -85,12 +85,17 @@ our $VACCINE_GRAPH = {
 sub	download
 {
 	my $self = shift;
+	my ($p) = @_;
+	$p = $p // {};
+	my $download = $self->check_download();
+	$download = 1 if($p->{download} > 1);
+
 	my $csv = {};
 	my @date = ();
 	my $file_no = 0;
 	my $col_no = 0;
 	my @header = ();
-	my $download = 1;
+
 	# {"date":"2021-04-12","prefecture":"01","gender":"F","age":"-64","medical_worker":false,"status":1,"count":113}
 	my @item_names = ("prefecture", "age","status");
 
@@ -99,10 +104,22 @@ sub	download
 
 	&load_area_code($AREA_CODE);
 	my $csvf = $VACCINE_JSON;
-	if($self->check_download() || !(-f $csvf)){
+	dp::dp "##### wget $VACCINE_URL -O $csvf.gz; gunzip -f $csvf.gz \n";
+	#exit;
+	if($download || !(-f $csvf)){
 		my $cmd = "wget $VACCINE_URL -O $csvf.gz; gunzip -f $csvf.gz";
 		unlink($csvf) if(-f $csvf);
 		&do($cmd) ;
+	}
+	my $wc =`wc $csvf`;
+	chop($wc);
+	$wc =~ s/^ +//;
+	my($line, $word, $char, $fn) = split(/ +/, $wc);
+	dp::dp "download $line, $word, $char, $csvf\n";
+	dp::dp "download $wc\n";
+	if($line < 1000 || $line != $word){
+		dp::WARNING "Something wrong: $line, $word, $char, $csvf\n";
+		return ;
 	}
 
 	my %ages = ("65-" => "ge65", "-64" => "le64", "UNK" => "UNK", "all" => "all");
@@ -146,7 +163,7 @@ sub	download
 		$ln++;
 	}
 	close(FD);
-	dp::dp "lines: $ln\n";
+	#dp::dp "lines: $ln\n";
 
 	#dp::dp "### COL_NO: $col_no\n";
 	

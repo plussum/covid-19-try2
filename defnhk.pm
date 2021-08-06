@@ -77,11 +77,16 @@ our $DEF_GRAPH = {
 sub	download
 {
 	my $self = shift;
+	my ($p) = @_;
+	$p = $p // {};
 
 	my $csvf = $self->{src_file};
 	my $url = $self->{src_url};
 	my $cmd = "wget $url -O $csvf.dl0";
+
 	my $download = $self->check_download();
+	$download = 1 if($p->{download} > 1);
+
 	if($download || !(-f "$csvf.dl0")){
 		&do($cmd);
 		&do("nkf -w80 $csvf.dl0 > $csvf");

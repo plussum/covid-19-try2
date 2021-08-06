@@ -39,7 +39,7 @@ sub	load_csv
 	my $download = $p->{download} // "";
 	my $src_file = "";
 	$src_file = ($p->{src_file} // ($self->{src_file} // "")) if($p);
-	#dp::dp "#### " . $self->{src_file} . "\n";
+	dp::dp "#### DL[$download]" . $self->{src_file} . "\n";
 	
 	if(($download // "")){
 		my $download = $self->{download};
@@ -679,8 +679,8 @@ sub	load_transaction
 	my $load_order = $self->{load_order};
 
 	dp::dp "$src_file\n";
-	open(FD, $src_file) || die "cannot open $src_file";
-	binmode(FD, ":utf8");
+	#open(FD, $src_file) || die "cannot open $src_file";
+	#binmode(FD, ":utf8");
 
 	my $text = read_file($src_file, binmode => ':utf8');
 	my @load_data = split(/[\r\n]+/, $text);

@@ -519,7 +519,7 @@ sub	cnt_pop
 		$config::SYNONYM{$syn} = $val;
 	}
 	close(FD);
-	dp::dp "[" . $config::SYNONYM{Hokkaido} . "]\n";
+	#dp::dp "[" . $config::SYNONYM{Hokkaido} . "]\n";
 }
 
 #

@@ -95,7 +95,10 @@ our $TKOW_GRAPH = {
 #
 sub	download
 {
-	my ($cdp) = @_;
+	my $self = shift;
+	my ($p) = @_;
+	$p = $p // {};
+	my $download = $self->check_download();
 	return 1;
 }
 

@@ -93,8 +93,15 @@ our $OWID_VAC_GRAPH = {
 sub	download
 {
 	my $self = shift;
+	my ($p) = @_;
+	$p = $p // {};
+
+	my $download = $self->check_download();
+	$download = 1 if(($p->{download}//0) > 1);
+
 	dp::dp "[$self] " . join(",", @_) . "\n";
-	if($self->check_download()){
+
+	if($download){
 		system("(cd $OWID_ROOT; git pull origin master)");
 	}
 	return 1;

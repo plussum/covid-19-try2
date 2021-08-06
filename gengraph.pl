@@ -54,7 +54,7 @@ use defnhk;
 binmode(STDOUT, ":utf8");
 
 my $VERBOSE = 0;
-my $DOWNLOAD = 0;
+my $DOWNLOAD = 1;
 
 my $WIN_PATH = $config::WIN_PATH;
 my $HTML_PATH = "$WIN_PATH/HTML2",
@@ -115,6 +115,11 @@ my $cntry = "Country/Region";
 
 my $positive = "testedPositive";
 my $deaths = "deaths";
+
+my @ALL_PARAMS = qw/ccse-tgt pref ccse tkocsv jpvac owidvac mhlw mhlw-pref nhk/;
+#my @ALL_PARAMS = qw/ccse-tgt nhk/;
+my $gkind = "";		# for pref, and ccse
+my $DELAY_AT_ALL = 1;
 
 #
 #	For CCSE, Johns holkins University
@@ -199,15 +204,24 @@ my @bcl = ( "gray10", "dark-orange",		# 0.5
 ####################################
 my %golist = ();
 my $all = "";
+my $db_all = 0;
 
 if($#ARGV >= 0){
 	for(my $i = 0; $i <= $#ARGV; $i++){
 		$_ = $ARGV[$i];
 		if(/-all/){
 			$all = 1;
-			last;
+			next;
+			#last;
 		}
-		if(/^-clear/){
+		elsif(/^-nd/){
+			$DELAY_AT_ALL = 0;
+			next;
+		}
+		elsif(/^-dball/){
+			$db_all = 1;
+		}
+		elsif(/^-clear/){
 			dp::dp "Remove .png and other plot data: $PNG_PATH\n";
 			system("ls $PNG_PATH | head");
 			#dp::dp "Remove OK? (YES/no)";
@@ -218,28 +232,28 @@ if($#ARGV >= 0){
 			}
 			exit;
 		}
-		if(/^-et/){
+		elsif(/^-et/){
 			$end_target = $ARGV[++$i];
 			dp::dp "end_target: $end_target\n";
 			next;
 		}
-		if(/^-poplist/){
+		elsif(/^-poplist/){
 			print "$config::POPF\n";
 			system("cat $config::POPF");
 			print "$config::POPF\n";
 			exit;
 		}
-		if(/-DL/){
+		elsif(/-DL/){
 			$DOWNLOAD = $ARGV[++$i];
 			next;
 		}
-		if($_ eq "try"){
+		elsif($_ eq "try"){
 			$golist{pref} = 1;
 			$golist{"pref-ern"} = 1;
 			$golist{docomo} = 1;
 			next;
 		}
-		if($cmd_list->{$_}){
+		elsif($cmd_list->{$_}){
 			$golist{$_} = 1;
 			next;
 		}
@@ -263,20 +277,101 @@ else {
 	exit;
 }
 
-dp::dp join(",", keys %golist) . "\n";
+dp::dp "Parames: " . join(",", keys %golist) . "\n";
 
 #if($golist{"amt-ccse"}){
 #	$golist{amt} = 1;
 #	$golist{ccse} = 1;
 #}
 if($all){
-	foreach my $cdp (@cdp_list){
-		my $id = $cdp->{id};
-		$golist{$id} = 1 ;
+	my $child = {};
+	my $cn = 0;
+	my @allp = ();
+	my @pid_list = ();
+
+	my %start_time = ();
+	my $tm_start = time;
+	foreach my $id (@ALL_PARAMS){
+		my  @glist = ("");
+		my $delay = ($db_all) ? 1 : 30;
+		#if($DELAY_AT_ALL){
+			if($id eq "pref" || $id =~ /ccse/){
+				@glist = ("raw", $delay,"rlavr", $delay, "pop");
+			}
+		#}
+		for(my $i = 0; $i <= $#glist && $cn >= 0; $i++){
+			$gkind = $glist[$i];
+			if($gkind && ! ($gkind =~ /\D/)){
+				dp::dp "#" x 30 . " sleep [$gkind]\n";
+				sleep($gkind);
+				next;
+			}
+			#dp::dp "$id: $gkind\n";
+			my $pid = fork;
+			dp::ABORT "cannot fork $!" if(! defined $pid);
+			if(! $pid){		# Child Process
+				%golist = ($id => 1);
+				$cn = -1;
+				#dp::dp "gkind:[$gkind]\n";
+				last;
+			}
+			else {
+				$child->{$pid} = {id => $id, gkind => $gkind, start_time => time, cn => $cn++};
+				push(@pid_list, $pid);
+				dp::dp "$id $gkind: $pid " . csvlib::ut2t(time) . "\n";
+				#$pid = wait;	########
+			}
+		}
+		#dp::dp "gkind:[$gkind]\n";
+		last if($cn < 0);
 	}
-	foreach my $id (keys %$cmd_list){
-		$golist{$id} = 1 ;
+	#dp::dp "gkind:[$gkind]\n";
+	
+	if($cn >= 0){
+		#exit;	########
+		dp::set_dp_id("main");
+		for(; $cn > 0; $cn--){
+			dp::dp "Waiting child process ($cn)\n";
+			my $pid = wait;
+			my $etm = time;
+			$child->{$pid}->{st} = $?;
+			$child->{$pid}->{end_time} = $etm;
+			$child->{$pid}->{elp_time} = $etm - $child->{$pid}->{start_time};
+			#undef $child{$pid};
+		}
+		my $tm_end = time;
+		if($golist{upload}) {
+			my $do = "$0 upload";
+			dp::dp $do . "\n";
+			my $pid = "upload";
+			push(@pid_list, $pid);
+			$child->{$pid} = {id => "upload", gkind => "", start_time => time, cn => 9999};
+			system($do);
+			my $etm = time;
+			$child->{$pid}->{st} = $?;
+			$child->{$pid}->{end_time} = $etm;
+			$child->{$pid}->{elp_time} = $etm - $child->{$pid}->{start_time};
+		}
+		my $tm_up_end = time ;
+		my $elp1 = $tm_end  - $tm_start;
+		my $elp2 = $tm_up_end  - $tm_start;
+		dp::dp sprintf("\ndone elp %02d:%02d %02d:%02d   %s %s %s (%s)\n", 
+				int($elp1/60), $elp1 % 60, int($elp2/60), $elp2 % 60, 
+				csvlib::ut2t($tm_start), csvlib::ut2t($tm_end), csvlib::ut2t($tm_up_end),
+				join(",", @ALL_PARAMS)
+		);
+
+		foreach my $pid (@pid_list){
+			my $p = $child->{$pid};
+			dp::dp sprintf("%2d: %-20s elp %02d:%02d (%s) %s %s\n", 
+				$p->{cn}, $p->{id}. "#". $p->{gkind}, 
+				int($p->{elp_time}/60), $p->{elp_time} % 60,$p->{st}, 
+				csvlib::ut2t($p->{start_time}), csvlib::ut2t($p->{end_time})
+			);
+		}
+		exit;
 	}
+	exit 1 if($db_all);	# for debug, multitask
 }
 
 #	POP
@@ -297,6 +392,8 @@ my $ccse_country = {};
 #
 #
 if($golist{pref}){
+	dp::dp "gkind: [[$gkind]]\n";
+	dp::set_dp_id("pref $gkind");
 	my $pd_list = [];
 	my $pd_pop_list = [];
 	my $pd_rlavr_list = [];
@@ -306,37 +403,26 @@ if($golist{pref}){
 	#	ccse Japan
 	#
 	my $ccse_cdp = csv2graph->new($defccse::CCSE_CONF_DEF); 						# Load Johns Hopkings University CCSE
-	$ccse_cdp->load_csv($defccse::CCSE_CONF_DEF);
+	$ccse_cdp->load_csv({download => $DOWNLOAD});
 	my $ccse_country = $ccse_cdp->reduce_cdp_target({"Province/State" => "NULL"});	# Select Country
 	#$ccse_country->dump();
 	#exit;
 
 	my $death_cdp = csv2graph->new($defccse::CCSE_DEATHS_DEF); 						# Load Johns Hopkings University CCSE
-	$death_cdp->load_csv($defccse::CCSE_DEATHS_DEF);
+	$death_cdp->load_csv({download => $DOWNLOAD});
 	my $death_country = $death_cdp->reduce_cdp_target({"Province/State" => "NULL"});	# Select Country
 	my $graph_kind = $csv2graph::GRAPH_KIND;
 
 	my $region = "Japan";
-	foreach my $start_date (0, -93){
-		#push(@$pd_list, &ccse_positive_death($ccse_country, $death_country, $region, $start_date));
-##		push(@$pd_list, &ccse_positive_death_ern($ccse_country, $death_country, $region, $start_date));
-		#push(@$pd_list, &ccse_positive_ern($ccse_country, $region, 0));
-	}
 
 	#
 	#	Japan Prefectures	NHK
 	#
-	#my $jp_cdp = csv2graph->new($defjapan::JAPAN_DEF); 						# Load Apple Mobility Trends
-	#$jp_cdp->load_csv($defjapan::JAPAN_DEF);
 	my $jp_cdp = csv2graph->new($defnhk::CDP); 						# Load Johns Hopkings University CCSE
 	$jp_cdp->load_csv({download => $DOWNLOAD});
 
 	my $jp_rlavr = $jp_cdp->calc_rlavr($jp_cdp);
-#	my $jp_ern   = $jp_cdp->calc_ern($jp_cdp);
-#	my $jp_pop   = $jp_cdp->calc_pop($jp_cdp);
 
-	#my $positive = "testedPositive";
-	#my $deaths = "deaths";
 	#
 	#	Generate HTML FILE
 	#
@@ -347,82 +433,82 @@ if($golist{pref}){
 	foreach my $pref (@$sorted_keys[0..$endt]){
 		$pref =~ s/[\#\-].*$//;
 		dp::dp "rlavr: $pref\n";
-		foreach my $start_date (0, -28){ # , -28){
-			push(@$pd_list, &japan_positive_death_ern($jp_cdp, $pref, $start_date, 1));		# 0 -> 1 2021.06.28
-			push(@$pd_rlavr_list, &japan_positive_death_ern($jp_cdp, $pref, $start_date, 0));		# 0 -> 1 2021.06.28
+		foreach my $start_date (0, -28){ # , -28)
+			push(@$pd_list, &japan_positive_death_ern($jp_cdp, $pref, $start_date, 1)) if(!$gkind || $gkind eq "raw");		# 0 -> 1 2021.06.28
+			push(@$pd_rlavr_list, &japan_positive_death_ern($jp_cdp, $pref, $start_date, 0)) if(!$gkind || $gkind eq "rlavr");		# 0 -> 1 2021.06.28
 
 		}
 	}
 
-	my $jp_pop_rlavr   = $jp_rlavr->calc_pop($jp_rlavr);
-	$sorted_keys = [$jp_pop_rlavr->sort_csv($jp_pop_rlavr->{csv_data}, $target_keys, -28, 0)];
-	foreach my $pref (@$sorted_keys[0..$endt]){
-		$pref =~ s/[\#\-].*$//;
-		dp::dp "pop: $pref\n";
-		foreach my $start_date (0, -28){ # , -28){
-			push(@$pd_pop_list, &japan_positive_death_ern($jp_cdp, $pref, $start_date, 1));
+	if(!$gkind || $gkind eq "pop"){
+		my $jp_pop_rlavr   = $jp_rlavr->calc_pop($jp_rlavr);
+		$sorted_keys = [$jp_pop_rlavr->sort_csv($jp_pop_rlavr->{csv_data}, $target_keys, -28, 0)];
+		foreach my $pref (@$sorted_keys[0..$endt]){
+			$pref =~ s/[\#\-].*$//;
+			dp::dp "pop: $pref\n";
+			foreach my $start_date (0, -28){ # , -28)
+				push(@$pd_pop_list, &japan_positive_death_ern($jp_cdp, $pref, $start_date, 1));
+			}
 		}
+
+		csv2graph->gen_html_by_gp_list($pd_pop_list, {						# Generate HTML file with graphs
+				row => 2,
+				no_lank_label => 1,
+				html_tilte => "POP Positve/Deaths COVID-19 Japan prefecture ",
+				src_url => "src_url",
+				html_file => "$HTML_PATH/japanpref_pop.html",
+				alt_graph => "./japanpref_rlavr.html",
+				png_path => $PNG_PATH // "png_path",
+				png_rel_path => $PNG_REL_PATH // "png_rel_path",
+				data_source => $jp_cdp->{src_info},
+			}
+		);
+		my $reg_param = {graph_html => "./japanpref_pop.html"};
+		&gen_reginfo("$HTML_PATH/japanpref_ri_", $reg_param, "nc_pop_last", "nc_pop_max");
+		&gen_reginfo("$HTML_PATH/japanpref_ri_", $reg_param, "nc_pop_max", "nc_pop_last");
+		&gen_reginfo("$HTML_PATH/japanpref_ri_", $reg_param, "nd_pop_last", "nd_pop_max");
+		&gen_reginfo("$HTML_PATH/japanpref_ri_", $reg_param, "nd_pop_max", "nd_pop_last");
+		&gen_reginfo("$HTML_PATH/japanpref_ri_", $reg_param, "drate_max");
+		&gen_reginfo("$HTML_PATH/japanpref_ri_", $reg_param, "drate_last");
+		&gen_reginfo("$HTML_PATH/japanpref_ri_", $reg_param, "nc_week_diff", "nd_week_diff");
+		&gen_reginfo("$HTML_PATH/japanpref_ri_", $reg_param, "nd_week_diff", "nc_week_diff");
+		my $reg_param_th = {graph_html => ($reg_param->{graph_html}), thresh => $THRESH_POP_NC_LAST, thresh_item => "nc_pop_last"};
+		&gen_reginfo("$HTML_PATH/japanpref_ri_th_", $reg_param_th, "nc_week_diff", "nd_week_diff");
 	}
 
-	csv2graph->gen_html_by_gp_list($pd_list, {						# Generate HTML file with graphs
-			row => 2,
-			no_lank_label => 1,
-			html_tilte => "Positve/Deaths COVID-19 Japan prefecture ",
-			src_url => "src_url",
-			html_file => "$HTML_PATH/japanpref.html",
-			alt_graph => "./japanpref_rlavr.html",
-			png_path => $PNG_PATH // "png_path",
-			png_rel_path => $PNG_REL_PATH // "png_rel_path",
-			data_source => $jp_cdp->{src_info},
-		}
-	);
-	csv2graph->gen_html_by_gp_list($pd_pop_list, {						# Generate HTML file with graphs
-			row => 2,
-			no_lank_label => 1,
-			html_tilte => "POP Positve/Deaths COVID-19 Japan prefecture ",
-			src_url => "src_url",
-			html_file => "$HTML_PATH/japanpref_pop.html",
-			alt_graph => "./japanpref_rlavr.html",
-			png_path => $PNG_PATH // "png_path",
-			png_rel_path => $PNG_REL_PATH // "png_rel_path",
-			data_source => $jp_cdp->{src_info},
-		}
-	);
-	csv2graph->gen_html_by_gp_list($pd_rlavr_list, {						# Generate HTML file with graphs
-			row => 2,
-			no_lank_label => 1,
-			html_tilte => "POP Positve/Deaths COVID-19 Japan prefecture ",
-			src_url => "src_url",
-			html_file => "$HTML_PATH/japanpref_rlavr.html",
-			alt_graph => "./japanpref_pop.html",
-			png_path => $PNG_PATH // "png_path",
-			png_rel_path => $PNG_REL_PATH // "png_rel_path",
-			data_source => $jp_cdp->{src_info},
-		}
-	);
+	if(!$gkind || $gkind eq "raw"){
+		csv2graph->gen_html_by_gp_list($pd_list, {						# Generate HTML file with graphs
+				row => 2,
+				no_lank_label => 1,
+				html_tilte => "Positve/Deaths COVID-19 Japan prefecture ",
+				src_url => "src_url",
+				html_file => "$HTML_PATH/japanpref.html",
+				alt_graph => "./japanpref_rlavr.html",
+				png_path => $PNG_PATH // "png_path",
+				png_rel_path => $PNG_REL_PATH // "png_rel_path",
+				data_source => $jp_cdp->{src_info},
+			}
+		);
+	}
 
-	my $reg_param = {graph_html => "./japanpref_pop.html"};
-	&gen_reginfo("$HTML_PATH/japanpref_ri_", $reg_param, "nc_pop_last", "nc_pop_max");
-	&gen_reginfo("$HTML_PATH/japanpref_ri_", $reg_param, "nc_pop_max", "nc_pop_last");
-	&gen_reginfo("$HTML_PATH/japanpref_ri_", $reg_param, "nd_pop_last", "nd_pop_max");
-	&gen_reginfo("$HTML_PATH/japanpref_ri_", $reg_param, "nd_pop_max", "nd_pop_last");
-	&gen_reginfo("$HTML_PATH/japanpref_ri_", $reg_param, "drate_max");
-	&gen_reginfo("$HTML_PATH/japanpref_ri_", $reg_param, "drate_last");
-	&gen_reginfo("$HTML_PATH/japanpref_ri_", $reg_param, "nc_week_diff", "nd_week_diff");
-	&gen_reginfo("$HTML_PATH/japanpref_ri_", $reg_param, "nd_week_diff", "nc_week_diff");
-	my $reg_param_th = {graph_html => ($reg_param->{graph_html}), thresh => $THRESH_POP_NC_LAST, thresh_item => "nc_pop_last"};
-	&gen_reginfo("$HTML_PATH/japanpref_ri_th_", $reg_param_th, "nc_week_diff", "nd_week_diff");
+	if(!$gkind || $gkind eq "rlavr"){
+		csv2graph->gen_html_by_gp_list($pd_rlavr_list, {						# Generate HTML file with graphs
+				row => 2,
+				no_lank_label => 1,
+				html_tilte => "POP Positve/Deaths COVID-19 Japan prefecture ",
+				src_url => "src_url",
+				html_file => "$HTML_PATH/japanpref_rlavr.html",
+				alt_graph => "./japanpref_pop.html",
+				png_path => $PNG_PATH // "png_path",
+				png_rel_path => $PNG_REL_PATH // "png_rel_path",
+				data_source => $jp_cdp->{src_info},
+			}
+		);
+
+
+	}
 }
 
-#
-#	CCSE
-#
-if($golist{"ccse-tgt"}){
-	&ccse("ccse-tgt");
-}
-if($golist{ccse}) {
-	&ccse("ccse");
-}
 
 #
 #
@@ -529,6 +615,17 @@ sub	_print_table
 	return $s;
 }
 
+#
+#	CCSE
+#
+if($golist{"ccse-tgt"}){
+	dp::set_dp_id("ccse-tgt $gkind");
+	&ccse("ccse-tgt");
+}
+if($golist{ccse}) {
+	dp::set_dp_id("ccse $gkind");
+	&ccse("ccse");
+}
 
 sub	ccse
 {
@@ -572,85 +669,92 @@ sub	ccse
 		$region =~ s/--.*//;
 		dp::dp "rlavr: $region\n";
 		foreach my $start_date(0, -62){
-			push(@$ccse_gp_list, &ccse_positive_death_ern($ccse_country, $death_country, $region, $start_date, 1));	# 0 -> 1 2021.06.28
-			push(@$ccse_rlavr_gp_list, &ccse_positive_death_ern($ccse_country, $death_country, $region, $start_date, 0));	# 0 -> 1 2021.06.28
+			push(@$ccse_gp_list, &ccse_positive_death_ern($ccse_country, $death_country, $region, $start_date, 1)) if(!$gkind || $gkind eq "raw");	
+			push(@$ccse_rlavr_gp_list, &ccse_positive_death_ern($ccse_country, $death_country, $region, $start_date, 0)) if(!$gkind || $gkind eq "rlavr");
 		}
 	}
 
 	#my $jp_pop_rlavr   = $jp_rlavr->calc_pop($jp_rlavr);
 	#$sorted_keys = [$jp_pop_rlavr->sort_csv($jp_pop_rlavr->{csv_data}, $target_keys, -28, 0)];
 
-	my $ccse_pop_rlavr   = $ccse_rlavr->calc_pop($ccse_rlavr);
-	$sorted_keys = [$ccse_pop_rlavr->sort_csv($ccse_pop_rlavr->{csv_data}, $target_keys, -28, 0)];
-	$target_region = ($param ne "ccse-tgt") ? $sorted_keys  : \@TARGET_REGION;
-	#dp::dp "####### " . $endt . "\n";
-	dp::dp "pop:   " . join(",", (@$target_region[0..10])) . "\n";
-	foreach my $region (@$target_region[0..$endt]){
-		$region =~ s/--.*//;
-		dp::dp "pop: $region\n";
-		foreach my $start_date(0, -62){
-			push(@$ccse_pop_gp_list, &ccse_positive_death_ern($ccse_country, $death_country, $region, $start_date, 1));
+	if(!$gkind || $gkind eq "pop"){
+		my $ccse_pop_rlavr   = $ccse_rlavr->calc_pop($ccse_rlavr);
+		$sorted_keys = [$ccse_pop_rlavr->sort_csv($ccse_pop_rlavr->{csv_data}, $target_keys, -28, 0)];
+		$target_region = ($param ne "ccse-tgt") ? $sorted_keys  : \@TARGET_REGION;
+		#dp::dp "####### " . $endt . "\n";
+		dp::dp "pop:   " . join(",", (@$target_region[0..10])) . "\n";
+		foreach my $region (@$target_region[0..$endt]){
+			$region =~ s/--.*//;
+			dp::dp "pop: $region\n";
+			foreach my $start_date(0, -62){
+				push(@$ccse_pop_gp_list, &ccse_positive_death_ern($ccse_country, $death_country, $region, $start_date, 1));
+			}
 		}
+		csv2graph->gen_html_by_gp_list($ccse_pop_gp_list, {						# Generate HTML file with graphs
+				row => 2,
+				no_lank_label => 1,
+				html_tilte => "COVID-19 related data visualizer ",
+				src_url => "src_url",
+				html_file => "$HTML_PATH/$param" . "_pop.html",
+				alt_graph => "./$param" . "_rlavr.html",
+				png_path => $PNG_PATH // "png_path",
+				png_rel_path => $PNG_REL_PATH // "png_rel_path",
+				data_source => $ccse_cdp->{src_info},
+			}
+		);
+
+		my $outf = "$param" . "_ri_";
+		my $reg_param = {graph_html => "./$param" . "_pop.html"};
+		&gen_reginfo("$HTML_PATH/$outf", $reg_param, "nc_pop_last", "nc_pop_max");
+		&gen_reginfo("$HTML_PATH/$outf", $reg_param, "nc_pop_max", "nc_pop_last");
+		&gen_reginfo("$HTML_PATH/$outf", $reg_param, "nd_pop_last", "nd_pop_max");
+		&gen_reginfo("$HTML_PATH/$outf", $reg_param, "nd_pop_max", "nd_pop_last");
+		&gen_reginfo("$HTML_PATH/$outf", $reg_param, "drate_max");
+		&gen_reginfo("$HTML_PATH/$outf", $reg_param, "drate_last");
+		&gen_reginfo("$HTML_PATH/$outf", $reg_param, "nc_week_diff");
+		&gen_reginfo("$HTML_PATH/$outf", $reg_param, "nd_week_diff");
+		my $reg_param_th = {graph_html => ($reg_param->{graph_html}), thresh => $THRESH_POP_NC_LAST, thresh_item => "nc_pop_last"};
+		&gen_reginfo("$HTML_PATH/$outf" . "th_", $reg_param_th, "nc_week_diff", "nd_week_diff");
 	}
 
-	csv2graph->gen_html_by_gp_list($ccse_gp_list, {						# Generate HTML file with graphs
-			row => 2,
-			no_lank_label => 1,
-			html_tilte => "COVID-19 related data visualizer ",
-			src_url => "src_url",
-			html_file => "$HTML_PATH/$param.html",
-			alt_graph => "$./$param" . "_rlavr.html",
-			png_path => $PNG_PATH // "png_path",
-			png_rel_path => $PNG_REL_PATH // "png_rel_path",
-			data_source => $ccse_cdp->{src_info},
-		}
-	);
-	csv2graph->gen_html_by_gp_list($ccse_rlavr_gp_list, {						# Generate HTML file with graphs
-			row => 2,
-			no_lank_label => 1,
-			html_tilte => "COVID-19 related data visualizer nc-nd ",
-			src_url => "src_url",
-			html_file => "$HTML_PATH/$param" . "_rlavr.html",
-			alt_graph => "./$param" . "_pop.html",
-			png_path => $PNG_PATH // "png_path",
-			png_rel_path => $PNG_REL_PATH // "png_rel_path",
-			data_source => $ccse_cdp->{src_info},
-		}
-	);
+	if(!$gkind || $gkind eq "raw"){
+		csv2graph->gen_html_by_gp_list($ccse_gp_list, {						# Generate HTML file with graphs
+				row => 2,
+				no_lank_label => 1,
+				html_tilte => "COVID-19 related data visualizer ",
+				src_url => "src_url",
+				html_file => "$HTML_PATH/$param.html",
+				alt_graph => "$./$param" . "_rlavr.html",
+				png_path => $PNG_PATH // "png_path",
+				png_rel_path => $PNG_REL_PATH // "png_rel_path",
+				data_source => $ccse_cdp->{src_info},
+			}
+		);
+	}
 
-	csv2graph->gen_html_by_gp_list($ccse_pop_gp_list, {						# Generate HTML file with graphs
-			row => 2,
-			no_lank_label => 1,
-			html_tilte => "COVID-19 related data visualizer ",
-			src_url => "src_url",
-			html_file => "$HTML_PATH/$param" . "_pop.html",
-			alt_graph => "./$param" . "_rlavr.html",
-			png_path => $PNG_PATH // "png_path",
-			png_rel_path => $PNG_REL_PATH // "png_rel_path",
-			data_source => $ccse_cdp->{src_info},
-		}
-	);
+	if(!$gkind || $gkind eq "rlavr"){
+		csv2graph->gen_html_by_gp_list($ccse_rlavr_gp_list, {						# Generate HTML file with graphs
+				row => 2,
+				no_lank_label => 1,
+				html_tilte => "COVID-19 related data visualizer nc-nd ",
+				src_url => "src_url",
+				html_file => "$HTML_PATH/$param" . "_rlavr.html",
+				alt_graph => "./$param" . "_pop.html",
+				png_path => $PNG_PATH // "png_path",
+				png_rel_path => $PNG_REL_PATH // "png_rel_path",
+				data_source => $ccse_cdp->{src_info},
+			}
+		);
 
-	my $outf = "$param" . "_ri_";
-	my $reg_param = {graph_html => "./$param" . "_pop.html"};
-	&gen_reginfo("$HTML_PATH/$outf", $reg_param, "nc_pop_last", "nc_pop_max");
-	&gen_reginfo("$HTML_PATH/$outf", $reg_param, "nc_pop_max", "nc_pop_last");
-	&gen_reginfo("$HTML_PATH/$outf", $reg_param, "nd_pop_last", "nd_pop_max");
-	&gen_reginfo("$HTML_PATH/$outf", $reg_param, "nd_pop_max", "nd_pop_last");
-	&gen_reginfo("$HTML_PATH/$outf", $reg_param, "drate_max");
-	&gen_reginfo("$HTML_PATH/$outf", $reg_param, "drate_last");
-	&gen_reginfo("$HTML_PATH/$outf", $reg_param, "nc_week_diff");
-	&gen_reginfo("$HTML_PATH/$outf", $reg_param, "nd_week_diff");
 
-	my $reg_param_th = {graph_html => ($reg_param->{graph_html}), thresh => $THRESH_POP_NC_LAST, thresh_item => "nc_pop_last"};
-	&gen_reginfo("$HTML_PATH/$outf" . "th_", $reg_param_th, "nc_week_diff", "nd_week_diff");
+	}
 }
 
 #
 #	MHLW
 #
 if($golist{mhlw}) {
-	dp::dp "MHLW\n";
+	dp::set_dp_id("mhlw");
 	
 	@$gp_list = ();
 	# positive,  reqcare, deaths, severe
@@ -802,7 +906,7 @@ if($golist{mhlw}) {
 #
 #
 if($golist{"mhlw-pref"}) {
-	dp::dp "MHLW^\-PREF\n";
+	dp::set_dp_id("mhlw-pref");
 	
 	@$gp_list = ();
 	# positive,  reqcare, deaths, severe
@@ -828,15 +932,16 @@ if($golist{"mhlw-pref"}) {
 	my $sorted_keys = [$cdp->sort_csv($cdp_rlavr->{csv_data}, $target_keys, -28, 0)];
 	my $target_region = $sorted_keys;
 	#@$target_region = ("Tokyo", "Osaka", "Okinawa", "Hyogo");
-	dp::dp join(",", @$target_region) . "\n";
+	#dp::dp join(",", @$target_region) . "\n";
 	my $end = scalar(@$target_region) - 1; 
 	$end = $end_target if($end_target > 0 && $end > $end_target);
 
+	my $gp_list_a = [];
 	foreach my $pref (@$target_region[0..$end]){
 		$pref =~ s/#.*$//;
 		next if($pref eq "ALL");
 
-		my $nc = 250;
+		my $nc = 200;
 		my $ns = 3;
 		dp::dp "SYNOMYM: $config::SYNONYM{$pref} \n";
 		my $population = $POP{$pref} // $POP{$config::SYNONYM{$pref}}// dp::ABORT "no POP data [$pref]\n";
@@ -851,6 +956,12 @@ if($golist{"mhlw-pref"}) {
 		my $add_plot = &gen_pop_scale({pop_100k => $pop_100k, pop_max => ($y2max / $pop_100k), init_dlt => 1,
 								lc => "navy", title_tag => 'Severe %.1f/100K', axis => "x1y2"});
 
+		my $cdp_svr = $cdp->reduce_cdp_target({"Prefecture-s" => "$pref", "item-s" => "Severe"});
+		my $sv_max = $cdp_svr->max_rlavr({start_date => 0});
+		dp::dp "Servere MAX: $sv_max";
+		$sv_max = csvlib::calc_max2($sv_max);			# try to set reasonable max 
+		my $add_plot_a = &gen_pop_scale({pop_100k => $pop_100k, pop_max => ($sv_max / $pop_100k), init_dlt => 1,
+								lc => "navy", title_tag => 'Severe %.1f/100K', axis => "x1y2"});
 		foreach my $start_date (0, -28){
 			push(@$gp_list, csv2graph->csv2graph_list_gpmix(
 			{gdp => $defmhlw::MHLW_GRAPH, dsc => "$pref hospitalized,severe and deaths [nc:$nc,ns:$ns] $pop_disp*10K", start_date => $start_date, 
@@ -859,6 +970,22 @@ if($golist{"mhlw-pref"}) {
 				additional_plot => $add_plot,
 				graph_items => [
 					{cdp => $cdp,  item => {"Prefecture-s" => "$pref", "item-s" => "Severe"}, static => "", graph_def => $box_fill, axis => "y2"},
+					{cdp => $cdp,  item => {"Prefecture-p" => "$pref", "item-p" => "Positive"}, static => "rlavr", graph_def => $line_thick,},
+					{cdp => $cdp,  item => {"Prefecture-h" => "$pref", "item-h" => "Inpatient"}, static => "", graph_def => $line_thick,},
+					{cdp => $cdp,  item => {"Prefecture-d" => "$pref", "item-d" => "Deaths"}, static => "rlavr", graph_def => $box_fill_solid, axis => "y2"},
+					{cdp => $cdp,  item => {"Prefecture-d" => "$pref", "item-d" => "Deaths"}, static => "", graph_def => $line_thin_dot, axis => "y2"},
+				],
+			}
+			));
+
+			push(@$gp_list, csv2graph->csv2graph_list_gpmix(
+			{gdp => $defmhlw::MHLW_GRAPH, dsc => "$pref hospitalized,severe and deaths  $pop_disp*10K", start_date => $start_date, 
+				ymin => 0, y2min => 0, y2max => $sv_max,
+				ylabel => "hospitalzed/servere", 
+				additional_plot => $add_plot_a,
+				graph_items => [
+					{cdp => $cdp,  item => {"Prefecture-s" => "$pref", "item-s" => "Severe"}, static => "", graph_def => $box_fill, axis => "y2"},
+					{cdp => $cdp,  item => {"Prefecture-p" => "$pref", "item-p" => "Positive"}, static => "rlavr", graph_def => $line_thick,},
 					{cdp => $cdp,  item => {"Prefecture-h" => "$pref", "item-h" => "Inpatient"}, static => "", graph_def => $line_thick,},
 					{cdp => $cdp,  item => {"Prefecture-d" => "$pref", "item-d" => "Deaths"}, static => "rlavr", graph_def => $box_fill_solid, axis => "y2"},
 					{cdp => $cdp,  item => {"Prefecture-d" => "$pref", "item-d" => "Deaths"}, static => "", graph_def => $line_thin_dot, axis => "y2"},
@@ -869,7 +996,7 @@ if($golist{"mhlw-pref"}) {
 	}
 
 	csv2graph->gen_html_by_gp_list($gp_list, {						# Generate HTML file with graphs
-			row => 2,
+			row => 4,
 			html_tilte => "COVID-19 related data visualizer ",
 			src_url => "src_url",
 			html_file => "$HTML_PATH/mhlw_pref.html",
@@ -878,6 +1005,17 @@ if($golist{"mhlw-pref"}) {
 			data_source => $cdp->{src_info},
 		}
 	);
+#	csv2graph->gen_html_by_gp_list($gp_list_a, {						# Generate HTML file with graphs
+#			row => 2,
+#			html_tilte => "COVID-19 related data visualizer ",
+#			src_url => "src_url",
+#			html_file => "$HTML_PATH/mhlw_pref_a.html",
+#			png_path => $PNG_PATH // "png_path",
+#			png_rel_path => $PNG_REL_PATH // "png_rel_path",
+#			data_source => $cdp->{src_info},
+#		}
+##	);
+
 
 }
 
@@ -885,6 +1023,7 @@ if($golist{"mhlw-pref"}) {
 #	NHK
 #
 if($golist{nhk}){
+	dp::set_dp_id("nhk");
 	@$gp_list = ();
 
 	my $cdp = csv2graph->new($defnhk::CDP); 						# Load Johns Hopkings University CCSE
@@ -980,6 +1119,7 @@ if($golist{nhk}){
 #
 if($golist{jpvac})
 {
+	dp::set_dp_id("jpvac");
 	my $jp_cdp = csv2graph->new($defjapan::JAPAN_DEF); 						# Load Apple Mobility Trends
 	$jp_cdp->load_csv($defjapan::JAPAN_DEF);
 #	$jp_cdp->calc_items("sum", 
@@ -1154,7 +1294,7 @@ if(0){
 	foreach my $pref (@pref_list[0..$et]){ #(1..47){
 		if($pref =~ /^\d+$/){
 			my $pn = sprintf("%02d", $pref);
-			dp::dp "<<$pn>>\n";
+			#dp::dp "<<$pn>>\n";
 			$pref = $AREA_CODE->{$pn};
 		}
 		else {
@@ -1177,7 +1317,7 @@ if(0){
 		#
 		$death_pref->calc_record({dlm => ",", result => "$pref#$deaths,,,,$pref#$deaths"."_p", op => ["$pref#$deaths", "/=$death_max"], v => 0});
 		#my $death_pref1 = $jp_rlavr->reduce_cdp_target({item => $deaths, prefectureNameJ => "$pref#deaths" . "_p"});
-		dp::dp "death_max: $death_max x 100\n";
+		#dp::dp "death_max: $death_max x 100\n";
 		#$death_pref->dump();
 
 		push(@$gp_list, csv2graph->csv2graph_list_gpmix(
@@ -1230,6 +1370,7 @@ if(0){
 #
 if($golist{owidvac})
 {
+	dp::set_dp_id("owidvac");
 	my $cdp = csv2graph->new($defowid::OWID_VAC_DEF); 						# Load Apple Mobility Trends
 	$cdp->load_csv({download => $DOWNLOAD});
 	&completing_zero($cdp);
@@ -1404,6 +1545,7 @@ sub	completing_zero
 #
 #
 if($golist{docomo}){
+	dp::set_dp_id("docomo");
 	my $docomo_gp_list = [];
 	dp::dp "DOCOMO\n";
 	my @docomo_base = ("感染拡大前比", "緊急事態宣言前比"); #, "前年同月比", "前日比"); 
@@ -1563,7 +1705,7 @@ sub	positive_death_ern
 	$p = {start_date => $start_date} if(!($p // ""));
 	my $pop_ymax_nc = $p->{pop_ymax_nc} // "";
 	my $pop_ymax_nd = $p->{pop_ymax_nd} // "";
-	dp::dp "[$pop_ymax_nc,$pop_ymax_nd]\n";
+	# dp::dp "[$pop_ymax_nc,$pop_ymax_nd]\n";
 
 	my $nc_max = $conf_region->max_rlavr($p);
 	my $nc_max_week = $conf_region->max_rlavr($p);
@@ -1689,7 +1831,7 @@ sub	positive_death_ern
 	my $d_max = ($nd_max < $y2max) ? $nd_max : $y2max ;		# $nd_max;
 	#my $d_max = $nd_max;									# moving scale seems wrong
 
-	dp::dp "$d_max  $nd_max : $y2max\n";
+	#dp::dp "$d_max  $nd_max : $y2max\n";
 	for(my $i = 0; $i <= $#d100k_list; $i++){
 		#$dn_unit = csvlib::calc_max2($nd_max) / 2;			# try to set reasonable max 
 		$d100k = $d100k_list[$i];
@@ -1781,18 +1923,18 @@ sub	positive_death_ern
 	#dp::dp "===== " .join(",", $region, $nd_last, $nd_last_week,  $nd_last / $nd_last_week) . "\n";
 	if($nc_last_week <= 0){
 		$nc_last_week = $nc_last / 999;
-		dp::dp "====++ " .join(",", $region, $nc_last, $nc_last_week,  $nc_last / $nc_last_week) . "\n";
+		#dp::dp "====++ " .join(",", $region, $nc_last, $nc_last_week,  $nc_last / $nc_last_week) . "\n";
 	}
 	if($nd_last_week <= 0){
 		$nd_last = 1 if($nd_last == 0);
 		$nd_last_week = $nd_last / 999 ;
 
-		dp::dp "====++ " .join(",", $region, $nd_last, $nd_last_week,  $nd_last / $nd_last_week) . "\n";
+		#dp::dp "====++ " .join(",", $region, $nd_last, $nd_last_week,  $nd_last / $nd_last_week) . "\n";
 	}
 
 	my $nc_week_diff = $nc_last / $nc_last_week;
 	my $nd_week_diff = $nd_last / $nd_last_week;
-	dp::dp "deaths: $nd_last, $d_max\n";
+	#dp::dp "deaths: $nd_last, $d_max\n";
 	#my $rg = $key;
 	#$rg =~ s/--.*$//;
 	#$rg =~ s/#.*$//;
@@ -1859,7 +2001,7 @@ sub	calc_dlt
 {
 	my($pop_max) = @_;
 	#my @dlt = (10, 5, 2.5, 2, 1); 
-	my @dlt = (1, 2, 2.5, 5, 10); 
+	my @dlt = (0.2, 0.5, 1, 2, 2.5, 5, 10); 
 
 	for(my $dlt_dig = 0; $dlt_dig < 5; $dlt_dig++){
 		my $dig = 10**($dlt_dig);
@@ -1890,7 +2032,7 @@ sub	gen_pop_scale
 	my $line_def = "lc '$lc' dt (5,5)";
 
 	my $pop_dlt = &calc_dlt($pop_max);
-	dp::dp "dlt: $pop_max -> $pop_dlt\n";
+	#dp::dp "dlt: $pop_max -> $pop_dlt\n";
 
 #	if($pop_max > 15){
 #		my $pmx = csvlib::calc_max2($pop_max);			# try to set reasonable max 
@@ -2046,7 +2188,7 @@ my $amt_country = {};		# for marge wtih ccse-ERN
 my $amt_pref = {};
 my $EU = "United Kingdom,France,Germany,Italy,Belgium,Greece,Spain,Sweden";
 if($golist{amt}){
-
+	dp::set_dp_id("amt");
 	my $AMT_DEF = $defamt::AMT_DEF;
 	my $AMT_GRAPH = $defamt::AMT_GRAPH;
 
@@ -2132,6 +2274,7 @@ if($golist{amt}){
 #
 if($golist{"amt-jp"}) {
 
+	dp::set_dp_id("amt-jp");
 	my $AMT_DEF = $defamt::AMT_DEF;
 	my $AMT_GRAPH = $defamt::AMT_GRAPH;
 
@@ -2173,6 +2316,7 @@ if($golist{"amt-jp"}) {
 #
 if($golist{"amt-ccse"})
 {
+	dp::set_dp_id("amt-ccse");
 	#
 	#	Apple Mobility Trends
 	#
@@ -2233,6 +2377,7 @@ if($golist{"amt-ccse"})
 #	geo_type,region,transportation_type,alternative_name,sub-region,country,2020-01-13,,,,
 #
 if($golist{"amt-jp-pref"}) {
+	dp::set_dp_id("amt-jp-pref");
 	#
 	#	Apple Mobility Trends
 	#
@@ -2286,6 +2431,7 @@ if($golist{"amt-jp-pref"}) {
 #	positive_rate,1,2,3,
 #
 if($golist{"tokyo"}){
+	dp::set_dp_id("tokyo");
 	my $TOKYO_DEF = $deftokyo::TOKYO_DEF;
 	my $TOKYO_GRAPH = $deftokyo::TOKYO_GRAPH;
 	my $TOKYO_ST_DEF = $deftokyo::TOKYO_ST_DEF;
@@ -2336,6 +2482,7 @@ if($golist{"tokyo"}){
 #
 #
 if($golist{japan}){
+	dp::set_dp_id("japan");
 	my $jp_cdp = csv2graph->new($defjapan::JAPAN_DEF); 						# Load Apple Mobility Trends
 	$jp_cdp->load_csv($defjapan::JAPAN_DEF);
 	#$jp_cdp->dump({ok => 1, lines => 5});			# Dump for debug
@@ -2430,6 +2577,7 @@ if($golist{japan}){
 #	Tokyo Weather
 #
 if($golist{tkow}){
+	dp::set_dp_id("tkow");
 	my $TKOW_DEF   = $deftkow::TKOW_DEF;
 	my $TKOW_GRAPH = $deftkow::TKOW_GRAPH;
 
@@ -2454,6 +2602,7 @@ if($golist{tkow}){
 #
 #
 if($golist{"tkow-ern"}) {
+	dp::set_dp_id("tkow-ern");
 	#
 	#	Tokyo Weather
 	#
@@ -2488,16 +2637,16 @@ if($golist{"tkow-ern"}) {
 #
 #	Generate HTML FILE
 #
-csv2graph->gen_html_by_gp_list($gp_list, {						# Generate HTML file with graphs
-		row => 1,
-		html_tilte => "COVID-19 related data visualizer ",
-		src_url => "src_url",
-		html_file => "$HTML_PATH/csv2graph_index.html",
-		png_path => $PNG_PATH // "png_path",
-		png_rel_path => $PNG_REL_PATH // "png_rel_path",
-		data_source => "data_source",
-	}
-);
+#csv2graph->gen_html_by_gp_list($gp_list, {						# Generate HTML file with graphs
+#		row => 1,
+#		html_tilte => "COVID-19 related data visualizer ",
+#		src_url => "src_url",
+#		html_file => "$HTML_PATH/csv2graph_index.html",
+#		png_path => $PNG_PATH // "png_path",
+#		png_rel_path => $PNG_REL_PATH // "png_rel_path",
+#		data_source => "data_source",
+#	}
+#);
 
 #
 #	Upload to Sakura

@@ -548,7 +548,7 @@ sub gen_html_by_gp_list
 	my $no_lank_label = $p->{no_lank_label} // 0;
 	my $alt_graph = $p->{alt_graph}//"";
 
-	dp::dp "row: $row\n";
+	#dp::dp "row: $row\n";
 	my $CSS = $config::CSS;
 	my $class = $config::CLASS;
 
@@ -1011,7 +1011,7 @@ sub	csv2graph_mix
 		$start_max = $ds if($ds gt $start_max);
 		$end_min   = $de if($de lt $end_min);
 	}
-	dp::dp join(",", $start_max, $end_min) . "\n";
+	#dp::dp join(",", $start_max, $end_min) . "\n";
 	my $start_max_ut = csvlib::ymds2tm($start_max);
 	my $end_min_ut = csvlib::ymds2tm($end_min);
 	my $dates = ($end_min_ut - $start_max_ut) / (24*60*60);
@@ -1020,13 +1020,13 @@ sub	csv2graph_mix
 	#	Error date miss much
 	#
 	if($dates <= 0){
-		dp::WARNING "Date miss much dates=$dates\n";
 		dp::dp "max_start, min_end: " . join(",", $start_max, $end_min, $dates) . "\n";
 		foreach my $gpp (@$gp_list){
 			my $cdp = $gpp->{cdp};
 			my ($ds, $de) = ($cdp->{date_list}->[0], $cdp->{date_list}->[$dates]);
 			dp::dp $cdp->{id} . ": " . join(",", $ds, $de, $gpp->{date_diff}) . "\n";
 		}
+		dp::ABORT "Date miss much dates=$dates\n";
 		return 0;
 	}
 
@@ -1420,8 +1420,8 @@ sub	graph
 	close(CSV);
 
 	my @label = split(/$dlm/, $l);
-	dp::dp "CSV: $csvf\n";
-	dp::dp "PLOT $plotf\n";
+	dp::dp "CSV: $csvf\n" if($VERBOSE);
+	dp::dp "PLOT $plotf\n" if($VERBOSE);
 	#dp::dp "### $csvf\n";
 
 	#my $src_csv = $self->{src_csv} // "";

@@ -109,6 +109,10 @@ my $urls = [		# for keep order of records
 sub	download
 {
 	my $self = shift;
+	my ($p) = @_;
+	$p = $p // {};
+	my $download = $self->check_download();
+	$download = 1 if(($p->{download}//0) > 1);
 	#csvlib::disp_caller(1..3);
 	#dp::dp "[$self]\n";
 	my $csv = {};
@@ -116,7 +120,6 @@ sub	download
 	my $file_no = 0;
 	my $col_no = 0;
 	my @header = ();
-	my $download = $self->check_download();
 
 	foreach my $items (@$urls){
 		my $csvf = "$CSV_PATH/tkocsv_" . $items->{name} . ".csv";

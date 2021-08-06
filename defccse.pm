@@ -105,7 +105,8 @@ our $CCSE_GRAPH = {
 #
 sub	download
 {
-	my ($cdp) = @_;
+	my ($cdp, $p) = @_;
+	$p = $p // {};
 
 	#system("(cd ../COVID-19; git pull origin master)");
 	system("(cd $CCSE_ROOT; git pull origin master)");
