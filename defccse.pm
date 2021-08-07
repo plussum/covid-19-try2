@@ -105,11 +105,17 @@ our $CCSE_GRAPH = {
 #
 sub	download
 {
-	my ($cdp, $p) = @_;
+	my $self = shift;
+	my ($p) = @_;
 	$p = $p // {};
 
-	#system("(cd ../COVID-19; git pull origin master)");
-	system("(cd $CCSE_ROOT; git pull origin master)");
-	system("cp $CCSE_BASE_DIR/*.csv $config::CSV_PATH/");
+	my $download = $self->check_download();
+	$download = 1 if(($p->{download}//0) > 1);
+
+	if($download){
+		#system("(cd ../COVID-19; git pull origin master)");
+		system("(cd $CCSE_ROOT; git pull origin master)");
+		system("cp $CCSE_BASE_DIR/*.csv $config::CSV_PATH/");
+	}
 }
 

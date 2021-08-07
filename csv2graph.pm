@@ -591,6 +591,8 @@ sub gen_html_by_gp_list
 		#
 		#	Get Label Name
 		my $csv_file = $png_path . "/" . $gp->{plot_csv};
+		dp::dp "$csv_file\n";
+		print STDERR "### $csv_file\n";
 		open(CSV, $csv_file) || die "canot open $csv_file";
 		binmode(CSV, ":utf8");
 		my $l = <CSV>;		# get label form CSV file
@@ -1498,7 +1500,7 @@ _EOD_
 			$key =~ s/$sub_from/$sub_to/;
 		}
 		$label_subs[$i] = $key;
-		#dp::dp "[$graph_def]\n";
+		dp::dp "[$graph_def] $label[$i]\n";
 		if($graph_def =~ /^#D#/){
 			if(defined $GRAPH_KIND->{$graph_def}){
 				$graph_def = $GRAPH_KIND->{$graph_def} ;

@@ -32,6 +32,11 @@ use utf8;
 use Encode 'decode';
 use Data::Dumper;
 use List::Util 'min';
+use POSIX ":sys_wait_h";
+use Proc::Wait3;
+use Time::HiRes qw( usleep gettimeofday tv_interval );
+
+
 use config;
 use csvlib;
 use csv2graph;
@@ -52,6 +57,7 @@ use defnhk;
 
 
 binmode(STDOUT, ":utf8");
+binmode(STDERR, ":utf8");
 
 my $VERBOSE = 0;
 my $DOWNLOAD = 1;
@@ -116,7 +122,7 @@ my $cntry = "Country/Region";
 my $positive = "testedPositive";
 my $deaths = "deaths";
 
-my @ALL_PARAMS = qw/ccse-tgt pref ccse tkocsv jpvac owidvac mhlw mhlw-pref nhk/;
+my @ALL_PARAMS = qw/mhlw-pref ccse pref ccse-tgt tkocsv jpvac owidvac mhlw nhk/;
 #my @ALL_PARAMS = qw/ccse-tgt nhk/;
 my $gkind = "";		# for pref, and ccse
 my $DELAY_AT_ALL = 1;
@@ -220,6 +226,7 @@ if($#ARGV >= 0){
 		}
 		elsif(/^-dball/){
 			$db_all = 1;
+			next;
 		}
 		elsif(/^-clear/){
 			dp::dp "Remove .png and other plot data: $PNG_PATH\n";
@@ -283,14 +290,65 @@ dp::dp "Parames: " . join(",", keys %golist) . "\n";
 #	$golist{amt} = 1;
 #	$golist{ccse} = 1;
 #}
-if($all){
-	my $child = {};
-	my $cn = 0;
-	my @allp = ();
-	my @pid_list = ();
+##########################
+#
+#
+my $child = {};
+my @allp = ();
+my @pid_list = ();
+my %start_time = ();
+my $tm_start = time;
+my $child_procs = 0;
 
-	my %start_time = ();
-	my $tm_start = time;
+sub sigchld
+{
+	my ($sig) = @_;
+
+	for(my $i = 0;;$i++){
+		my ($pid, $status, $utime, $stime, $maxrss, $ixrss, $idrss, $isrss,
+		$minflt, $majflt, $nswap, $inblock, $oublock, $msgsnd, $msgrcv,
+		$nsignals, $nvcsw, $nivcsw) = wait3(0);
+
+		if(!defined $pid){
+			#dp::dp "SIGCHLD:[$sig][pid=''] $i\n";
+			return;
+		}
+		#my $pid = waitpid(-1, &WNOHANG); 
+		dp::dp "SIGCHLD:[$sig][$pid] $i\n";
+
+		return if(!$pid || $pid <= 0);
+		
+		my $etm = time;
+		$child->{$pid}->{st} = $status;
+		$child->{$pid}->{end_time} = $etm;
+		$child->{$pid}->{elp_time} = $etm - $child->{$pid}->{start_time};
+		$child->{$pid}->{sig} = "SIG";
+		$child_procs--;
+	} 
+}
+
+#
+#	When SIG{CHLD} is set, sleep exit when SIGNAL occured
+#
+sub	sleep_child
+{
+	my ($wait) = @_;
+	my $t0 = gettimeofday();
+	my $end = $t0 + $wait;
+
+	for(;;){
+		my $now = gettimeofday();
+		my $diff = $end - $now ;
+		#dp::dp "$now $end : " . sprintf("%.3f", $diff) . "\n";
+		last if($now >= $end);
+
+		usleep($diff * 1000 * 1000);
+	}
+}
+
+if($all){
+	$SIG{CHLD} = 'sigchld';
+	my $last_flag = "";
 	foreach my $id (@ALL_PARAMS){
 		my  @glist = ("");
 		my $delay = ($db_all) ? 1 : 30;
@@ -299,46 +357,60 @@ if($all){
 				@glist = ("raw", $delay,"rlavr", $delay, "pop");
 			}
 		#}
-		for(my $i = 0; $i <= $#glist && $cn >= 0; $i++){
+		for(my $i = 0; $i <= $#glist && $child_procs >= 0; $i++){
 			$gkind = $glist[$i];
 			if($gkind && ! ($gkind =~ /\D/)){
-				dp::dp "#" x 30 . " sleep [$gkind]\n";
-				sleep($gkind);
+				dp::dp "#" x 30 . " $$  sleep $id [$gkind] " . csvlib::ut2t(time) . "\n";
+				&sleep_child($gkind);
+				dp::dp "#" x 30 . " $$ sleep $id [$gkind] " . csvlib::ut2t(time) . " done\n";
 				next;
 			}
 			#dp::dp "$id: $gkind\n";
 			my $pid = fork;
 			dp::ABORT "cannot fork $!" if(! defined $pid);
 			if(! $pid){		# Child Process
+				dp::set_dp_id("child");
 				%golist = ($id => 1);
-				$cn = -1;
+				$last_flag = 1;			# exit loop;
 				#dp::dp "gkind:[$gkind]\n";
 				last;
 			}
 			else {
-				$child->{$pid} = {id => $id, gkind => $gkind, start_time => time, cn => $cn++};
+				$child->{$pid} = {id => $id, gkind => $gkind, start_time => time, cn => $child_procs++};
 				push(@pid_list, $pid);
-				dp::dp "$id $gkind: $pid " . csvlib::ut2t(time) . "\n";
+				dp::dp "fork $id $gkind: [$pid] " . csvlib::ut2t(time) . "\n";
 				#$pid = wait;	########
+				#dp::dp "wait .....\n";
+				&sleep_child(2);
 			}
 		}
 		#dp::dp "gkind:[$gkind]\n";
-		last if($cn < 0);
+		last if($last_flag);
 	}
 	#dp::dp "gkind:[$gkind]\n";
 	
-	if($cn >= 0){
+	if(! $last_flag){		# main process
 		#exit;	########
 		dp::set_dp_id("main");
-		for(; $cn > 0; $cn--){
-			dp::dp "Waiting child process ($cn)\n";
-			my $pid = wait;
-			my $etm = time;
-			$child->{$pid}->{st} = $?;
-			$child->{$pid}->{end_time} = $etm;
-			$child->{$pid}->{elp_time} = $etm - $child->{$pid}->{start_time};
-			#undef $child{$pid};
+		dp::dp "##### wait proc [$child_procs]\n";
+		
+		&sleep_child(2);
+		dp::dp "##### wait proc [$child_procs]\n";
+		my $kid = 0;
+		for(my $conf = 0; $conf < 500 && $child_procs > 0; $conf++){
+			#while ( ($kid = waitpid(-1, WNOHANG) ) > 0 ) {
+			#dp::dp "Waiting child process ($child_procs) $kid\n";
+			#if($kid > 0){
+			#	dp::dp "##### kid > 0\n";
+			#	&sleep_child(1);
+			#	$child_procs--;
+			#}
+			$kid = waitpid(-1, WNOHANG); 
+			#$kid = wait;
+			dp::dp "wait conf : $conf $kid $child_procs\n";
+			&sleep_child(2);
 		}
+
 		my $tm_end = time;
 		if($golist{upload}) {
 			my $do = "$0 upload";
@@ -352,6 +424,7 @@ if($all){
 			$child->{$pid}->{end_time} = $etm;
 			$child->{$pid}->{elp_time} = $etm - $child->{$pid}->{start_time};
 		}
+
 		my $tm_up_end = time ;
 		my $elp1 = $tm_end  - $tm_start;
 		my $elp2 = $tm_up_end  - $tm_start;
@@ -363,15 +436,19 @@ if($all){
 
 		foreach my $pid (@pid_list){
 			my $p = $child->{$pid};
-			dp::dp sprintf("%2d: %-20s elp %02d:%02d (%s) %s %s\n", 
+			dp::dp sprintf("%2d: $pid %-20s elp %02d:%02d (%s) %s %s  %s\n", 
 				$p->{cn}, $p->{id}. "#". $p->{gkind}, 
-				int($p->{elp_time}/60), $p->{elp_time} % 60,$p->{st}, 
-				csvlib::ut2t($p->{start_time}), csvlib::ut2t($p->{end_time})
+				int(($p->{elp_time}//0)/60), ($p->{elp_time}//0) % 60,$p->{st}//"", 
+				csvlib::ut2t($p->{start_time}//0), csvlib::ut2t($p->{end_time}//0),
+				$p->{sig} // "-",
 			);
 		}
 		exit;
 	}
-	exit 1 if($db_all);	# for debug, multitask
+	if($db_all){	# for debug, multitask
+		&sleep_child(2);
+		exit 1;
+	}
 }
 
 #	POP
