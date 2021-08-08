@@ -10,6 +10,11 @@ sub	set_dp_id
 {
 	my ($id) = @_;
 	$DP_ID = $id;
+	return $DP_ID;
+}
+sub	dp_id
+{
+	return $DP_ID;
 }
 
 #

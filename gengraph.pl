@@ -2725,6 +2725,11 @@ if($golist{"tkow-ern"}) {
 #	}
 #);
 
+my $times_cmd = "./htmllist.pl";
+dp::dp "times: $times_cmd\n";
+system($times_cmd);
+system("ls -lt $HTML_PATH | head -20");
+
 #
 #	Upload to Sakura
 #

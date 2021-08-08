@@ -592,11 +592,17 @@ sub gen_html_by_gp_list
 		#	Get Label Name
 		my $csv_file = $png_path . "/" . $gp->{plot_csv};
 		dp::dp "$csv_file\n";
-		print STDERR "### $csv_file\n";
+		#print STDERR "### $csv_file\n";
 		open(CSV, $csv_file) || die "canot open $csv_file";
 		binmode(CSV, ":utf8");
 		my $l = <CSV>;		# get label form CSV file
 		close(CSV);
+		if((!defined $l) || (!$l)){
+			print STDERR "-" x 30 . "\n";
+			print STDERR join("/", "file something wrong", $csv_file, dp::dp_id());
+			print STDERR "-" x 30 . "\n";
+			dp::ABORT join("/", "file something wrong", $csv_file, dp::dp_id());
+		}
 		$l =~ s/[\r\n]+$//;
 		my @lbl = split($dst_dlm, $l);
 		shift(@lbl);
