@@ -1506,13 +1506,13 @@ _EOD_
 			$key =~ s/$sub_from/$sub_to/;
 		}
 		$label_subs[$i] = $key;
-		dp::dp "[$graph_def] $label[$i]\n";
+		#dp::dp "[$graph_def] $label[$i]\n";
 		if($graph_def =~ /^#D#/){
 			if(defined $GRAPH_KIND->{$graph_def}){
 				$graph_def = $GRAPH_KIND->{$graph_def} ;
 			}
 			else {
-				dp::WARNING "graph_def may wrong: $graph_def\n";
+				dp::ABORT "graph_def may wrong: $graph_def\n";
 			}
 		}
 		#dp::dp "[$key]\n";

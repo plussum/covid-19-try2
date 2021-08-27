@@ -478,9 +478,7 @@ sub	calc_max2
 	if($max > 0.8){
 		#dp::dp "calc_max2: $max: $v: $digit\n";
 		$v += 1 * (10**($digit-1));
-
 	}
-
 	$max = int((($v / (10**$digit)) + 0.99999)) * (10**$digit);
 	#dp::dp "calc_max2[$orv:$v:$max:$digit]\n";
 
