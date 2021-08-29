@@ -371,15 +371,28 @@ sub	add_key_items
 	return 1;
 }
 
+sub	substr_keys
+{
+	my $self = shift;
+	my ($from, $to) = @_;
+
+	my $csvp = $self->{csv_data};
+	foreach my $k (keys %$csvp){
+		my $nk = $k;
+		$nk =~ s/$from/$to/;
+		$self->rename_key($k, $nk);
+	}
+}
+
 sub	rename_key
 {
 	my $self = shift;
 	my ($key_name, $new_name) = @_;
 
 	my $csvp = $self->{csv_data};
-	foreach my $k (keys %$csvp){
-		#dp::dp "[$k]\n";
-	}
+#	foreach my $k (keys %$csvp){
+#		#dp::dp "[$k]\n";
+#	}
 	if(! ($csvp->{$key_name} // "")){
 		dp::WARNING "$key_name is no in the data\n";
 		return 1;
@@ -553,6 +566,7 @@ sub gen_html_by_gp_list
 	my $class = $config::CLASS;
 
 	csvlib::disp_caller(1..3) if($VERBOSE);
+	dp::dp "$html_file\n";
 	open(HTML, ">$html_file") || die "Cannot create file $html_file";
 	binmode(HTML, ":utf8");
 
@@ -590,6 +604,7 @@ sub gen_html_by_gp_list
 		
 		#
 		#	Get Label Name
+		#dp::dp "gp: $gp  \n"; # . ($gp->{plot_csv} // "NO CSV") . "\n";
 		my $csv_file = $png_path . "/" . $gp->{plot_csv};
 		dp::dp "$csv_file\n";
 		#print STDERR "### $csv_file\n";
@@ -809,7 +824,7 @@ sub	csv2graph
 	#dp::dp "util: $self->{id} \n";
 	my $start_date = util::date_calc(($gp->{start_date} // ""), $date_list->[0], $self->{dates}, $date_list);
 	my $end_date   = util::date_calc(($gp->{end_date} // ""),   $date_list->[$dates], $self->{dates}, $date_list);
-	#dp::dp "START_DATE: $start_date [" . ($gp->{start_date} // "NULL"). "] END_DATE: $end_date [" . ($gp->{end_date}//"NULL") . "]\n";
+	dp::dp "START_DATE: $start_date [" . ($gp->{start_date} // "NULL"). "] END_DATE: $end_date [" . ($gp->{end_date}//"NULL") . "]\n";
 	$gp->{start_date} = $start_date;
 	$gp->{end_date} = $end_date;
 	#dp::dp "START_DATE: $start_date [" . ($gp->{start_date} // "NULL"). "] END_DATE: $end_date [" . ($gp->{end_date}//"NULL") . "]\n";
@@ -1132,9 +1147,11 @@ sub	csv2graph_mix
 		#
 		my $sorted_keys = [];								# sort
 		if($lank_select){
-			my $dt_start = $gp_mix->{sort_start} // 0;
-			$dt_start =  &csv_size($cdp->{csv_data}) if($dt_start eq "\$");
-			my $dt_end = $gp_mix->{sort_end} // $dates;
+			#my $dt_start = $gp_mix->{sort_start} // 0;
+			#$dt_start =  &csv_size($cdp->{csv_data}) if($dt_start eq "\$");
+			#my $dt_end = $gp_mix->{sort_end} // $dates;
+			my $dt_start = util::date_pos($gp_mix->{start_date} // 0, $cdp->{date_list}->[0], $cdp->{dates}, $cdp->{date_list});
+			my $dt_end = util::date_pos($gp_mix->{start_end} // $cdp->{dates}, $cdp->{date_list}->[0], $cdp->{dates}, $cdp->{date_list});
 			@$sorted_keys = $cdp->sort_csv($cdp->{csv_data}, $target_keys, $dt_start, $dt_end);
 		}
 		else {

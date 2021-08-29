@@ -582,7 +582,7 @@ sub	max_val
 	
 	my $dt_start = util::date_pos($start_date, $date_list->[0], $dates, $date_list);	# 2020-01-02 -> array pos
 	my $dt_end   = util::date_pos($end_date,   $date_list->[$dates], $dates, $date_list);		# 2021-01-02 -> array pos
-	#dp::dp "start_date: $start_date end_date:$end_date dt_start:$dt_start dt_end:$dt_end \n";
+	dp::dp "start_date: $start_date end_date:$end_date dt_start:$dt_start dt_end:$dt_end \n";
 
 	my $csvp = $self->{csv_data};
 	if($target_col){
@@ -594,10 +594,11 @@ sub	max_val
 	foreach my $k (keys %$csvp){
 		for(my $i = $dt_start; $i <= $dt_end ; $i++){
 			my $v = $csvp->{$k}->[$i];
-			$v = 0 if(! ($v =~ /^[\+\-]?\d*\.\d*$/));
+			next if(! ($v =~ /^[\+\-]?\d*\.?\d*$/));
 			$max = $v if($v > $max);
 		}
 		#dp::dp "$max ($dt_start - $dt_end)" . join(",", @{$csvp->{$k}}) . "\n";
+		#dp::dp "$max ($dt_start - $dt_end)" . join(",", @{$csvp->{$k}}[$dt_start..($dt_start+20)]) . "\n";
 	}
 	#dp::dp "max: $max\n";
 	return $max;

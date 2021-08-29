@@ -182,7 +182,8 @@ my @cdp_list = ($defamt::AMT_DEF, $defccse::CCSE_DEF, $MARGE_CSV_DEF,
 					$defnhk::CDP); 
 
 my $cmd_list = {"amt-jp" => 1, "amt-jp-pref" => 1, "tkow-ern" => 1, try => 1, "pref-ern" => 1, 
-				pref => 1, mhlw => 1, docomo => 1, upload => 1, "ccse-tgt" => 1, "mhlw-pref" => 1};
+				pref => 1, mhlw => 1, docomo => 1, upload => 1, "ccse-tgt" => 1, "mhlw-pref" => 1,
+				usa => 1};
 my @REG_INFO_LIST = ();
 
 #
@@ -861,6 +862,150 @@ sub	ccse
 	}
 }
 
+if($golist{usa}) {
+	my $param = "USA";
+	
+	$gp_list = [];
+	@REG_INFO_LIST = ();
+	dp::dp "USA\n";
+	my $TL = "TL";
+
+	#
+	#	Marge regional data of certain counties
+	#
+	my @CDPDS = (
+		{dsc => "positive", cdp_def => $defccse::CCSE_US_CONF_DEF},
+		{dsc => "death",    cdp_def => $defccse::CCSE_US_DEATHS_DEF},
+	);
+	my $src_info = $defccse::CCSE_US_CONF_DEF->{src_info};
+
+	foreach my $cdpd (@CDPDS){
+		my $dsc = $cdpd->{dsc};
+		$cdpd->{cdpds} = {};
+		my $cdpds = $cdpd->{cdpds};
+		#$cdpd->{kind} = ["city", "state"];
+		$cdpds->{city_raw} = csv2graph->new($cdpd->{cdp_def}); 						# Load Johns Hopkings University CCSE
+		$cdpds->{city_raw}->load_csv({download => $DOWNLOAD});
+		$cdpds->{city_rlavr} = $cdpds->{city_raw}->calc_rlavr();
+		$cdpds->{city_pop}   = $cdpds->{city_rlavr}->calc_pop();
+
+		my $cdpw = $cdpds->{city_raw}->dup();
+		$cdpw->calc_items("sum", 
+			{"Admin2" => "",  "Province_State" => ""},				# All Province/State with Canada, ["*","Canada",]
+			{"Admin2" => $TL, "Province_State" => "="}				# total gos ["","Canada"] null = "", = keep
+		);
+		$cdpw->substr_keys("$TL-","");
+		$cdpds->{state_raw}   = $cdpw->reduce_cdp_target({"Admin2" => $TL});
+		$cdpds->{state_rlavr} = $cdpds->{state_raw}->calc_rlavr();
+		$cdpds->{state_pop}   = $cdpds->{state_rlavr}->calc_pop();
+	}
+	my %dscs = ( raw => "raw", rlavr => "rlavr", pop => "pop");
+	
+	#my @CDPDS = ( {dsc => "positive", cdp => $defccse::CCSE_US_CONF_DEF},}
+	foreach my $kind ("state", "city"){
+		foreach my $cdpd (@CDPDS){
+			my $dsc = $cdpd->{dsc};
+			my $cdpds = $cdpd->{cdpds};
+			foreach my $method ("raw", "rlavr", "pop"){
+				my $cdp_key = "$kind" . "_" . $method;
+				my $cdp = $cdpds->{$cdp_key} // "UNDEF";
+				foreach my $start_date (0, -62){
+					my $dt = ($start_date == -62) ? "(2 months)" : "";
+					my $ymax_a = $cdp->max_val({start_date => $start_date});
+					my $ymax = csvlib::calc_max2($ymax_a);			# try to set reasonable max 
+					dp::dp "CDP: $dsc $cdp_key  [$cdp] $ymax_a $ymax\n";
+					push(@$gp_list, csv2graph->csv2graph_list_gpmix(
+						{gdp => $defccse::CCSE_GRAPH, dsc => "USA $kind $dsc $method $dt", start_date => $start_date, 
+							#ymax => $ymax, y2max => $y2max, 
+							ymin => 0, y2min => 0, # ymax => $ymax,
+							ylabel => "$dsc", # y2label => "deaths (max=$y2y1rate% of rlavr confermed)",
+							#additional_plot => $additional_plot_item{ern}, 
+							lank => [0,9],
+							graph_items => [
+							{cdp => $cdp,  item => {}, static => "", graph_def => $line_thick},
+							#{cdp => $death_cdp, item => {Admin2 => ""}, static => "", axis => "y2", graph_def => $box_fill},
+							],
+						},
+					));
+				}
+			}
+		}
+	}
+
+#	my $ccse_cdp = csv2graph->new($defccse::CCSE_US_CONF_DEF); 						# Load Johns Hopkings University CCSE
+#	$ccse_cdp->load_csv({download => $DOWNLOAD});
+#	my $stw_cdp = $ccse_cdp->dup();
+#	$stw_cdp->calc_items("sum", 
+#		{"Admin2" => "",  "Province_State" => ""},				# All Province/State with Canada, ["*","Canada",]
+#		{"Admin2" => $TL, "Province_State" => "="}				# total gos ["","Canada"] null = "", = keep
+#	);
+#	my $st_cdp = $stw_cdp->reduce_cdp_target({"Admin2" => $TL});
+#
+#	#$ccse_cdp->dump();
+#	my $death_cdp = csv2graph->new($defccse::CCSE_US_DEATHS_DEF); 						# Load Johns Hopkings University CCSE
+#	$death_cdp->load_csv({download => $DOWNLOAD});
+#	#$death_cdp->dump();
+#	my $death_stw_cdp = $death_cdp->dup();
+#	$death_stw_cdp->calc_items("sum", 
+#		{"Admin2" => "",  "Province_State" => ""},				# All Province/State with Canada, ["*","Canada",]
+#		{"Admin2" => $TL, "Province_State" => "="}				# total gos ["","Canada"] null = "", = keep
+#	);
+#	my $death_st_cdp = $death_stw_cdp->reduce_cdp_target({"Admin2" => $TL});
+#
+#
+#
+#	my $death_cdp_rlavr = $death_cdp->calc_rlavr();
+#	my $death_cdp_pop = $death_cdp_rlavr->calc_pop();
+#
+#	my $graph_kind = $csv2graph::GRAPH_KIND;
+#
+#	my $start_date = 0;
+#	my @param_list = (
+#		{dsc => "state raw", cdp => $st_cdp, },
+#
+#		{dsc => "positice raw", cdp => $ccse_cdp, },
+#		{dsc => "positice rlavr", cdp => $ccse_cdp_rlavr, },
+#		{dsc => "positive pop", cdp => $ccse_cdp_pop, },
+#
+#		{dsc => "deaths raw", cdp => $death_cdp,},
+#		{dsc => "deaths rlavr", cdp => $death_cdp_rlavr,},
+#		{dsc => "deaths pop", cdp => $death_cdp_pop,},
+#	);
+#	
+#	foreach my $p (@param_list){
+#		my $dsc = $p->{dsc};
+#		my $cdp = $p->{cdp};
+#		my $select = $p->{select} // {};
+#		foreach $start_date (0, -28){
+#			push(@$gp_list, csv2graph->csv2graph_list_gpmix(
+#				{gdp => $defccse::CCSE_GRAPH, dsc => "usa $dsc ", start_date => $start_date, 
+#					#ymax => $ymax, y2max => $y2max, 
+#					ymin => 0, y2min => 0,
+#					ylabel => "confermed", # y2label => "deaths (max=$y2y1rate% of rlavr confermed)",
+#					#additional_plot => $additional_plot_item{ern}, 
+#					lank => [0,9],
+#					graph_items => [
+#					{cdp => $cdp,  item => $select, static => "", graph_def => $line_thick},
+#					#{cdp => $death_cdp, item => {Admin2 => ""}, static => "", axis => "y2", graph_def => $box_fill},
+#					],
+#				},
+#			));
+#		}
+#	}
+
+	csv2graph->gen_html_by_gp_list($gp_list, {						# Generate HTML file with graphs
+			row => 2,
+			no_lank_label => 1,
+			html_tilte => "COVID-19 related data visualizer ",
+			src_url => "src_url",
+			html_file => "$HTML_PATH/$param" . "_area.html",
+			#alt_graph => "./$param" . "_rlavr.html",
+			png_path => $PNG_PATH // "png_path",
+			png_rel_path => $PNG_REL_PATH // "png_rel_path",
+			data_source => $src_info,
+		}
+	);
+}
 #
 #	MHLW
 #
@@ -1016,7 +1161,7 @@ if($golist{mhlw}) {
 #
 #
 #
-if($golist{"mhlw-pref"}) {
+if($golist{"mhlw"} || $golist{"mhlw-pref"}){ 	# mhlw-pref
 	dp::set_dp_id("mhlw-pref");
 	
 	@$gp_list = ();
@@ -1025,7 +1170,7 @@ if($golist{"mhlw-pref"}) {
 	my @cdps = ();
 	foreach my $item (keys %defmhlw::MHLW_DEFS){
 		#dp::dp "[$item]\n";
-		$cdp_raw{$item} = csv2graph->new($defmhlw::MHLW_DEFS{$item}); 						# Load Johns Hopkings University CCSE
+		$cdp_raw{$item} = csv2graph->new($defmhlw::MHLW_DEFS{$item}); 			# Load MHLW
 		$cdp_raw{$item}->load_csv({download => $DOWNLOAD, item => $item});
 		#$cdp_rla{$item} = $cdp_raw{$item}->calc_rlavr();
 		push(@cdps, $cdp_raw{$item});
@@ -1759,6 +1904,40 @@ sub	ccse_positive_death
 	return (@list);
 }
 
+sub	usa_positive_death
+{
+	my($conf_cdp, $death_cdp, $region, $start_date) = @_;
+
+	my $p = {start_date => $start_date};
+	my $conf_region = $conf_cdp->reduce_cdp_target({$prov => "", $cntry => $region});
+	my $y1max = $conf_region->max_rlavr($p);
+	my $y2max = int($y1max * $y2y1rate / 100 + 0.9999999); 
+	my $ymax = csvlib::calc_max2($y1max);			# try to set reasonable max 
+
+	my $death_region = $death_cdp->reduce_cdp_target({$prov => "", $cntry => $region});
+	# $death_region->rolling_average();
+	my $death_max = $death_region->max_rlavr($p);
+
+	my $drate = sprintf("%.2f%%", 100 * $death_max / $y1max);
+	#dp::dp "y0max:$y0max y1max:$y1max, ymax:$ymax, y2max:$y2max death_max:$death_max\n";
+
+
+	my @list = ();
+	push(@list, csv2graph->csv2graph_list_gpmix(
+		{gdp => $defccse::CCSE_GRAPH, dsc => "[$region] new cases and deaths [$drate]", start_date => $start_date, 
+			ymax => $ymax, y2max => $y2max, y2min => 0,
+			ylabel => "confermed", y2label => "deaths (max=$y2y1rate% of rlavr confermed)",
+			#additional_plot => $additional_plot_item{ern}, 
+			graph_items => [
+			{cdp => $conf_cdp,  item => {$cntry => "$region",}, static => "rlavr", graph_def => $line_thick},
+			{cdp => $death_cdp, item => {$cntry => "$region",}, static => "rlavr", axis => "y2", graph_def => $box_fill},
+			{cdp => $conf_cdp,  item => {$cntry => "$region",}, static => "", graph_def => $line_thin_dot,},
+			{cdp => $death_cdp, item => {$cntry => "$region",}, static => "", axis => "y2", graph_def => $line_thin_dot},
+			],
+		},
+	));
+	return (@list);
+}
 sub	search_cdp_key
 {
 	my($cdp, $key, $post) = @_;

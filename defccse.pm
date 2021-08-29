@@ -55,6 +55,7 @@ our $CCSE_DEF = {
 	alias => {"subr" => "Province/State", "region" => "Country/Region"},
 };
 my @MAIN_KEYS = ("Country/Region", "Province/State"),	#
+my @MAIN_US_KEYS = ("Admin2", "Province_State"),	#
 
 our $CCSE_CONF_DEF = clone($CCSE_DEF);
 $CCSE_CONF_DEF->{id} = "ccse_conf";
@@ -70,12 +71,14 @@ $CCSE_DEATHS_DEF->{keys} = [@MAIN_KEYS, "=death"];
 our $CCSE_US_CONF_DEF = clone($CCSE_CONF_DEF);
 $CCSE_US_CONF_DEF->{id} = "ccse_us_conf";
 $CCSE_US_CONF_DEF->{src_file} = "$CSV_PATH/time_series_covid19_confirmed_US.csv",
-$CCSE_US_CONF_DEF->{keys} = [@MAIN_KEYS, "=conf_us"];
+$CCSE_US_CONF_DEF->{data_start} = 11;
+$CCSE_US_CONF_DEF->{keys} = [@MAIN_US_KEYS, "=conf_us"];
 
 our $CCSE_US_DEATHS_DEF = clone($CCSE_CONF_DEF);
 $CCSE_US_DEATHS_DEF->{id} = "ccse_us_death";
 $CCSE_US_DEATHS_DEF->{src_file} = "$CSV_PATH/time_series_covid19_deaths_US.csv",
-$CCSE_US_DEATHS_DEF->{keys} = [@MAIN_KEYS, "=death_us"];
+$CCSE_US_DEATHS_DEF->{data_start} = 12;
+$CCSE_US_DEATHS_DEF->{keys} = [@MAIN_US_KEYS, "=death_us"];
 
 #dp::dp $CCSE_DEF->{csv_file} . "\n";
 our $CCSE_GRAPH = {
