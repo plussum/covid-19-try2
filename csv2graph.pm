@@ -584,6 +584,7 @@ sub gen_html_by_gp_list
 	my $graph_no = -1;
 	my $row_flash = 0;
 	foreach my $gp (@$graph_params){
+		dp::dp "gp: $gp\n";
 		next if(! ($gp//""));
 
 		#
@@ -989,8 +990,12 @@ sub	csv2graph_mix
 	#my $fname = $gp_mix->{fname} // "";
 	my $fname = "";#$gp_mix->{fname} // "";
 	if(! $fname){
+		#my $items = "";
+		#foreach my $k (sort keys %$
+		#$fname = $cdp->{id};
+		#	{cdp => $cdp,  item => {prefecture => $pref, age => "ge65", status => "1-cp"}, static => "", graph_def => $line_thick, axis => "y2"},
 		#$fname = join(" ", ($gp_mix->{dsc}//"csvgraph"), ($gp_mix->{static}//""), $gp_mix->{start_date});
-		$fname = join(" ", ($gp_mix->{dsc}//"csvgraph"), $number, $gp_mix->{start_date});
+		$fname = join(" ", ($gp_mix->{dsc}//"csvgraph"), $gp_mix->{start_date}//"#"); #, $number, $gp_mix->{start_date});
 		$fname =~ s/[\/\.\*\ #]/_/g;
 		$fname =~ s/\W+/_/g;
 		$fname =~ s/__+/_/g;
@@ -1266,7 +1271,7 @@ sub	gen_csv_file
 			my $csv = $work_csvp->{$key};
 			my $v = $csv->[$dt] // "";
 			$v = 0 if($v eq "");
-			$v = sprintf("%.2f", $v);
+			$v = sprintf("%.9f", $v);
 			push(@w, $v);
 		}
 		if(! defined $date_list->[$dt]){
@@ -1395,7 +1400,7 @@ sub	graph
 	}
 	my $dsc = $gp->{dsc} // "";
 	$dsc =~ s/~//;
-	my $title = join(" ", $dsc, ($gp->{static}//""), "($end_date)") . "    $src_info";
+	my $title = join(" ", $dsc, $gp->{sub_dsc}//"", ($gp->{static}//""), "($end_date)") . "    $src_info";
 	$title =~ s/_/\\_/g;	# avoid error at plot
 	#dp::dp "[$title] $gp->{plot_png}\n";
 	#dp::dp "#### " . join(",", "[" . $p->{lank}[0] . "]", @lank) . "\n";

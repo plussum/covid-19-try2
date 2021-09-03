@@ -258,7 +258,7 @@ sub	rolling_average
 				$tl += $v;
 			}
 			#dp::dp join(", ", $key, $i, $csv->[$i], $tl / $avr_date) . "\n";
-			my $avr = sprintf("%.3f", $tl / $avr_date);
+			my $avr = sprintf("%.9f", $tl / $avr_date);
 			$dp->[$i] = $avr;
 		}
 		## dp::dp join(",", "rlavr after", $key, @$dp) . "\n";
@@ -275,7 +275,7 @@ sub	population
 	
 	my $pop_list = {};
 	csvlib::cnt_pop($pop_list);
-	#dp::dp "POP: number of pop_list, csvp" . join(",", scalar(keys %$pop_list), scalar(keys %$csvp)) . "\n";
+	dp::dp "POP: number of pop_list, csvp" . join(",", scalar(keys %$pop_list), scalar(keys %$csvp)) . "\n";
 	foreach my $key (keys %$csvp){
 		my $dp = $csvp->{$key};
 		$key =~ s/[-#].*$//;
@@ -293,7 +293,8 @@ sub	population
 		#dp::dp join(",", @$dp[100..110]) . "\n";
 		for(my $i = 0; $i < scalar(@$dp); $i++){
 			my $v = $dp->[$i] // 0;
-			$dp->[$i] = ($v =~ /^-?[\.\d]+$/) ? int((100 * $v) / $pop) / 100 : $v;
+			#$dp->[$i] = ($v =~ /^-?[\.\d]+$/) ? int((10000 * $v) / $pop) / 10000 : $v;
+			$dp->[$i] = ($v =~ /^-?[\.\d]+$/) ? sprintf("%.9f", $v / $pop) : $v;
 		}
 		#dp::dp join(",", @$dp[100..110]) . "\n";
 	}
@@ -582,7 +583,7 @@ sub	max_val
 	
 	my $dt_start = util::date_pos($start_date, $date_list->[0], $dates, $date_list);	# 2020-01-02 -> array pos
 	my $dt_end   = util::date_pos($end_date,   $date_list->[$dates], $dates, $date_list);		# 2021-01-02 -> array pos
-	dp::dp "start_date: $start_date end_date:$end_date dt_start:$dt_start dt_end:$dt_end \n";
+	#dp::dp "start_date: $start_date end_date:$end_date dt_start:$dt_start dt_end:$dt_end \n";
 
 	my $csvp = $self->{csv_data};
 	if($target_col){

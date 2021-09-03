@@ -122,7 +122,7 @@ my $cntry = "Country/Region";
 my $positive = "testedPositive";
 my $deaths = "deaths";
 
-my @ALL_PARAMS = qw/mhlw-pref ccse pref tkocsv jpvac owidvac ccse-tgt mhlw nhk/;
+my @ALL_PARAMS = qw/mhlw-pref ccse pref tkocsv jpvac owidvac ccse-tgt mhlw nhk usa/;
 #my @ALL_PARAMS = qw/ccse-tgt nhk/;
 my $GKIND = "";		# for pref, and ccse
 my $DELAY_AT_ALL = 1;
@@ -496,6 +496,7 @@ csvlib::cnt_pop(\%POP);
 my $gp_list = [];
 my $ccse_country = {};
 
+my $PREF_LIST = {};
 
 #
 #	Try for using 
@@ -544,9 +545,16 @@ if($golist{pref}){
 		$pref =~ s/[\#\-].*$//;
 		dp::dp "$GKIND: $pref\n";
 		foreach my $start_date (0, -28){ # , -28)
-			push(@$pd_list, &japan_positive_death_ern($jp_cdp, $pref, $start_date, 1)) if(!$GKIND || $GKIND eq "raw");		# 0 -> 1 2021.06.28
-			push(@$pd_rlavr_list, &japan_positive_death_ern($jp_cdp, $pref, $start_date, 0)) if(!$GKIND || $GKIND eq "rlavr");		# 0 -> 1 2021.06.28
-
+			if(!$GKIND || $GKIND eq "raw"){		# 0 -> 1 2021.06.28
+				my @gpd = &japan_positive_death_ern($jp_cdp, $pref, $start_date, 1, "raw") ;
+				push(@$pd_list, @gpd);
+				#&set_list($PREF_LIST, $gpd, $pref, "pref", "raw", "raw", $start_date, $gpd);
+			}
+			if(!$GKIND || $GKIND eq "rlavr"){		# 0 -> 1 2021.06.28
+				my @gpd = &japan_positive_death_ern($jp_cdp, $pref, $start_date, 0, "rlavr") if(!$GKIND || $GKIND eq "rlavr");		# 0 -> 1 2021.06.28
+				push(@$pd_rlavr_list, @gpd);
+				#&set_list($PREF_LIST, $gpd, $pref, "pref", "raw", "rlavr", $start_date, $gpd);
+			}
 		}
 	}
 
@@ -557,7 +565,9 @@ if($golist{pref}){
 			$pref =~ s/[\#\-].*$//;
 			dp::dp "pop: $pref\n";
 			foreach my $start_date (0, -28){ # , -28)
-				push(@$pd_pop_list, &japan_positive_death_ern($jp_cdp, $pref, $start_date, 1));
+				my @gpd = &japan_positive_death_ern($jp_cdp, $pref, $start_date, 1, "pop");
+				push(@$pd_pop_list, @gpd);
+				#&set_list($PREF_LIST, $pref, "pref", "pop", "rlavr", $start_date, $gpd);
 			}
 		}
 
@@ -781,8 +791,8 @@ sub	ccse
 		$region =~ s/--.*//;
 		dp::dp "rlavr: $region\n";
 		foreach my $start_date(0, -62){
-			push(@$ccse_gp_list, &ccse_positive_death_ern($ccse_country, $death_country, $region, $start_date, 1)) if(!$GKIND || $GKIND eq "raw");	
-			push(@$ccse_rlavr_gp_list, &ccse_positive_death_ern($ccse_country, $death_country, $region, $start_date, 0)) if(!$GKIND || $GKIND eq "rlavr");
+			push(@$ccse_gp_list, &ccse_positive_death_ern($ccse_country, $death_country, $region, $start_date, 1, "raw")) if(!$GKIND || $GKIND eq "raw");	
+			push(@$ccse_rlavr_gp_list, &ccse_positive_death_ern($ccse_country, $death_country, $region, $start_date, 0, "rlavr")) if(!$GKIND || $GKIND eq "rlavr");
 		}
 	}
 
@@ -799,7 +809,7 @@ sub	ccse
 			$region =~ s/--.*//;
 			dp::dp "pop: $region\n";
 			foreach my $start_date(0, -62){
-				push(@$ccse_pop_gp_list, &ccse_positive_death_ern($ccse_country, $death_country, $region, $start_date, 1));
+				push(@$ccse_pop_gp_list, &ccse_positive_death_ern($ccse_country, $death_country, $region, $start_date, 1, "pop"));
 			}
 		}
 		csv2graph->gen_html_by_gp_list($ccse_pop_gp_list, {						# Generate HTML file with graphs
@@ -1198,10 +1208,10 @@ if($golist{"mhlw"} || $golist{"mhlw-pref"}){ 	# mhlw-pref
 		next if($pref eq "ALL");
 
 		my $nc = 200;
-		my $ns = 3;
-		dp::dp "SYNOMYM: $config::SYNONYM{$pref} \n";
+		my $ns = 4;
+		#dp::dp "SYNOMYM: $config::SYNONYM{$pref} \n";
 		my $population = $POP{$pref} // $POP{$config::SYNONYM{$pref}}// dp::ABORT "no POP data [$pref]\n";
-		dp::dp "[" . $config::SYNONYM{$pref} // "UNDEF:$pref" . "]\n";
+		#dp::dp "[" . $config::SYNONYM{$pref} // "UNDEF:$pref" . "]\n";
 		my $pop_100k = $population / 100000;
 		my $ymax = $nc * $pop_100k;
 		$ymax = csvlib::calc_max2($ymax);			# try to set reasonable max 
@@ -1214,13 +1224,13 @@ if($golist{"mhlw"} || $golist{"mhlw-pref"}){ 	# mhlw-pref
 
 		my $cdp_svr = $cdp->reduce_cdp_target({"Prefecture-s" => "$pref", "item-s" => "Severe"});
 		my $sv_max = $cdp_svr->max_rlavr({start_date => 0});
-		dp::dp "Servere MAX: $sv_max";
+		#dp::dp "Servere MAX: $sv_max";
 		$sv_max = csvlib::calc_max2($sv_max);			# try to set reasonable max 
 		my $add_plot_a = &gen_pop_scale({pop_100k => $pop_100k, pop_max => ($sv_max / $pop_100k), init_dlt => 1,
 								lc => "navy", title_tag => 'Severe %.1f/100K', axis => "x1y2"});
 		foreach my $start_date (0, -28){
-			push(@$gp_list, csv2graph->csv2graph_list_gpmix(
-			{gdp => $defmhlw::MHLW_GRAPH, dsc => "$pref hospitalized,severe and deaths [nc:$nc,ns:$ns] $pop_disp*10K", start_date => $start_date, 
+			my @gpd =  csv2graph->csv2graph_list_gpmix(
+			{gdp => $defmhlw::MHLW_GRAPH, dsc => "$pref hospitalized,severe and deaths", sub_dsc => "[nc:$nc,ns:$ns] $pop_disp*10K", start_date => $start_date, 
 				ymin => 0, y2min => 0, ymax => $ymax, y2max => $y2max,
 				ylabel => "hospitalzed/servere", 
 				additional_plot => $add_plot,
@@ -1234,10 +1244,12 @@ if($golist{"mhlw"} || $golist{"mhlw-pref"}){ 	# mhlw-pref
 					{cdp => $cdp,   item => {"Prefecture-d" => "$pref", "item-d" => "Deaths"}, static => "", graph_def => $line_thin_dot, axis => "y2"},
 				],
 			}
-			));
+			);
+			push(@$gp_list, @gpd);
+			# &set_list($PREF_LIST, $gpd, $pref, "hospitalaized", "raw", $start_date);
 
-			push(@$gp_list, csv2graph->csv2graph_list_gpmix(
-			{gdp => $defmhlw::MHLW_GRAPH, dsc => "$pref hospitalized,severe and deaths  $pop_disp*10K", start_date => $start_date, 
+			@gpd = csv2graph->csv2graph_list_gpmix(
+			{gdp => $defmhlw::MHLW_GRAPH, dsc => "$pref hospitalized,severe and deaths severe", sub_dsc => "$pop_disp*10K", start_date => $start_date, 
 				ymin => 0, y2min => 0, y2max => $sv_max,
 				ylabel => "hospitalzed/servere", 
 				additional_plot => $add_plot_a,
@@ -1251,7 +1263,9 @@ if($golist{"mhlw"} || $golist{"mhlw-pref"}){ 	# mhlw-pref
 					{cdp => $cdp,   item => {"Prefecture-d" => "$pref", "item-d" => "Deaths"}, static => "", graph_def => $line_thin_dot, axis => "y2"},
 				],
 			}
-			));
+			);
+			push(@$gp_list, @gpd);
+			# &set_list($PREF_LIST, $gpd, $pref, "hospitalaized", "pop", $start_date);
 		}
 	}
 
@@ -1275,8 +1289,23 @@ if($golist{"mhlw"} || $golist{"mhlw-pref"}){ 	# mhlw-pref
 #			data_source => $cdp->{src_info},
 #		}
 ##	);
+}
 
+sub	set_list
+{
+	my ($p, $gp, @w) = @_;
 
+	my $pp = $p;
+	foreach my $k (@w){
+		if(! defined $p->{$k}){
+			$pp->{$k} = {};
+		}
+		$pp = $pp->{$k};
+	}
+	$pp->{plot_png} = $gp->{plot_png} // "";
+	$pp->{plot_csv} = $gp->{plot_csv} // "";
+	$pp->{plot_cmd} = $gp->{plot_cmd} // "";
+	return $pp;
 }
 
 #
@@ -1288,9 +1317,10 @@ if($golist{nhk}){
 
 	my $cdp = csv2graph->new($defnhk::CDP); 						# Load Johns Hopkings University CCSE
 	$cdp->load_csv({download => $DOWNLOAD});
-	my $rlavr_cdp = $cdp->calc_rlavr();
 	my $pop_raw_cdp = $cdp->calc_pop();
+	my $rlavr_cdp = $cdp->calc_rlavr();
 	my $pop_cdp = $rlavr_cdp->calc_pop();
+
 	my $cdp_list = [{kind => "", rlavr => $rlavr_cdp, raw => $cdp},
 					{kind => "POP", rlavr => $pop_cdp,  raw => $pop_raw_cdp},
 					];
@@ -1299,10 +1329,10 @@ if($golist{nhk}){
 	my $lank = 1;
 	my $lank_max = 10;
 	my $first_date = "2020-03-12";
-	foreach my $tgcdp (@$cdp_list){
-		my $kind = $tgcdp->{kind};
-		foreach my $item ("testedPositive", "deaths"){
-			my $label = ($item eq "testedPositive") ? "positive" : "deaths";
+	foreach my $item ("testedPositive", "deaths"){
+		my $label = ($item eq "testedPositive") ? "positive" : "deaths";
+		foreach my $tgcdp (@$cdp_list){
+			my $kind = $tgcdp->{kind};
 			
 			for($lank = 1; $lank < $lank_max; $lank += $lank_width){
 				dp::dp "kind:$kind label:$label lank:$lank + $lank_width\n";
@@ -1335,34 +1365,6 @@ if($golist{nhk}){
 				}
 			}
 		}
-
-#		foreach my $start_date ($first_date, -28){
-#			push(@$gp_list, csv2graph->csv2graph_list_gpmix(
-#			{gdp => $defnhk::DEF_GRAPH, dsc => "NHK open Data deaths[$lank-$le] rlavr", start_date => $start_date, 
-#				ylabel => "confermed", y2label => "deaths",
-#				ymin => 0, y2min => 0,
-#				lank => [$lank,$le],
-#				label_sub_from => '#.*', label_sub_to => '',	# change label "1:Israel#people_vaccinated_per_hundred" -> "1:Israel"
-#				graph_items => [
-#					{cdp => $cdp,item => {"item" => "deaths",}, static => "rlavr", graph_def => $line_thick},
-#				#	{cdp => $cdp,item => {"item" => "deaths",}, static => "", graph_def => $line_thin_dot},
-#				],
-#			}));
-#		}
-#		foreach my $start_date ($first_date, -28){
-#			push(@$gp_list, csv2graph->csv2graph_list_gpmix(
-#			{gdp => $defnhk::DEF_GRAPH, dsc => "NHK open Data deaths[$lank-$le] ", start_date => $start_date, 
-#				ylabel => "confermed", y2label => "deaths",
-#				ymin => 0, y2min => 0,
-#				lank => [$lank,$le],
-#				label_sub_from => '#.*', label_sub_to => '',	# change label "1:Israel#people_vaccinated_per_hundred" -> "1:Israel"
-#				graph_items => [
-#					{cdp => $cdp,item => {"item" => "deaths",}, static => "", graph_def => $line_thick},
-#				#	{cdp => $cdp,item => {"item" => "deaths",}, static => "", graph_def => $line_thin_dot},
-#				],
-#			}));
-#		}
-
 	}
 	csv2graph->gen_html_by_gp_list($gp_list, {						# Generate HTML file with graphs
 			row => 4,
@@ -1968,19 +1970,19 @@ sub	search_cdp_key
 
 sub	ccse_positive_death_ern
 {
-	my($conf_cdp, $death_cdp, $region, $start_date, $pop) = @_;
+	my($conf_cdp, $death_cdp, $region, $start_date, $pop, $kind) = @_;
 
 	my $conf_region = $conf_cdp->reduce_cdp_target({$prov => "", $cntry => $region});
 	my $death_region = $death_cdp->reduce_cdp_target({$prov => "", $cntry => $region});
 	my $p = "";
 	$p = {pop_ymax_nc => $POP_YMAX_NC_WW, pop_ymax_nd => $POP_YMAX_ND_WW, start_date => $start_date} if($pop);		# 2 -> 1 2021.07.29
 
-	return &positive_death_ern($conf_region, $death_region, $region, $start_date, "--conf", "--death", $p);
+	return &positive_death_ern($conf_region, $death_region, $region, $start_date, "--conf", "--death", $p, $kind);
 }
 
 sub	japan_positive_death_ern
 { 
-	my($jp_cdp, $pref, $start_date, $pop) = @_;
+	my($jp_cdp, $pref, $start_date, $pop, $kind) = @_;
 
 	#my $jp_pref = $jp_cdp->reduce_cdp_target({item => $positive, prefectureNameJ => $pref});
 	#my $death_pref = $jp_cdp->reduce_cdp_target({item => $deaths, prefectureNameJ => $pref});
@@ -1991,15 +1993,16 @@ sub	japan_positive_death_ern
 
 	$p = {pop_ymax_nc => $POP_YMAX_NC_JP, pop_ymax_nd => $POP_YMAX_ND_JP, start_date => $start_date} if($pop);
 
-	return &positive_death_ern($jp_pref, $death_pref, $pref, $start_date, "#testedPositive", "#deaths", $p);
+	return &positive_death_ern($jp_pref, $death_pref, $pref, $start_date, "#testedPositive", "#deaths", $p, $kind);
 }
 
 sub	positive_death_ern
 {
-	my($conf_region, $death_region, $region, $start_date, $conf_post_fix, $death_post_fix, $p) = @_;
+	my($conf_region, $death_region, $region, $start_date, $conf_post_fix, $death_post_fix, $p, $kind) = @_;
 
 	#$conf_region->dump();
 	#$death_region->dump();
+	$kind = $kind // "no-kind";
 	$p = {start_date => $start_date} if(!($p // ""));
 	my $pop_ymax_nc = $p->{pop_ymax_nc} // "";
 	my $pop_ymax_nd = $p->{pop_ymax_nd} // "";
@@ -2238,7 +2241,7 @@ sub	positive_death_ern
 	#$rg =~ s/#.*$//;
 	my $y2label = ($pop_ymax_nc) ? "deaths" : "deaths (max=$y2y1rate% of rlavr confermed)";
 	push(@list, csv2graph->csv2graph_list_gpmix(
-		{gdp => $defccse::CCSE_GRAPH, dsc => sprintf("[$rg] $pop_dsc dr:%.2f%%", $drate_max), start_date => $start_date, 
+		{gdp => $defccse::CCSE_GRAPH, dsc => "Combined [$rg] $kind", sub_dsc => sprintf("$pop_dsc dr:%.2f%%", $drate_max), start_date => $start_date, 
 			ymax => $ymax, y2max => $y2max, y2min => 0,
 			ylabel => "confermed", y2label => $y2label ,
 			additional_plot => $add_plot,
@@ -2406,7 +2409,7 @@ sub	japan_positive_death
 
 	my @list = ();
 	push(@list, csv2graph->csv2graph_list_gpmix(
-		{gdp => $defjapan::JAPAN_GRAPH, dsc => "Japan [$pref] new cases and deaths [$drate]", start_date => $start_date, 
+		{gdp => $defjapan::JAPAN_GRAPH, dsc => "Japan [$pref] new cases and deaths", sub_dsc => "[$drate]", start_date => $start_date, 
 			ymax => $ymax, y2max => $y2max, ymin => 0, y2min => 0,
 			ylabel => "confermed", y2label => "deaths (max=$y2y1rate% of rlavr confermed)",
 			#additional_plot => $additional_plot_item{ern}, 
@@ -2946,6 +2949,7 @@ if($golist{"tkow-ern"}) {
 #	}
 #);
 
+system("./genreport.pl");
 my $times_cmd = "./htmllist.pl";
 dp::dp "times: $times_cmd\n";
 system($times_cmd);
