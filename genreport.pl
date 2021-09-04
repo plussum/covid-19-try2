@@ -5,17 +5,14 @@ use strict;
 use warnings;
 use utf8;
 use Data::Dumper;
-
-
 use config;
 use csvlib;
 use dp;
 
-
 binmode(STDOUT, ":utf8");
 binmode(STDERR, ":utf8");
 
-my $DOWNLOAD = 1;
+my $dlm = "\t";
 
 my $WIN_PATH = $config::WIN_PATH;
 my $HTML_PATH = "$WIN_PATH/HTML2",
@@ -35,16 +32,88 @@ open(FD, $report_conff) || die "cannot open $report_conff";
 binmode(FD, ":utf8");
 while(<FD>){
 	chop;
+	last if(/#INDEX DATA#/);
+
 	s/[\s]*#.*//;
 	# next if(! /\w/);
 
 	s#.*/plussum.github.io/##;
 	push(@LIST, $_);
 }
+my	@INDEX_DATA = ();
+my $header = "";
+my @headers = ();
+my @TABLE_ITEM_ORDER = ();
+my %TABLE_ITEM = ();
+while(<FD>){
+	chop;
+
+	if(/^H:/){
+		s/^H://;
+		$header = $_;
+		push(@headers, $header);
+		next;
+	}
+	next if(! /file:/);
+
+	#dp::dp "<<< $_";
+	s/[\s]*#.*//;
+	my($name, $line, $col, $file) = split(/,/, $_);
+	$file =~ s#.*/plussum.github.io/##;
+	push(@INDEX_DATA, {header => $header, name => $name, line => $line, col => $col, file => $file});
+	#dp::dp "-- $header: $_\n";
+
+	if(! defined $TABLE_ITEM{$name}){
+		$TABLE_ITEM{$name}++;
+		push(@TABLE_ITEM_ORDER, $name);
+	}
+}
 close(FD);
 
 
-my $now = csvlib::ut2t(time());
+#
+#
+#
+my @INDEX = ();
+my %TABLE_DATA = ();
+foreach my $p (@INDEX_DATA){
+	my $name = $p->{name};
+	my $line = $p->{line};
+	my $col = $p->{col};
+	my $file = $p->{file};
+	my $header = $p->{header};
+
+	$file = "$WIN_PATH/$file";
+	if(! -e $file){
+		dp::dp "cannto find file $file\n";
+		next;
+	}
+	my @lines = ();
+	open(FD, $file) || die "cannot open $file";
+	while(<FD>){
+		push(@lines, $_);
+	}
+	close(FD);
+	
+	my $n = $line;
+	if($line < 0){
+		$n = $#lines + $line + 1;
+	}
+	if(!defined $lines[$n]){
+		dp::dp "error no data in $n $line\n";
+		next;
+	}
+	chop($lines[$n]);
+	my @w = split(/$dlm/, $lines[$n]);
+	my $v = $w[$col] // "-99999";
+	$TABLE_DATA{$name} = {} if(! defined $TABLE_DATA{$name});
+	$TABLE_DATA{$name}->{$header} = sprintf("%.3f", $v);
+}
+
+#
+#
+#
+my $now = csvlib::ut2dt(time());
 open(HTML, "> $report_htmlf") || die "Cannot create $report_htmlf";
 binmode(HTML, ":utf8");
 #binmode(HTML, ':encoding(cp932)');
@@ -55,6 +124,46 @@ print HTML "</head>\n<body>\n";
 print HTML "<span class=\"c\">\n";
 print HTML $now . "<br>\n";
 
+print HTML "<table border=\"1\">\n<tbody>\n";
+print HTML "<tr>" . &tag("th", "-", @headers) . "</tr>";
+foreach my $name (@TABLE_ITEM_ORDER){
+	my @col = ($name);
+	foreach my $header (@headers){
+		push(@col, $TABLE_DATA{$name}->{$header}//"undef:$name:$header");
+	}
+	#dp::dp join(",", @col) . "\n";
+	print HTML "<tr>" . &tag("td:align=\"right\"", @col) . "</tr>";
+}
+print HTML "</table>";
+
+sub	tag
+{
+	my ($tag, @vals) = @_;
+	$tag =~ s/[<>]//g;
+	($tag, my $aln) = split(/:/, $tag);
+	$aln = $aln // "";
+	my $html = "";
+
+	foreach my $v (@vals){
+		$html .= "<$tag $aln>$v</$tag>";
+	}
+	#dp::dp "[$html]\n";
+	return $html;
+}
+		
+
+
+#
+#	index
+#
+foreach my $index (@INDEX){
+}
+print HTML "</tbody>\n</table>\n";
+print HTML "<br>\n";
+
+#
+#	graph
+#	
 my @header = ();
 my @table = ();
 foreach my $item (@LIST){
@@ -86,6 +195,9 @@ if($#table >= 0){
 print HTML "</span>\n";
 print HTML "<body>\n<html>\n";
 close(HTML);
+
+
+
 
 sub	out_image
 {

@@ -1207,8 +1207,8 @@ if($golist{"mhlw"} || $golist{"mhlw-pref"}){ 	# mhlw-pref
 		$pref =~ s/#.*$//;
 		next if($pref eq "ALL");
 
-		my $nc = 200;
-		my $ns = 4;
+		my $nc = 350;
+		my $ns = 3;
 		#dp::dp "SYNOMYM: $config::SYNONYM{$pref} \n";
 		my $population = $POP{$pref} // $POP{$config::SYNONYM{$pref}}// dp::ABORT "no POP data [$pref]\n";
 		#dp::dp "[" . $config::SYNONYM{$pref} // "UNDEF:$pref" . "]\n";
