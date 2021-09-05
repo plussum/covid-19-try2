@@ -567,7 +567,7 @@ sub gen_html_by_gp_list
 
 	csvlib::disp_caller(1..3) if($VERBOSE);
 	dp::dp "$html_file\n";
-	open(HTML, ">$html_file") || die "Cannot create file $html_file";
+	open(HTML, ">$html_file.tmp") || die "Cannot create file $html_file.tmp";
 	binmode(HTML, ":utf8");
 
 	print HTML "<HTML>\n";
@@ -725,6 +725,9 @@ sub gen_html_by_gp_list
 	print HTML "</BODY>\n";
 	print HTML "</HTML>\n";
 	close(HTML);
+
+	unlink("$html_file");
+	rename("$html_file.tmp", $html_file);
 }
 
 #
@@ -1395,6 +1398,7 @@ sub	graph
 	#dp::dp "START_DATE: $start_date END_DATE: $end_date\n";
 
 	my $src_info = $self->{src_info} // "";
+	dp::dp "src_info : $src_info\n";
 	if($src_info){
 		$src_info = "[$src_info]";
 	}

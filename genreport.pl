@@ -118,6 +118,8 @@ open(HTML, "> $report_htmlf") || die "Cannot create $report_htmlf";
 binmode(HTML, ":utf8");
 #binmode(HTML, ':encoding(cp932)');
 print HTML "<html>\n<head>\n";
+print HTML "<meta http-equiv=\"Pragma\" content=\"no-cache\">\n";
+print HTML "<meta http-equiv=\"Cache-Control\" content=\"no-cache\">\n";
 print HTML "<TITLE>COVID 19  [$now]</TITLE>\n";
 print HTML "$CSS\n";
 print HTML "</head>\n<body>\n";

@@ -1976,8 +1976,9 @@ sub	ccse_positive_death_ern
 	my $death_region = $death_cdp->reduce_cdp_target({$prov => "", $cntry => $region});
 	my $p = "";
 	$p = {pop_ymax_nc => $POP_YMAX_NC_WW, pop_ymax_nd => $POP_YMAX_ND_WW, start_date => $start_date} if($pop);		# 2 -> 1 2021.07.29
-
-	return &positive_death_ern($conf_region, $death_region, $region, $start_date, "--conf", "--death", $p, $kind);
+	my $gdp = $defccse::CCSE_GRAPH;
+	
+	return &positive_death_ern($conf_region, $death_region, $region, $start_date, "--conf", "--death", $p, $kind, $gdp);
 }
 
 sub	japan_positive_death_ern
@@ -1992,13 +1993,14 @@ sub	japan_positive_death_ern
 	my $p = "";
 
 	$p = {pop_ymax_nc => $POP_YMAX_NC_JP, pop_ymax_nd => $POP_YMAX_ND_JP, start_date => $start_date} if($pop);
-
-	return &positive_death_ern($jp_pref, $death_pref, $pref, $start_date, "#testedPositive", "#deaths", $p, $kind);
+	my $gdp = $defnhk::DEF_GRAPH;
+	
+	return &positive_death_ern($jp_pref, $death_pref, $pref, $start_date, "#testedPositive", "#deaths", $p, $kind, $gdp);
 }
 
 sub	positive_death_ern
 {
-	my($conf_region, $death_region, $region, $start_date, $conf_post_fix, $death_post_fix, $p, $kind) = @_;
+	my($conf_region, $death_region, $region, $start_date, $conf_post_fix, $death_post_fix, $p, $kind, $gdp) = @_;
 
 	#$conf_region->dump();
 	#$death_region->dump();
@@ -2240,8 +2242,11 @@ sub	positive_death_ern
 	#$rg =~ s/--.*$//;
 	#$rg =~ s/#.*$//;
 	my $y2label = ($pop_ymax_nc) ? "deaths" : "deaths (max=$y2y1rate% of rlavr confermed)";
-	push(@list, csv2graph->csv2graph_list_gpmix(
-		{gdp => $defccse::CCSE_GRAPH, dsc => "Combined [$rg] $kind", sub_dsc => sprintf("$pop_dsc dr:%.2f%%", $drate_max), start_date => $start_date, 
+	#push(@list, csv2graph->csv2graph_list_gpmix(
+	#dp::dp $conf_region->dump(); 
+	dp::dp "src_info: " . $conf_region->{src_info} . "\n";
+	push(@list, $conf_region->csv2graph_list_gpmix(
+		{gdp => $gdp, dsc => "Combined [$rg] $kind", sub_dsc => sprintf("$pop_dsc dr:%.2f%%", $drate_max), start_date => $start_date, 
 			ymax => $ymax, y2max => $y2max, y2min => 0,
 			ylabel => "confermed", y2label => $y2label ,
 			additional_plot => $add_plot,
