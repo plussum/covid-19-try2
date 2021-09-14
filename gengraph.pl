@@ -120,7 +120,7 @@ my $cntry = "Country/Region";
 my $positive = "testedPositive";
 my $deaths = "deaths";
 
-my @ALL_PARAMS = qw/mhlw-pref ccse pref tkocsv jpvac owidvac ccse-tgt mhlw nhk usa/;
+my @ALL_PARAMS = qw/mhlw-pref ccse pref tkocsv jpvac owidvac ccse-tgt mhlw mhlw-pref nhk usa/;
 #my @ALL_PARAMS = qw/ccse-tgt nhk/;
 my $GKIND = "";		# for pref, and ccse
 my $DELAY_AT_ALL = 1;
@@ -1118,6 +1118,8 @@ if($golist{mhlw}) {
 		}));
 
 	}
+
+	#
 	#	"pcr_positive", "antigen_positive", "pcr_negative", "antigen_negative", "inspected", "positive_rate",
 	#			"positive_number", "hospitalized", "mid-modelate", "severe", "residential", "home","adjusting", "deaths", "discharged",
 	foreach my $start_date (0, $RECENT){
@@ -1135,6 +1137,41 @@ if($golist{mhlw}) {
 			],
 		}));
 	}
+
+	#
+	#	"pcr_positive", "antigen_positive", "pcr_negative", "antigen_negative", "inspected", "positive_rate",
+	#			"positive_number", "hospitalized", "mid-modelate", "severe", "residential", "home","adjusting", "deaths", "discharged",
+	foreach my $start_date (0, $RECENT){
+		push(@$gp_list, csv2graph->csv2graph_list_gpmix(
+		{gdp => $deftkocsv::TKOCSV_GRAPH, dsc => "TKOCSV open Data hospitalized residential home", start_date => $start_date, 
+			ylabel => "confermed", 
+			ymin => 0, y2min => 0,
+			graph_items => [
+				{cdp => $cdp_tko  ,  item => {"item" => "hospitalized",}, static => "", graph_def => $line_thick},
+				{cdp => $cdp_tko  ,  item => {"item" => "residential",}, static => "", graph_def => $line_thick},
+				{cdp => $cdp_tko  ,  item => {"item" => "home",}, static => "", graph_def => $line_thick, axis => ""},
+				{cdp => $cdp_tko  ,  item => {"item" => "adjusting",}, static => "", graph_def => $line_thick, axis => ""},
+			],
+		}));
+	}
+
+	#
+	#	"pcr_positive", "antigen_positive", "pcr_negative", "antigen_negative", "inspected", "positive_rate",
+	#			"positive_number", "hospitalized", "mid-modelate", "severe", "residential", "home","adjusting", "deaths", "discharged",
+	#foreach my $start_date (0, $RECENT){
+	#	push(@$gp_list, csv2graph->csv2graph_list_gpmix(
+	#	{gdp => $deftkocsv::TKOCSV_GRAPH, dsc => "TKOCSV open Data hospitalized residential home y2", start_date => $start_date, 
+	#		ylabel => "hospitalized/residential", y2label => "home",
+	#		ymin => 0, y2min => 0,
+	#		graph_items => [
+	#			{cdp => $cdp_tko  ,  item => {"item" => "hospitalized",}, static => "", graph_def => $line_thick},
+	#			{cdp => $cdp_tko  ,  item => {"item" => "residential",}, static => "", graph_def => $line_thick},
+	#			{cdp => $cdp_tko  ,  item => {"item" => "home",}, static => "", graph_def => $line_thick, axis => "y2"},
+	#		],
+	#	}));
+	#}
+
+
 	csv2graph->gen_html_by_gp_list($gp_list, {						# Generate HTML file with graphs
 			row => 2,
 			html_tilte => "COVID-19 related data visualizer ",
@@ -1150,7 +1187,8 @@ if($golist{mhlw}) {
 #
 #
 #
-if($golist{"mhlw"} || $golist{"mhlw-pref"}){ 	# mhlw-pref
+# if($golist{"mhlw"} || $golist{"mhlw-pref"}) 	# mhlw-pref
+if($golist{"mhlw-pref"}){ 	# mhlw-pref
 	dp::set_dp_id("mhlw-pref");
 	
 	@$gp_list = ();

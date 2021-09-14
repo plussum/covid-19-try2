@@ -153,11 +153,11 @@ print HTML '<H1> <a href="../about.html" target="_top">about this page </a></H1>
 print HTML '<H1>for all information: <a href="../index.html" target="_top">INDEX-1</a> <a href="../index2.html" target="_top">INDEX-2</a></H1><br>' . "\n";
 
 print HTML '<H1>STATS</H1>' . "\n";
-print HTML "<table border=\"1\">\n<tbody>\n";
-print HTML "<tr>" . &tag("th colspan=" . ($HIST * 2 + 1), @headers) . "</tr>";
-foreach my $name (@TABLE_ITEM_ORDER){
-	my @col = ();
-	foreach my $header (@headers){
+foreach my $header (@headers){
+	print HTML "<table border=\"1\">\n<tbody>\n";
+	print HTML "<tr>" . &tag("th colspan=" . ($HIST * 2 + 1), $header) . "</tr>";
+	foreach my $name (@TABLE_ITEM_ORDER){
+		my @col = ();
 		push(@col, $name);
 		for(my $i = 0; $i < $HIST; $i++){
 			my $n = $TABLE_DATA{$name}->{$header}->[$i] // 0;
@@ -176,11 +176,12 @@ foreach my $name (@TABLE_ITEM_ORDER){
 			}
 			push(@col, $n, $dlt);
 		}
+		print HTML "<tr>" . &tag("td:align=\"right\"", @col) . "</tr>";
 	}
 	#dp::dp join(",", @col) . "\n";
-	print HTML "<tr>" . &tag("td:align=\"right\"", @col) . "</tr>";
+	print HTML "</table>";
+	print HTML "<br>\n";
 }
-print HTML "</table>";
 
 
 #
