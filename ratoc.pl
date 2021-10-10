@@ -16,7 +16,7 @@ use csvlib;
 use csv2graph;
 use dp;
 
-use defratok;
+use defratoc;
 
 binmode(STDOUT, ":utf8");
 binmode(STDERR, ":utf8");
@@ -51,7 +51,7 @@ my $box_fill_solid 	= 'boxes fill solid border lc rgb "white" lw 1';
 my @ALL_PARAMS = qw/ratoc/;
 my $DELAY_AT_ALL = 1;
 
-my @cdp_list = ($defratoc::CDP);
+my @cdp_list = ($defratoc::CDP_DEF);
 
 #
 #
@@ -79,6 +79,7 @@ my @bcl = ( "gray10", "dark-orange",		# 0.5
 my %golist = ();
 my $all = "";
 my $db_all = 0;
+my $end_target = "";
 
 if($#ARGV >= 0){
 	for(my $i = 0; $i <= $#ARGV; $i++){
@@ -94,10 +95,6 @@ if($#ARGV >= 0){
 		}
 		elsif(/^-dball/){
 			$db_all = 1;
-			next;
-		}
-		elsif(/^-gk/){
-			$GKIND = $ARGV[++$i];
 			next;
 		}
 		elsif(/^-clear/){
@@ -116,24 +113,8 @@ if($#ARGV >= 0){
 			dp::dp "end_target: $end_target\n";
 			next;
 		}
-		elsif(/^-poplist/){
-			print "$config::POPF\n";
-			system("cat $config::POPF");
-			print "$config::POPF\n";
-			exit;
-		}
 		elsif(/-DL/){
 			$DOWNLOAD = $ARGV[++$i];
-			next;
-		}
-		elsif($_ eq "try"){
-			$golist{pref} = 1;
-			$golist{"pref-ern"} = 1;
-			$golist{docomo} = 1;
-			next;
-		}
-		elsif($cmd_list->{$_}){
-			$golist{$_} = 1;
 			next;
 		}
 		foreach my $cdp (@cdp_list){
@@ -152,80 +133,26 @@ else {
 		my $id = $cdp->{id};
 		push(@ids, $id);
 	}
-	dp::dp "usage:$0 " . join(" | ", "-all", @ids, keys %$cmd_list, "-et | -poplist") ."\n";
-	exit;
+	#dp::dp "usage:$0 " . join(" | ", "-all", @ids, "-et | -poplist") ."\n";
+	#exit;
 }
 dp::dp "Parames: " . join(",", keys %golist) . "\n";
 my $gp_list = [];
 
 #
-#	MHLW
+#	RATOC
 #
-if($golist{ratoc}) {
+if(1) { # $golist{ratoc}) 
 	dp::set_dp_id("ratoc");
 	
 	@$gp_list = ();
 	# positive,  reqcare, deaths, severe
 	my %cdp_raw = ();
 	my @cdps = ();
-	foreach my $item (keys %defmhlw::MHLW_DEFS){
-		#dp::dp "[$item]\n";
-		$cdp_raw{$item} = csv2graph->new($defmhlw::MHLW_DEFS{$item}); 						# Load Johns Hopkings University CCSE
-		$cdp_raw{$item}->load_csv({download => $DOWNLOAD, item => $item});
-		#$cdp_rla{$item} = $cdp_raw{$item}->calc_rlavr();
-		push(@cdps, $cdp_raw{$item});
-		#$cdp_raw{$item}->dump();
-	}
-	my $cdp = csv2graph->new($defmhlw::MHLW_TAG);
-	$cdp = $cdp->marge_csv(@cdps);
-	#$cdp->dump({search_key => "Tokyo", items => 10});
-	my $cdp_rlavr = $cdp->calc_rlavr();
-
-	#
-	#	Calc percent, use marged data because of date gap
-	#
-	my $result_name = "percent";
-	my @dm_key = ();
-	my $item_sz = scalar(@{$cdp->{item_name_list}});
-	for(my $i = 0; $i < $item_sz; $i++){
-		push(@dm_key, "NaN");
-	}
-	$cdp->add_key_items([$config::MAIN_KEY, $result_name]);		# "item_name"
-	my $csv_positive = $cdp_rlavr->{csv_data}->{"ALL#Positive"};
-	my $csv_tested = $cdp_rlavr->{csv_data}->{"Prefecture#Tested#ALL"};
-	my $master_key = join($cdp->{key_dlm}, $result_name);				# set key_name
-	$cdp->add_record($master_key, [@dm_key, $result_name, $result_name],[$result_name]);		# add record without data 
-	my $csv_pct = $cdp->{csv_data}->{$master_key};
-
-	my $dates = $cdp_raw{positive}->{dates};
-	#dp::dp "positive: (" . scalar(@$csv_positive) . ")" . join(",",  @$csv_positive) . "\n";
-	#dp::dp "tested  : (" . scalar(@$csv_tested)   . ")" . join(",",  @$csv_tested) . "\n";
-	for(my $i = 0; $i <= $dates; $i++){
-		my $p =  $csv_positive->[$i] // 0;
-		my $t = $csv_tested->[$i] // 999999;
-		my $v = sprintf("%.3f", $p * 100 / $t);
-		$csv_pct->[$i] = $v;
-	}
-
-	#
-	#	Japan all data
-	#
-	foreach my $start_date (0, $RECENT){
-		push(@$gp_list, csv2graph->csv2graph_list_gpmix(
-		{gdp => $defmhlw::MHLW_GRAPH, dsc => "Japan PCR test results", start_date => $start_date, 
-			ymin => 0, y2min => 0,y2max => 35,
-			ylabel => "pcr_tested/positive", y2label => "positive rate(%)",
-			graph_items => [
-				{cdp => $cdp,  item => {"Prefecture-t" => "ALL",  "item-t" => "Tested"}, static => "rlavr", graph_def => $box_fill},
-				{cdp => $cdp,  item => {"Prefecture-p" => "ALL", "item-p" => "Positive"}, static => "rlavr", graph_def => $box_fill_solid},
-				{cdp => $cdp,  item => {"percent" => "percent"}, static => "", graph_def => $line_thick, axis => "y2"},
-				{cdp => $cdp,  item => {"Prefecture-t" => "ALL", "item-t" => "Tested"}, static => "", graph_def => $line_thin_dot},
-				{cdp => $cdp,  item => {"Prefecture-p" => "ALL", "item-p" => "Positive"}, static => "", graph_def => $line_thin_dot},
-			],
-		}
-		));
-	}
-
+	my $cdp = csv2graph->new($defratoc::CDP_DEF); 						# Load Johns Hopkings University CCSE
+	$cdp->load_csv({download => $DOWNLOAD});
+	$cdp->dump();
+	exit;
 
 	csv2graph->gen_html_by_gp_list($gp_list, {						# Generate HTML file with graphs
 			row => 4,

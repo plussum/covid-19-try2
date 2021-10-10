@@ -154,8 +154,20 @@ print HTML '<H1>for all information: <a href="../index.html" target="_top">INDEX
 
 print HTML '<H1>STATS</H1>' . "\n";
 foreach my $header (@headers){
+	print HTML "<H2>$header</H2>\n";
 	print HTML "<table border=\"1\">\n<tbody>\n";
-	print HTML "<tr>" . &tag("th colspan=" . ($HIST * 2 + 1), $header) . "</tr>";
+	#print HTML "<tr>" . &tag("th colspan=" . ($HIST * 2 + 1), $header) . "</tr>" . "\n";
+	my @col = ();
+	for(my $i = 0; $i < $HIST; $i++){
+		my $tm = time - ($i * 7 + 1) * 24 * 60  * 60;
+		my $date = csvlib::ut2dt($tm);
+		$date =~ s/ .*//;
+		push(@col, $date);
+	}
+	print HTML "<tr>" . &tag("td", "date") . &tag("td:colspan=2 align=\"center\"", @col) . "</tr>" . "\n";
+	#print "<tr>" . &tag("td", "date") . &tag("td:colspan=2", @col) . "</tr>" . "\n";
+
+		
 	foreach my $name (@TABLE_ITEM_ORDER){
 		my @col = ();
 		push(@col, $name);
@@ -176,7 +188,7 @@ foreach my $header (@headers){
 			}
 			push(@col, $n, $dlt);
 		}
-		print HTML "<tr>" . &tag("td:align=\"right\"", @col) . "</tr>";
+		print HTML "<tr>" . &tag("td:align=\"right\"", @col) . "</tr>" . "\n";
 	}
 	#dp::dp join(",", @col) . "\n";
 	print HTML "</table>";

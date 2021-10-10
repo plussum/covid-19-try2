@@ -254,7 +254,7 @@ if($#ARGV >= 0){
 			exit;
 		}
 		elsif(/-DL/){
-			$DOWNLOAD = $ARGV[++$i];
+			$DOWNLOAD = ($i < $#ARGV && !($ARGV[$i+1] =~ /\D/)) ? $ARGV[++$i] : 1;
 			next;
 		}
 		elsif($_ eq "try"){

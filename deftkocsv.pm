@@ -124,7 +124,7 @@ sub	download
 	foreach my $items (@$urls){
 		my $csvf = "$CSV_PATH/tkocsv_" . $items->{name} . ".csv";
 		my $csvf_txt = "$csvf.txt";
-		my $cmd = "wget " . $items->{url} . " -O $csvf";
+		my $cmd = "wget --no-check-certificate " . $items->{url} . " -O $csvf";
 		if($download || ! (-f $csvf)){
 			&do($cmd) ;
 		}

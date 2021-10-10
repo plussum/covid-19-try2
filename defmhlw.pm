@@ -132,11 +132,11 @@ sub	download
 
 	# severe => {src_file => "$CSV_PATH/mhlw_severe.csv", src_url => "https://covid19.mhlw.go.jp/public/opendata/severe_cases_daily.csv"},
 	my $def = $MHLW_DEFS{$item};
+	my $csvf_raw = $def->{src_file} . ".raw";
 	my $csvf = $def->{src_file};
-	my $csvf_txt = "$csvf.txt";
-	my $cmd = "wget " . $def->{src_url} . " -O $csvf";
+	my $cmd = "wget " . $def->{src_url} . " -O $csvf_raw";
 	&do($cmd) if($download || !(-f $csvf));
-	&do("nkf -w80 $csvf > $csvf_txt");
+	&do("nkf -w80 $csvf_raw > $csvf");
 	dp::dp "download done\n";
 }
 

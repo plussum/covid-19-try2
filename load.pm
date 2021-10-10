@@ -683,6 +683,7 @@ sub	load_transaction
 	#binmode(FD, ":utf8");
 
 	my $text = read_file($src_file, binmode => ':utf8');
+	#dp::dp "[$text]\n";
 	my @load_data = split(/[\r\n]+/, $text);
 	undef $text;
 	dp::dp "lines[" . $#load_data . "] $load_data[0]\n";

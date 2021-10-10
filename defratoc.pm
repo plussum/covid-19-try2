@@ -19,13 +19,13 @@ use utf8;
 use Encode 'decode';
 
 my $WIN_PATH = "/mnt/f/_share/netatmo/RATOC/";
-my $HTML_PATH = "$WIN_PATH/HTML",
-my $PNG_PATH  = "$WIN_PATH/PNG",
-my $PNG_REL_PATH  = "../PNG",
-my $CSV_PATH  = $WIN_PATH/CSV;
+my $HTML_PATH = "$WIN_PATH/HTML";
+my $PNG_PATH  = "$WIN_PATH/PNG";
+my $PNG_REL_PATH  = "../PNG";
+my $CSV_PATH  = "$WIN_PATH/CSV";
 
 
-my $RTOC_CSV = "$CSV_PATH/ratoc.csv";
+my $RATOC_CSV = "$CSV_PATH/ratoc.csv";
 our $CDP_DEF = 
 {
 	id => "rtoc",
@@ -37,26 +37,29 @@ our $CDP_DEF =
 
 	direct => "vertical",		# vertical or holizontal(Default)
 	cumrative => 0,
-	timefmt => '%Y-%m-%dT',		# comverbt to %Y-%m-%d
+	#"2021-09-07T00:00:28+09:00",26.1,55.6,417,3.5,3.7,3.7,3.7,557,1012,0.23
+	timefmt => '%Y-%m-%dT%H:%M:%STZ',		# comverbt to %Y-%m-%d
 	src_dlm => ",",
 	key_dlm => "#",
 	keys => ["item"],		# PrefectureNameJ, and Column name
 	data_start => 1,
+	item_name_line => 0,
+	data_start_line => 1,
+
 	alias => {},
 };
 our $TKOCSV_GRAPH = {
-	html_title => $TKOCSV_DEF->{src_info},
+	html_title => $CDP_DEF->{src_info},
 	png_path   => "$PNG_PATH",
 	png_rel_path => $PNG_REL_PATH,
-	html_file => "$HTML_PATH/tkocsv_open_data.html",
+	html_file => "$HTML_PATH/ratoc01.html",
 
 	dst_dlm => "\t",
 	avr_date => 7,
-	END_OF_DATA => $END_OF_DATA,
+	END_OF_DATA => "###EOD###",
 	graph => "line",
 
-	#"2021-09-07T00:00:28+09:00",26.1,55.6,417,3.5,3.7,3.7,3.7,557,1012,0.23
-	timefmt => '%Y-%m-%dT%hh:%mm:%ssTZ', format_x => '%m/%d %hh:%mm',
+	timefmt => '%Y-%m-%d %H:%M:%S', format_x => '%m/%d %H:%M',
 	term_x_size => 1000, term_y_size => 350,
 
 	ylabel => "Number", ymin => 0,
@@ -150,7 +153,7 @@ sub	download
 	#
 	#	Gen csv file from sources
 	#
-	open(OUT, "> $TKOCSV_CSV") || die "cannot create $TKOCSV_CSV";
+	open(OUT, "> $RATOC_CSV") || die "cannot create $RATOC_CSV";
 	binmode(OUT, ":utf8");
 	my @date_list = (sort keys %$csv);
 	print OUT join(",", "item", @date_list) . "\n";
