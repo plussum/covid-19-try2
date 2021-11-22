@@ -90,7 +90,7 @@ sub amt_download
 #
 #	Province/State,Country/Region,Lat,Long,1/22/20
 #
-my $CCSE_ROOT = "$WIN_PATH/ccse/COVID-19";
+my $CCSE_ROOT = "$WIN_PATH/ccse2/COVID-19";
 my $CCSE_BASE_DIR = "$CCSE_ROOT/csse_covid_19_data/csse_covid_19_time_series";
 our $CCSE_DEF = {
 	id => "ccse",

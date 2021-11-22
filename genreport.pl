@@ -129,8 +129,10 @@ foreach my $p (@INDEX_DATA){
 	$TABLE_DATA{$name}->{$header} = [] if(! defined $TABLE_DATA{$name}->{$header});
 	for(my $i = 0; $i < $HIST + 1; $i++){
 		my @w = split(/$dlm/, $lines[$n-$i*$HIST_TERM]//"---------");
+		$w[$#w] =~ s/[\r\n]+$//;
 		my $v = $w[$col] // "-99999";
 		$TABLE_DATA{$name}->{$header}->[$i] = sprintf("%.2f", $v);
+		#dp::dp "HIST: $header $name $i $col " . join(", ", @w, " # ", $v) . "\n" ;
 	}
 }
 
@@ -174,7 +176,7 @@ foreach my $header (@headers){
 		for(my $i = 0; $i < $HIST; $i++){
 			my $n = $TABLE_DATA{$name}->{$header}->[$i] // 0;
 			my $n1 = $TABLE_DATA{$name}->{$header}->[$i+1] // 0;
-			#dp::dp "$i: $past\n";
+			#dp::dp "$i: $name: $n, $n1\n";
 			$n1 = 0.000001 if($n1 == 0);
 			my $dlt = 0;
 			my $kind = $TABLE_DATA{$name}->{kind}//"";

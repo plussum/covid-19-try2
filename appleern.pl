@@ -114,7 +114,7 @@ my $AMT_GRAPH = {
 #
 #	Province/State,Country/Region,Lat,Long,1/22/20
 #
-my $CCSE_BASE_DIR = "$WIN_PATH/ccse/COVID-19/csse_covid_19_data/csse_covid_19_time_series";
+my $CCSE_BASE_DIR = "$WIN_PATH/ccse2/COVID-19/csse_covid_19_data/csse_covid_19_time_series";
 my $CCSE_DEF = {
 	id => "ccse",
 	title => "Johns Hopkins Global",

@@ -364,6 +364,7 @@ sub	add_key_items
 	my $item_order = scalar(@$item_name_list);
 	push(@$item_name_list, @$key_names);		# set item_name 
 	foreach my $kn (@$key_names){
+		dp::dp "[$kn]\n";
 		$self->{item_name_hash}->{$kn} = $item_order++;
 	}
 	#dp::dp "add key : " . csvlib::join_array(",", @$item_name_list) . "\n";
@@ -1068,15 +1069,18 @@ sub	csv2graph_mix
 
 		#dp::dp $cdp->{id} . ": " . join(",", $ds, $de, $gpp->{date_diff}) . "\n";
 	}
-	my $gen_dates = int($end_min_ut - $start_max_ut)/(24*60*60);
 	my $start_date = util::date_calc(($gp_mix->{start_date} // 0), $start_max, $dates, $start_max);	# 2021-01-01
-	my $end_date   = util::date_calc(($gp_mix->{end_date} // $dates),   $end_min, $dates, $start_max);		# 2021-01-02
-	#dp::dp "graph_mix:(start_date, end_date, dates) " . join(",", $start_date, $end_date, $dates, $gp_mix->{start_date}) . "\n";
+	#my $end_date   = util::date_calc(($gp_mix->{end_date} // $dates),  $end_min, $dates, $start_max);		# 2021-01-02
+	my $end_date   = util::date_calc(($gp_mix->{end_date} // $dates),  $end_min, $dates, $start_date);		# 2021-01-02
+	my $gen_dates = (csvlib::ymds2tm($end_date) - csvlib::ymds2tm($start_date))/(24*60*60);
+
+	dp::dp "graph_mix:(start_date, end_date, dates, star_date, end_date, term) "
+		 . join(",", $start_date, $end_date, $dates, $gp_mix->{start_date}, $gp_mix->{end_date}, $gen_dates) . "\n";
 
 	$gp_mix->{start_date} = $start_date;
 	$gp_mix->{end_date} = $end_date;
 	$gp_mix->{dt_start} = 0;
-	$gp_mix->{dt_end} = $dates;
+	$gp_mix->{dt_end} = $gen_dates; # $dates;
 	#$gp_mix->{dates} = $dates;
 
 	my @lank = (defined $gp_mix->{lank}) ? @{$gp_mix->{lank}} : (1,10); 
@@ -1118,20 +1122,6 @@ sub	csv2graph_mix
 		#
 		my $target_keys = [];
 		my $target_col = $gpp->{target_col} // $gpp->{item} ;
-##		my $tn = -1;
-##		if(defined $target_col && $target_col){
-##			$tn  = util::array_size($target_col);
-##			#dp::dp "target_col[$target_col)]($tn)[" . csvlib::join_array(",", $target_col) . "]\n";
-##			if($tn < 0){
-##				dp::dp "target_col is not array or hash ($target_col) all data will be selected\n";
-##				csvlib::disp_caller(1..3);
-##			}
-##		}
-##		else {
-##			#dp::dp "target_col[undef]\n";
-##			$target_col = "";
-##		}
-
 		#dp::dp "#### ". Dumper($target_col);
 		@$target_keys = $cdp->select_keys($target_col, 0);	# select data for target_keys
 
@@ -1159,7 +1149,7 @@ sub	csv2graph_mix
 			#$dt_start =  &csv_size($cdp->{csv_data}) if($dt_start eq "\$");
 			#my $dt_end = $gp_mix->{sort_end} // $dates;
 			my $dt_start = util::date_pos($gp_mix->{start_date} // 0, $cdp->{date_list}->[0], $cdp->{dates}, $cdp->{date_list});
-			my $dt_end = util::date_pos($gp_mix->{start_end} // $cdp->{dates}, $cdp->{date_list}->[0], $cdp->{dates}, $cdp->{date_list});
+			my $dt_end = util::date_pos($gp_mix->{end_date} // $cdp->{dates}, $cdp->{date_list}->[0], $cdp->{dates}, $cdp->{date_list});
 			@$sorted_keys = $cdp->sort_csv($cdp->{csv_data}, $target_keys, $dt_start, $dt_end);
 		}
 		else {
@@ -1210,6 +1200,7 @@ sub	csv2graph_mix
 		push(@w, $graph_csv->[$item]->[0]);
 	}
 	print CSV join($dst_dlm, "#date", @w) . "\n";
+	#dp::dp "dates:" . join($dst_dlm, "#date", @w) . "\n";
 
 	my $graph_cdp = {
 		src_info => $gdp->{html_title},
@@ -1221,15 +1212,37 @@ sub	csv2graph_mix
 	#my $graph_cdp = csv2graph::new("csv2graph", $cdp_info );
 	#dp::dp "graph_csv: " . scalar(@$graph_csv) . "\n";
 	
-	for(my $dt = 0; $dt <= $dates; $dt++){
-		my $date = csvlib::ut2date($start_max_ut + $dt * 24*60*60);
+	#my $st_d = csvlib::search_listn($start_date, @$date_list);
+	#my $en_d = csvlib::search_listn($end_date, @$date_list);
+	#dp::dp "start end [$st_d, $en_d]\n";
+
+	my @ds_list = ();
+	my $term = -1;
+	foreach my $gpp (@$gp_list){
+		my $cdp = $gpp->{cdp};
+		my $ds = csvlib::search_listn($start_date, @{$cdp->{date_list}});
+		my $de = csvlib::search_listn($end_date, @{$cdp->{date_list}});
+		$term = $de - $ds;
+		#dp::dp "DS: $start_date, $ds, $term \n";# . join(",", @{$cdp->{date_list}});
+		push(@ds_list, $ds);
+		#my ($ds, $de) = ($cdp->{date_list}->[0], $cdp->{date_list}->[$dates]);
+	}
+	my $start_ut = csvlib::ymds2tm($start_date);
+	dp::dp "TERM: $term\n";
+		
+	#for(my $dt = 0; $dt <= $dates; $dt++){
+	for(my $dt = 0; $dt <= $term; $dt++){
+		my $date = csvlib::ut2date($start_ut + $dt * 24*60*60);
 		$graph_cdp->{date_list}->[$dt] = $date;
+		#dp::dp "DATE:$date $dt\n";
 		my @vals = ();
+		
 		for(my $item = 0; $item < scalar(@$graph_csv); $item++){
-			my $v = $graph_csv->[$item]->[$dt+1];
+			my $st = $ds_list[$item];
+			my $v = $graph_csv->[$item]->[$dt+$st];		# 1 -> $st
 			$v = $v//-999;
 			push(@vals, $v);
-			#dp::dp "$item, $dt, $v\n";
+			#dp::dp "$item, $dt, $date, $v\n";
 		}
 		print CSV join($dst_dlm, $date, @vals) . "\n";
 	}
@@ -1632,8 +1645,9 @@ _EOD_
 	$s_date = 7 if($s_date == 0);
 	#dp::dp "DATE: " . $DATES[$date] . "  " . "$date -> $s_date -> " . ($date - $s_date) . "\n";
 
+	dp::dp "START_DATE: " . join(", ", $gp->{dt_start}, $gp->{dt_end}, $s_date) . "\n"; 
 	for(my $dn = $gp->{dt_end} - $s_date; $dn > $gp->{dt_start}; $dn -= $RELATIVE_DATE){
-		my $mark_date = $date_list->[$dn];
+		my $mark_date = $date_list->[$dn] // "";
 		next if($mark_date le $start_date || $mark_date ge $end_date);
 		
 		#dp::dp "ARROW: $dn, [$mark_date]\n";
