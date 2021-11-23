@@ -1047,6 +1047,11 @@ sub	csv2graph_mix
 	my $start_max_ut = csvlib::ymds2tm($start_max);
 	my $end_min_ut = csvlib::ymds2tm($end_min);
 	my $dates = ($end_min_ut - $start_max_ut) / (24*60*60);
+	my @csv_date_list = ();
+	for(my $dt = 0; $dt < $dates; $dt++){
+		my $dts = csvlib::ut2date($start_max_ut + $dt * 24*60*60, "-");
+		push(@csv_date_list, $dts);
+	}
 
 	#
 	#	Error date miss much
@@ -1222,24 +1227,32 @@ sub	csv2graph_mix
 		my $cdp = $gpp->{cdp};
 		my $ds = csvlib::search_listn($start_date, @{$cdp->{date_list}});
 		my $de = csvlib::search_listn($end_date, @{$cdp->{date_list}});
+		if($de < 0){ # larger than data
+			$de = scalar(@{$cdp->{date_list}});
+			$end_date = $cdp->{date_list}->[$de-1];
+			$gp_mix->{end_date} = $end_date;
+		}
 		$term = $de - $ds;
-		#dp::dp "DS: $start_date, $ds, $term \n";# . join(",", @{$cdp->{date_list}});
+		dp::dp "DS: $start_date, $ds, $de, $term \n";# . join(",", @{$cdp->{date_list}});
 		push(@ds_list, $ds);
 		#my ($ds, $de) = ($cdp->{date_list}->[0], $cdp->{date_list}->[$dates]);
 	}
 	my $start_ut = csvlib::ymds2tm($start_date);
-	dp::dp "TERM: $term\n";
+	my $stdd = csvlib::search_listn($start_date, @csv_date_list);
+	dp::dp "TERM: $term $start_date $stdd $end_date\n";
 		
 	#for(my $dt = 0; $dt <= $dates; $dt++){
 	for(my $dt = 0; $dt <= $term; $dt++){
-		my $date = csvlib::ut2date($start_ut + $dt * 24*60*60);
+		last if(($dt+$stdd) > $#csv_date_list);
+
+		my $date = $csv_date_list[$dt+$stdd];
 		$graph_cdp->{date_list}->[$dt] = $date;
 		#dp::dp "DATE:$date $dt\n";
 		my @vals = ();
 		
 		for(my $item = 0; $item < scalar(@$graph_csv); $item++){
 			my $st = $ds_list[$item];
-			my $v = $graph_csv->[$item]->[$dt+$st];		# 1 -> $st
+			my $v = $graph_csv->[$item]->[$dt+$stdd];		# 1 -> $st
 			$v = $v//-999;
 			push(@vals, $v);
 			#dp::dp "$item, $dt, $date, $v\n";

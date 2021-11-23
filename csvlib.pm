@@ -208,7 +208,7 @@ sub ut2dt
 
 	$dlm = $dlm // ":";
 	my($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) = localtime($tm);
-	my $s = sprintf("%04d/%02d/%02d %02d:%02d:%02d", $year + 1900, $mon + 1, $mday, $hour, $min, $sec);
+	my $s = sprintf("%04d$dlm%02d$dlm%02d %02d:%02d:%02d", $year + 1900, $mon + 1, $mday, $hour, $min, $sec);
 	return $s;
 }
 

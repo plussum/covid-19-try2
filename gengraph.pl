@@ -87,6 +87,7 @@ my $line_thin 		= "line linewidth 1" ;
 my $line_thick_dot = "line linewidth 2 dt(7,3)";
 my $line_thin_dot 	= "line linewidth 1 dt(6,4)";
 my $line_thin_dot2 	= "line linewidth 1 dt(2,6)";
+my $line_thick_jp 	= "line linewidth 2 dt(8,2) lc rgb 'red'";
 my $box_fill  		= "boxes fill";
 my $box_fill_solid 	= 'boxes fill solid border lc rgb "white" lw 1';
 
@@ -936,12 +937,52 @@ sub	ccse_jp_term
 	my $death_cdp = csv2graph->new($defccse::CCSE_DEATHS_DEF); 						# Load Johns Hopkings University CCSE
 	$death_cdp->load_csv($defccse::CCSE_DEATHS_DEF);
 
-	my $ccse_country = $ccse_cdp->reduce_cdp_target({"Country/Region" => "Japan"});	# Select Country
-	my $death_country = $death_cdp->reduce_cdp_target({"Country/Region" => "Japan"});	# Select Country
-	my $ccse_rlavr = $ccse_country->calc_rlavr($ccse_country);
+	foreach my $wcdp ($ccse_cdp, $death_cdp){
+		foreach my $country ("Canada", "China", "Australia"){
+			$wcdp->calc_items("sum", 
+						{"Province/State" => "", "Country/Region" => $country},				# All Province/State with Canada, ["*","Canada",]
+						{"Province/State" => "null", "Country/Region" => "="}				# total gos ["","Canada"] null = "", = keep
+			);
+		}
+	}
+	my $ccse_country = $ccse_cdp->reduce_cdp_target({"Province/State" => "NULL"});	# Select Country
+	my $death_country = $death_cdp->reduce_cdp_target({"Province/State" => "NULL"});	# Select Country
 
+	my $ccse_japan = $ccse_cdp->reduce_cdp_target({"Country/Region" => "Japan"});	# Select Country
+	my $death_japan = $death_cdp->reduce_cdp_target({"Country/Region" => "Japan"});	# Select Country
+	my $ccse_rlavr = $ccse_japan->calc_rlavr($ccse_japan);
+
+	my $gp_list = [];
 	foreach my $start_date("2020-01-23", "2020-04-01", "2020-07-01", "2020-10-01", "2021-01-01", "2021-04-01", "2021-07-01", "2021-10-01"){
-		push(@$ccse_pop_gp_list, &ccse_positive_death_ern($ccse_country, $death_country, "Japan", $start_date, 1, "pop", 93));
+		my $end_date = ($start_date eq "2020-01-23") ? "2020-04-01" : 93;
+		push(@$gp_list, csv2graph->csv2graph_list_gpmix(
+			{gdp => $defccse::CCSE_GRAPH, dsc => "World Wild $start_date", start_date => $start_date, end_date => $end_date,
+				ymin => 0, y2min => 0, 
+				ylabel => "WW-Positve",  y2label => "Japan Positive",
+				lank => [0,10],
+				term_y_size => 400,
+				graph_items => [
+				{cdp => $ccse_country,  item => {}, static => "rlavr", graph_def => $line_thick},
+				{cdp => $ccse_japan,  item => {}, static => "rlavr", graph_def => $line_thick_jp, axis => "y2"},
+				],
+			},
+		));
+	}
+	csv2graph->gen_html_by_gp_list($gp_list, {						# Generate HTML file with graphs
+			row => 1,
+			no_lank_label => 1,
+			html_tilte => "COVID-19 related data visualizer WW 3months",
+			src_url => "src_url",
+			html_file => "$HTML_PATH/$param" . "_ww3m.html",
+			alt_graph => "./$param" . "_ww_rlavr.html",
+			png_path => $PNG_PATH // "png_path",
+			png_rel_path => $PNG_REL_PATH // "png_rel_path",
+			data_source => $ccse_cdp->{src_info},
+		}
+	);
+	exit;
+	foreach my $start_date("2020-01-23", "2020-04-01", "2020-07-01", "2020-10-01", "2021-01-01", "2021-04-01", "2021-07-01", "2021-10-01"){
+		push(@$ccse_pop_gp_list, &ccse_positive_death_ern($ccse_japan, $death_japan, "Japan", $start_date, 1, "pop", 93));
 	}
 	csv2graph->gen_html_by_gp_list($ccse_pop_gp_list, {						# Generate HTML file with graphs
 			row => 2,
@@ -955,7 +996,10 @@ sub	ccse_jp_term
 			data_source => $ccse_cdp->{src_info},
 		}
 	);
+
+
 }
+
 
 
 if($golist{usa}) {
