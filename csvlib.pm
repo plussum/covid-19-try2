@@ -269,6 +269,10 @@ sub ymds2tm
 {
 	my ($ymds) = @_;
 
+	if(!($ymds//"")){
+		dp::ABORT "[$ymds]\n";
+		#csvlib::disp_caller(1..4) 
+	}
 	#dp::dp "$ymds\n";
 	my ($y, $m, $d, $h, $mn, $s) = split(/[\/\-]/, $ymds);
 

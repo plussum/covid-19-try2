@@ -610,7 +610,10 @@ sub gen_html_by_gp_list
 		my $csv_file = $png_path . "/" . $gp->{plot_csv};
 		dp::dp "$csv_file\n";
 		#print STDERR "### $csv_file\n";
-		open(CSV, $csv_file) || die "canot open $csv_file";
+		if(! open(CSV, $csv_file) ){
+			dp::WARNING "canot open $csv_file";
+			return "";
+		}
 		binmode(CSV, ":utf8");
 		my $l = <CSV>;		# get label form CSV file
 		close(CSV);
@@ -1077,15 +1080,18 @@ sub	csv2graph_mix
 	my $start_date = util::date_calc(($gp_mix->{start_date} // 0), $start_max, $dates, $start_max);	# 2021-01-01
 	#my $end_date   = util::date_calc(($gp_mix->{end_date} // $dates),  $end_min, $dates, $start_max);		# 2021-01-02
 	my $end_date   = util::date_calc(($gp_mix->{end_date} // $dates),  $end_min, $dates, $start_date);		# 2021-01-02
+	if($end_date gt $end_min){
+		$end_date = $end_min;
+	}
 	my $gen_dates = (csvlib::ymds2tm($end_date) - csvlib::ymds2tm($start_date))/(24*60*60);
 
-	dp::dp "graph_mix:(start_date, end_date, dates, star_date, end_date, term) "
-		 . join(",", $start_date, $end_date, $dates, $gp_mix->{start_date}, $gp_mix->{end_date}, $gen_dates) . "\n";
+	#dp::dp "graph_mix:(start_date, end_date, dates, star_date, end_date, term) "
+	#	 . join(",", $start_date, $end_date, $dates, $gp_mix->{start_date}//"start_date", $gp_mix->{end_date}//"end_date", $gen_dates) . "\n";
 
 	$gp_mix->{start_date} = $start_date;
 	$gp_mix->{end_date} = $end_date;
 	$gp_mix->{dt_start} = 0;
-	$gp_mix->{dt_end} = $gen_dates; # $dates;
+	$gp_mix->{dt_end} = $gen_dates;
 	#$gp_mix->{dates} = $dates;
 
 	my @lank = (defined $gp_mix->{lank}) ? @{$gp_mix->{lank}} : (1,10); 
@@ -1120,6 +1126,8 @@ sub	csv2graph_mix
 		$gpp->{end_date} = $end_date;
 		$gpp->{dt_start} = 0;
 		$gpp->{dt_end} = $dates;
+		#dp::dp "##### dt_end " . join(",", $gpp->{dt_end}, $gp_mix->{dt_end}) . "\n";
+		#$gpp->{dt_end} = csvlib::search_listn($end_date, @{$cdp->{date_list}});
 		$cdp->date_range($gdp, $gpp); 			# Data range (set dt_start, dt_end (position of array)
 
 		#
@@ -1155,7 +1163,18 @@ sub	csv2graph_mix
 			#my $dt_end = $gp_mix->{sort_end} // $dates;
 			my $dt_start = util::date_pos($gp_mix->{start_date} // 0, $cdp->{date_list}->[0], $cdp->{dates}, $cdp->{date_list});
 			my $dt_end = util::date_pos($gp_mix->{end_date} // $cdp->{dates}, $cdp->{date_list}->[0], $cdp->{dates}, $cdp->{date_list});
-			@$sorted_keys = $cdp->sort_csv($cdp->{csv_data}, $target_keys, $dt_start, $dt_end);
+			my $sort_start = $dt_start;
+			if($gp_mix->{sort_start}//""){
+				$sort_start = $gp_mix->{sort_start};
+				if($sort_start < 0){
+					$sort_start = $dt_end - $sort_start;
+				}
+				else {
+					$sort_start = $dt_start + $sort_start;
+				}
+				dp::dp  "###### " . join(", ", $gp_mix->{sort_start}, $sort_start) . "\n";
+			}
+			@$sorted_keys = $cdp->sort_csv($cdp->{csv_data}, $target_keys, $sort_start, $dt_end);
 		}
 		else {
 			my $load_order = $cdp->{load_order};
@@ -1233,7 +1252,7 @@ sub	csv2graph_mix
 			$gp_mix->{end_date} = $end_date;
 		}
 		$term = $de - $ds;
-		dp::dp "DS: $start_date, $ds, $de, $term \n";# . join(",", @{$cdp->{date_list}});
+		#dp::dp "DS: $start_date, $ds, $de, $term \n";# . join(",", @{$cdp->{date_list}});
 		push(@ds_list, $ds);
 		#my ($ds, $de) = ($cdp->{date_list}->[0], $cdp->{date_list}->[$dates]);
 	}
@@ -1416,10 +1435,10 @@ sub	sort_csv
 sub	graph
 {
 	my $self = shift;
-	my($csv_for_plot, $gdp, $gp) = @_;
+	my($csv_for_plot, $gdp, $gp_mix) = @_;
 
-	my $start_date = $gp->{start_date} // "-NONE-";
-	my $end_date = $gp->{end_date} // "-NONE-";
+	my $start_date = $gp_mix->{start_date} // "-NONE-";
+	my $end_date = $gp_mix->{end_date} // "-NONE-";
 
 	#dp::dp "START_DATE: $start_date END_DATE: $end_date\n";
 
@@ -1428,17 +1447,17 @@ sub	graph
 	if($src_info){
 		$src_info = "[$src_info]";
 	}
-	my $dsc = $gp->{dsc} // "";
+	my $dsc = $gp_mix->{dsc} // "";
 	$dsc =~ s/~//;
-	my $title = join(" ", $dsc, $gp->{sub_dsc}//"", ($gp->{static}//""), "($end_date)") . "    $src_info";
+	my $title = join(" ", $dsc, $gp_mix->{sub_dsc}//"", ($gp_mix->{static}//""), "($end_date)") . "    $src_info";
 	$title =~ s/_/\\_/g;	# avoid error at plot
-	#dp::dp "[$title] $gp->{plot_png}\n";
+	#dp::dp "[$title] $gp_mix->{plot_png}\n";
 	#dp::dp "#### " . join(",", "[" . $p->{lank}[0] . "]", @lank) . "\n";
 
-	my $fname = $gdp->{png_path} . "/" . $gp->{fname};
-	my $pngf = $gdp->{png_path} . "/" . $gp->{plot_png};# // "$fname.png");
-	my $csvf = $gdp->{png_path} . "/" . $gp->{plot_csv} ;#// "$fname-plot.csv.txt");
-	my $plotf = $gdp->{png_path} . "/" . $gp->{plot_cmd} ;#// "$fname-plot.txt");
+	my $fname = $gdp->{png_path} . "/" . $gp_mix->{fname};
+	my $pngf = $gdp->{png_path} . "/" . $gp_mix->{plot_png};# // "$fname.png");
+	my $csvf = $gdp->{png_path} . "/" . $gp_mix->{plot_csv} ;#// "$fname-plot.csv.txt");
+	my $plotf = $gdp->{png_path} . "/" . $gp_mix->{plot_cmd} ;#// "$fname-plot.txt");
 	#my $csvf = $fname . "-plot.csv.txt";
 	#my $pngf = $fname . ".png";
 	#my $plotf = $fname. "-plot.txt";
@@ -1447,14 +1466,14 @@ sub	graph
 
 	my $time_format = $gdp->{timefmt};
 	my $format_x = $gdp->{format_x};
-	my $term_x_size = $gp->{term_x_size} // $gdp->{term_x_size};
-	my $term_y_size = $gp->{term_y_size} // $gdp->{term_y_size};
+	my $term_x_size = $gp_mix->{term_x_size} // $gdp->{term_x_size};
+	my $term_y_size = $gp_mix->{term_y_size} // $gdp->{term_y_size};
 
 
 	my $start_ut = csvlib::ymds2tm($start_date);
 	my $end_ut = csvlib::ymds2tm($end_date);
 	my $dates = ($end_ut - $start_ut) / (60 * 60 * 24);
-	my $xtics = 60 * 60 * 24 * 7;
+	my $xtics = 60 * 60 * 24 * 7 * 4;
 	if($dates < 62){
 		$xtics = 1 * 60 * 60 * 24;
 	}
@@ -1462,7 +1481,10 @@ sub	graph
 		$xtics = 2 * 60 * 60 * 24;
 	}
 	elsif($dates < 120){
-		$xtics = 2 * 60 * 60 * 24;
+		$xtics = 3 * 60 * 60 * 24;
+	}
+	elsif($dates < 160){
+		$xtics = 7 * 60 * 60 * 24;
 	}
 
 
@@ -1485,8 +1507,8 @@ sub	graph
 	#dp::dp "### $csvf\n";
 
 	#my $src_csv = $self->{src_csv} // "";
-	#my $y2_source = $gp->{y2_source} // ($gdp->{y2_source} // "");
-	my $y2key = $gp->{y2key} // "";
+	#my $y2_source = $gp_mix->{y2_source} // ($gdp->{y2_source} // "");
+	my $y2key = $gp_mix->{y2key} // "";
 	#dp::dp "soruce_csv[$src_csv] $y2_source\n";
 	#$src_csv = "" if($y2_source eq "");
 	
@@ -1494,16 +1516,16 @@ sub	graph
 	#	Set yrange
 	#
 	#dp::dp "ymin: [$gdp->{ymin}]\n";
-	my $ymin = $gp->{ymin} // ($gdp->{ymin} // "");
-	my $ymax = $gp->{ymax} // ($gdp->{ymax} // "");
+	my $ymin = $gp_mix->{ymin} // ($gdp->{ymin} // "");
+	my $ymax = $gp_mix->{ymax} // ($gdp->{ymax} // "");
 	my $yrange = ($ymin ne ""|| $ymax ne "") ? "set yrange [$ymin:$ymax]" : "# yrange";
-	my $ylabel = $gp->{ylabel} // ($gdp->{ylabel} // "");
+	my $ylabel = $gp_mix->{ylabel} // ($gdp->{ylabel} // "");
 	$ylabel = "set ylabel '$ylabel'"  if($ylabel);
 
-	my $y2min = $gp->{y2min} // ($gdp->{y2min} // "");
-	my $y2max = $gp->{y2max} // ($gdp->{y2max} // "");
+	my $y2min = $gp_mix->{y2min} // ($gdp->{y2min} // "");
+	my $y2max = $gp_mix->{y2max} // ($gdp->{y2max} // "");
 	my $y2range = ($y2min ne ""|| $y2max ne "") ? "set y2range [$y2min:$y2max]" : "# y2range";
-	my $y2label = $gp->{y2label} // ($gdp->{y2label} // "");
+	my $y2label = $gp_mix->{y2label} // ($gdp->{y2label} // "");
 	$y2label = ($y2label) ? "set y2label '$y2label'" : "# y2label";
 	my $y2tics = "set y2tics";		# Set y2tics anyway
 
@@ -1549,12 +1571,12 @@ exit
 _EOD_
 	my @label_subs = ($label[0]);
 	for(my $i = 1; $i <= $#label; $i++){
-		my $graph = $gp->{graph} // ($gdp->{graph} // $DEFAULT_GRAPH);
+		my $graph = $gp_mix->{graph} // ($gdp->{graph} // $DEFAULT_GRAPH);
 		my $y2_graph = "";
 		my ($key, $axis_flag, $graph_def) = split($LABEL_DLM, $label[$i]);
-		if($gp->{label_sub_from}){
-			my $sub_from = $gp->{label_sub_from};
-			my $sub_to = $gp->{label_sub_to} // "";
+		if($gp_mix->{label_sub_from}){
+			my $sub_from = $gp_mix->{label_sub_from};
+			my $sub_to = $gp_mix->{label_sub_to} // "";
 			$key =~ s/$sub_from/$sub_to/;
 		}
 		$label_subs[$i] = $key;
@@ -1571,7 +1593,7 @@ _EOD_
 
 		$axis_flag = $axis_flag // "y1";
 		#dp::dp join(",", $label[$i], $key, $axis_flag) . "\n";
-		$key =~ s/^\d+:// if($gp->{no_label_no} // "");
+		$key =~ s/^\d+:// if($gp_mix->{no_label_no} // "");
 		$key =~ s/[']/_/g;	# avoid error at plot
 		$key =~ s/_/\\_/g;	# avoid error at plot
 		#dp::dp "### $i: $key $src_csv, $y2key\n";
@@ -1583,7 +1605,7 @@ _EOD_
 		if(($y2key ne "" && $y2key && $key =~ /$y2key/) || $axis_flag =~ /y2/) {
 			$axis = "axis x1y2" ;
 			$dot = "dt (7,3)";
-			$graph = $gp->{y2_graph} // ($gdp->{y2_graph} // $DEFAULT_GRAPH);
+			$graph = $gp_mix->{y2_graph} // ($gdp->{y2_graph} // $DEFAULT_GRAPH);
 			#dp::dp "$key $y2key/$axis_flag: [$axis]\n";
 		}
 		#dp::dp "axis:[$axis]\n";
@@ -1615,7 +1637,7 @@ _EOD_
 	}
 
 	#push(@p, "0 with lines dt '-' title 'base line'");
-	my $additional_plot = $gp->{additional_plot} // ($gdp->{additional_plot} // "");
+	my $additional_plot = $gp_mix->{additional_plot} // ($gdp->{additional_plot} // "");
     if($additional_plot){
         #dp::dp "additional_plot: " . $additional_plot . "\n";
 		push(@p, $additional_plot);
@@ -1630,8 +1652,8 @@ _EOD_
 	dp::dp $plot . "\n" if($VERBOSE);
 
 	my $date_list = $self->{date_list};
-	my $dt_start = $gp->{dt_start};
-	my $dt_end = $gp->{dt_end};
+	my $dt_start = $gp_mix->{dt_start};
+	my $dt_end = $gp_mix->{dt_end};
 #	$dt_start = ($dt_start//"") ? $dt_start : 0;
 #	$dt_end = ($dt_end//"") ? $dt_end : &csv_size($csvp);		# 2021.03.15
 #	if($dt_start < 0){											# 2021.03.15
@@ -1640,8 +1662,8 @@ _EOD_
 #	if($dt_end < 0){											# 2021.03.15
 #		$dt_end = &csv_size($csvp) + $dt_end;					# 2021.03.15
 #	}															# 2021.03.15
-	#my $dt_start = $gp->{dt_start};
-	#my $dt_end = $gp->{dt_end};
+	#my $dt_start = $gp_mix->{dt_start};
+	#my $dt_end = $gp_mix->{dt_end};
 	#dp::dp join(",", @$date_list) . "\n";
 	#dp::dp "###" . join(",", $dt_start, $dt_end, $date_list->[$dt_start], $date_list->[$dt_end], scalar(@$date_list)) . "\n";
 
@@ -1651,15 +1673,18 @@ _EOD_
 	my $RELATIVE_DATE = 7;
 	my @aw = ();
 
-	my $den = $gp->{dt_end};
-	#dp::dp "range: " . join(",", $den, scalar(@$date_list) ) . "\n"; 
+	my $den = $gp_mix->{dt_end};
+	$den = scalar(@$date_list) - 1 if($den >= scalar(@$date_list));
+	if(!($date_list->[$den]//"")){
+		dp::dp "range: " . join(",", "dt_end:$den", scalar(@$date_list), @{$date_list} ) . "\n"; 
+	}
 	my $last_date = csvlib::ymds2tm($date_list->[$den]) / (24 * 60 * 60);	# Draw arrow on sunday
 	my $s_date = ($last_date - 2) % 7;
 	$s_date = 7 if($s_date == 0);
 	#dp::dp "DATE: " . $DATES[$date] . "  " . "$date -> $s_date -> " . ($date - $s_date) . "\n";
 
-	dp::dp "START_DATE: " . join(", ", $gp->{dt_start}, $gp->{dt_end}, $s_date) . "\n"; 
-	for(my $dn = $gp->{dt_end} - $s_date; $dn > $gp->{dt_start}; $dn -= $RELATIVE_DATE){
+	dp::dp "START_DATE: " . join(", ", $gp_mix->{dt_start}, $gp_mix->{dt_end}, $s_date) . "\n"; 
+	for(my $dn = $gp_mix->{dt_end} - $s_date; $dn > $gp_mix->{dt_start}; $dn -= $RELATIVE_DATE){
 		my $mark_date = $date_list->[$dn] // "";
 		next if($mark_date le $start_date || $mark_date ge $end_date);
 		
