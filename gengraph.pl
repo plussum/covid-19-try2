@@ -76,6 +76,8 @@ my $DOWN_LOAD = 1;
 my $RECENT = -62;		# recent = 2month
 my $RECENT_MONTH = -21;
 
+my $TERM_Y_SIZE = 400;
+
 #my 	$line_thick = $csv2graph::line_thick;
 #my	$line_thin = $csv2graph::line_thin;
 #my	$line_thick_dot = $csv2graph::line_thick_dot;
@@ -1145,6 +1147,7 @@ if($golist{mhlw}) {
 		{gdp => $defmhlw::MHLW_GRAPH, dsc => "Japan PCR test results", start_date => $start_date, 
 			ymin => 0, y2min => 0,y2max => 35,
 			ylabel => "pcr_tested/positive", y2label => "positive rate(%)",
+			term_y_size => $TERM_Y_SIZE,
 			graph_items => [
 				{cdp => $cdp,  item => {"Prefecture-t" => "ALL",  "item-t" => "Tested"}, static => "rlavr", graph_def => $box_fill},
 				{cdp => $cdp,  item => {"Prefecture-p" => "ALL", "item-p" => "Positive"}, static => "rlavr", graph_def => $box_fill_solid},
@@ -1805,6 +1808,7 @@ if($golist{owidvac})
 	}
 	$percent_axis = join(",\\\n", @adp);
 
+
 	my $target_location = join(",", @target_area, @TARGET_REGION); # @target_region);
 	#my @select_items = ("total_vaccinations_per_hundred","people_fully_vaccinated_per_hundred");
 	my @select_items = ("people_vaccinated_per_hundred","people_fully_vaccinated_per_hundred");
@@ -1826,6 +1830,7 @@ if($golist{owidvac})
 		graph_tag => "World",
 		ylabel => "vaccine rate(%)",
 		ymin => 0, ymax => 100, y2min => 0, y2max => 100,
+		term_y_size => $TERM_Y_SIZE,
 		label_sub_from => '#.*', label_sub_to => '',	# change label "1:Israel#people_vaccinated_per_hundred" -> "1:Israel"
 		additional_plot => $percent_axis,
 		graph_items => $graph_items,
@@ -1855,7 +1860,7 @@ if($golist{owidvac})
 		}
 
 	}
-if(0){
+
 	foreach my $region (@target_area) { # , @target_region)
 		push(@$gp_list, csv2graph->csv2graph_list_gpmix(
 		{gdp => $defowid::OWID_VAC_GRAPH, dsc => "[$region] OWID Vaccine", start_date => $start_date, 
@@ -1888,6 +1893,7 @@ if(0){
 		{gdp => $defowid::OWID_VAC_GRAPH, dsc => "[$region] OWID Vaccine, Positive and Deaths(rlavr 7)", start_date => $start_date, 
 			ylabel => "confermed", y2label => "vaccine rate(%) and deaths/max(%)",
 			ymin => 0, y2min => 0,y2max => 100,
+			term_y_size => $TERM_Y_SIZE,
 			additional_plot => $percent_axis,
 			graph_items => [
 				#{cdp => $cdp,  item => {location => $region, item_name => "total_vaccinations_per_hundred"}, static => "", graph_def => $box_fill, axis => "y2"},
@@ -1898,7 +1904,7 @@ if(0){
 			],
 		}));
 	}
-}
+
 	csv2graph->gen_html_by_gp_list($gp_list, {						# Generate HTML file with graphs
 			row => 2,
 			html_tilte => "COVID-19 vaccine from OWID",
@@ -2356,6 +2362,7 @@ sub	positive_death_ern
 		{gdp => $gdp, dsc => "[$rg] $kind", sub_dsc => sprintf("$pop_dsc dr:%.2f%%", $drate_max), start_date => $start_date, end_date => $end_date,
 			ymax => $ymax, y2max => $y2max, y2min => 0,
 			ylabel => "confermed", y2label => $y2label ,
+			term_y_size => $TERM_Y_SIZE,
 			additional_plot => $add_plot,
 			graph_items => [@$graph_items],
 			no_label_no => 1,

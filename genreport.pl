@@ -162,7 +162,7 @@ foreach my $header (@headers){
 	my @col = ();
 	for(my $i = 0; $i < $HIST; $i++){
 		my $tm = time - ($i * 7 + 1) * 24 * 60  * 60;
-		my $date = csvlib::ut2dt($tm);
+		my $date = csvlib::ut2dt($tm, "/");
 		$date =~ s/ .*//;
 		push(@col, $date);
 	}

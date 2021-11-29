@@ -1051,7 +1051,7 @@ sub	csv2graph_mix
 	my $end_min_ut = csvlib::ymds2tm($end_min);
 	my $dates = ($end_min_ut - $start_max_ut) / (24*60*60);
 	my @csv_date_list = ();
-	for(my $dt = 0; $dt < $dates; $dt++){
+	for(my $dt = 0; $dt <= $dates; $dt++){
 		my $dts = csvlib::ut2date($start_max_ut + $dt * 24*60*60, "-");
 		push(@csv_date_list, $dts);
 	}
@@ -1083,7 +1083,7 @@ sub	csv2graph_mix
 	if($end_date gt $end_min){
 		$end_date = $end_min;
 	}
-	my $gen_dates = (csvlib::ymds2tm($end_date) - csvlib::ymds2tm($start_date))/(24*60*60);
+	my $gen_dates = (csvlib::ymds2tm($end_date) - csvlib::ymds2tm($start_date))/(24*60*60) + 1;
 
 	#dp::dp "graph_mix:(start_date, end_date, dates, star_date, end_date, term) "
 	#	 . join(",", $start_date, $end_date, $dates, $gp_mix->{start_date}//"start_date", $gp_mix->{end_date}//"end_date", $gen_dates) . "\n";
@@ -1125,9 +1125,9 @@ sub	csv2graph_mix
 		$gpp->{start_date} = $start_date;
 		$gpp->{end_date} = $end_date;
 		$gpp->{dt_start} = 0;
-		$gpp->{dt_end} = $dates;
-		#dp::dp "##### dt_end " . join(",", $gpp->{dt_end}, $gp_mix->{dt_end}) . "\n";
-		#$gpp->{dt_end} = csvlib::search_listn($end_date, @{$cdp->{date_list}});
+		$gpp->{dt_end} = $dates;			# may be this parameter is wrong ... 
+		dp::dp "##### dt_end " . join(",", $gpp->{dt_end}, $gp_mix->{dt_end}) . "\n";
+		$gpp->{dt_end} = csvlib::search_listn($end_date, @{$cdp->{date_list}});
 		$cdp->date_range($gdp, $gpp); 			# Data range (set dt_start, dt_end (position of array)
 
 		#
@@ -1258,7 +1258,7 @@ sub	csv2graph_mix
 	}
 	my $start_ut = csvlib::ymds2tm($start_date);
 	my $stdd = csvlib::search_listn($start_date, @csv_date_list);
-	dp::dp "TERM: $term $start_date $stdd $end_date\n";
+	dp::dp "TERM: " . join(",", $term,$start_date,$stdd,$end_date,$csv_date_list[$#csv_date_list]) . "\n";
 		
 	#for(my $dt = 0; $dt <= $dates; $dt++){
 	for(my $dt = 0; $dt <= $term; $dt++){
