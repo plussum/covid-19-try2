@@ -69,12 +69,16 @@ sub	load_csv
 	elsif($direct =~ /transact/i){
 		$rc = &load_transaction($self, $src_file);
 	}
+	elsif($direct =~ /vertical_matrix/i){
+		$rc = load_csv_vertical_matrix($self, $src_file);
+	}
 	elsif($direct =~ /vertical_multi/i){
 		$rc = load_csv_vertical_multi($self, $src_file);
 	}
 	elsif($direct =~ /vertical/i){
 		$rc = load_csv_vertical($self, $src_file);
 	}
+
 	else {
 		$rc = load_csv_holizontal($self, $src_file);
 	}
@@ -122,7 +126,7 @@ sub	load_csv
 #
 #			01/01, 01/02, 01/03 ...
 #	key1
-#	key1
+#	key2
 #
 sub	load_csv_holizontal
 {
@@ -209,6 +213,115 @@ sub	load_csv_holizontal
 	return 0;
 }
 
+sub	load_csv_vertical_matrix
+{
+	my $self = shift;
+	my ($src_file) = @_;
+
+	my $data_start = $self->{data_start};
+	my $src_dlm = $self->{src_dlm};
+	my $date_list = $self->{date_list};
+	my $csv_data = $self->{csv_data};	# Data of record ->{$key}->[]
+	my $key_items = $self->{key_items};	# keys of record ->{$key}->[]
+	my @keys = @{$self->{keys}};			# Item No for gen HASH Key
+	my $timefmt = $self->{timefmt};
+	my $item_name_hash = $self->{item_name_hash};
+
+	#	item_name_hash
+	my @keynames = (@keys);
+	for(my $i = 0; $i <= $#keynames; $i++){
+		my $kn = $keynames[$i];
+		$item_name_hash->{$kn} = $i;
+		dp::dp "hash:  $kn: $i\n";
+	}
+
+	#
+	#	Load CSV DATA
+	#
+	dp::dp "vertical_matrix: source_file: $src_file\n";
+	system("nkf -w80 $src_file >$src_file.utf8");			# -w8 (with BOM) contain code ,,,so lead some trouble
+	open(FD, "$src_file.utf8") || die "Cannot open $src_file.utf8";
+	binmode(FD, ":utf8");
+
+	my $data = [];
+
+	#
+	#	first line, items this case , Tokyo, ibaraki, ,,,
+	#
+	my $line = <FD>;
+	$line =~ s/[\r\n]+$//;
+	my @key_items = split(/$src_dlm/, $line);
+	shift(@key_items);
+	for(my $i = 0; $i <= $#key_items; $i++){
+		$data->[$i] = [];
+	}
+
+	#
+	#	data
+	#	2020/5/9,267,23,0,0,0,0,0,,,,,,
+	#
+	#	date_list->[$dt] = [2020/05/09, 2020/05/10,,,,]
+	#					 day1, day2, day3 ,,,,
+	#	data->[$pref] = [0, 1, 2, 3,,,,]
+	#
+	#
+	#
+	#	date,(pref1)item1, (pref1)item2, (pref1)item3, (pref2)item1, (pref2)item2.....
+	#
+	#	pref, item
+	#	data->[$pref+key] = [0,1,2,3,,,,]
+	#
+	#
+	my $dt = 0;
+	while(<FD>){
+		s/[\r\n]+$//;
+		#my $line = decode('utf-8', $_);
+        if(/"/){
+            s/"([^",]+), *([^",]+), *([^",]+)"/$1;$2;$3/g;  # ,"aa,bb,cc", -> aa-bb-cc
+            s/"([^",]+), *([^"]+)"/$1-$2/g; # ,"aa,bb", -> aa-bb
+            #dp::dp "[$_]\n" if(/Korea/);
+        }
+		my @w = split(/$src_dlm/, $_);
+		my $d = shift(@w);
+		$date_list->[$dt] = util::timefmt($timefmt, $d);
+		for(my $col = 0; $col <= $#w; $col++){
+			$data->[$col][$dt] = $w[$col];
+			#push(@{$data->[$col]}, $w[$col]);
+			#dp::dp join(",", $dt, $col, $w[$col], $data->[$col][$dt]) . "\n";
+		}
+		$dt++;
+	}
+	close(FD);
+
+	#for(my $col = 0; $col < 3; $col++){
+	#	dp::dp join(",", $key_items[$col], @{$data->[$col]}) . "\n";
+	#}
+
+	my @key_order = $self->gen_key_order($self->{keys});		# keys to gen record key
+	dp::dp "keys: " . join(",", @{$self->{keys}}) . "\n";
+	dp::dp "key order: " . join(",", @key_order) . "\n";
+	my $load_order = $self->{load_order};
+	my $key_dlm = $self->{key_dlm}; 
+	$self->add_key_items([$config::MAIN_KEY, @keynames]);
+	$self->set_alias($self->{alias});		#
+	for(my $i = 0; $i <= $#key_items; $i++){
+		my $item = $key_items[$i];
+		my $master_key = select::gen_record_key($key_dlm, \@key_order, [$item]);		# 2021.07.08 .... vaccine
+		$self->add_record($master_key, 
+				[$master_key, $item], [@{$data->[$i]}]);		# add record without data
+		#dp::dp join(",", "[$master_key]", @{$data->[$i]}) . "\n";
+	}
+	#dp::dp "[" . join(",", @w[0..5]) . "]\n";
+
+	$self->{dates} = $dt -1;
+
+	#dp::dp join(",", "# ", "[" . ($dt-1) . "]", @$date_list) . "\n";
+	#dp::dp "keys : ", join(",", @keys). "\n";
+
+
+	#dp::dp "CSV_HOLIZONTASL: " . join(",", @{$self->{item_name_list}}) . "\n";
+	return 0;
+}
 
 #
 #	Load vetical csv file
@@ -217,11 +330,6 @@ sub	load_csv_holizontal
 #	01/01
 #	01/02
 #	01/03
-#
-#	"key" 01/01, 01/02, 01/03
-#	key1, 1,2,3
-#	key2, 11,12,13
-#	key3, 21,22,23
 #
 #	Load vetical multi item csv file
 #
@@ -464,18 +572,27 @@ sub load_csv_vertical_multi
 		dp::WARNING "may be wrong delimitter [$src_dlm]\n\n";
 	}
 	my @load_flag = ();
-	for(my $i = 0; $i < $#item_names; $i++){
-		$load_flag[$i] = "";
-		$item_name_hash->{$item_names[$i]} = $i;
-	}
-	foreach my $col (@$load_col){
-		my $i = $col;
-		if($col =~ /\D/){
-			$i = $item_name_hash->{$i} // dp::ABORT "undefined item: $i\n";
+	if($load_col){
+		for(my $i = 0; $i < $#item_names; $i++){
+			$load_flag[$i] = "";		# 	load_col => "" = all
+			$item_name_hash->{$item_names[$i]} = $i;
 		}
-		dp::dp "[$col] [$i]\n";
-		$load_flag[$i] = 1;
+		foreach my $col (@$load_col){
+			my $i = $col;
+			if($col =~ /\D/){
+				$i = $item_name_hash->{$i} // dp::ABORT "undefined item: $i\n";
+			}
+			dp::dp "[$col] [$i]\n";
+			$load_flag[$i] = 1;
+		}
 	}
+	else {		# load_col => "", --> all items
+		for(my $i = 0; $i < $#item_names; $i++){
+			$load_flag[$i] = 1;		# 	load_col => "" = all
+			$item_name_hash->{$item_names[$i]} = $i;
+		}
+	}
+
 	my $keys = $self->{keys};
 	my @key_order = $self->gen_key_order($self->{keys});		# keys to gen record key
 	dp::dp "keys:      " .join(",", @$keys) . "\n";
@@ -588,6 +705,7 @@ sub load_csv_vertical_multi
 	#dp::dp "done\n";
 	return 0;
 }
+
 #
 #	Load Json format
 #

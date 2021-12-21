@@ -429,10 +429,12 @@ sub	add_record
 	$dp = $dp // [];
 
 	#dp::dp "load_order: $load_order\n";
+	#dp::dp ">>> " . join(",", @$dp) . "\n";
 	$self->{csv_data}->{$k} = [@$dp];		# set csv data array
 	$self->{key_items}->{$k} = [@$itemp];
 	$self->{src_csv}->{$k} = 0;
 	push(@{$self->{load_order}}, $k);
+
 
 	return 1;
 }
@@ -1126,7 +1128,7 @@ sub	csv2graph_mix
 		$gpp->{end_date} = $end_date;
 		$gpp->{dt_start} = 0;
 		$gpp->{dt_end} = $dates;			# may be this parameter is wrong ... 
-		dp::dp "##### dt_end " . join(",", $gpp->{dt_end}, $gp_mix->{dt_end}) . "\n";
+		#dp::dp "##### dt_end " . join(",", $gpp->{dt_end}, $gp_mix->{dt_end}) . "\n";
 		$gpp->{dt_end} = csvlib::search_listn($end_date, @{$cdp->{date_list}});
 		$cdp->date_range($gdp, $gpp); 			# Data range (set dt_start, dt_end (position of array)
 
@@ -1258,7 +1260,7 @@ sub	csv2graph_mix
 	}
 	my $start_ut = csvlib::ymds2tm($start_date);
 	my $stdd = csvlib::search_listn($start_date, @csv_date_list);
-	dp::dp "TERM: " . join(",", $term,$start_date,$stdd,$end_date,$csv_date_list[$#csv_date_list]) . "\n";
+	#dp::dp "TERM: " . join(",", $term,$start_date,$stdd,$end_date,$csv_date_list[$#csv_date_list]) . "\n";
 		
 	#for(my $dt = 0; $dt <= $dates; $dt++){
 	for(my $dt = 0; $dt <= $term; $dt++){

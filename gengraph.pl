@@ -69,7 +69,8 @@ my $DEFAULT_AVR_DATE = 7;
 my $END_OF_DATA = "###EOD###";
 
 my $WEEK_BEFORE = 4;
-my $THRESH_POP_NC_LAST = 1.0; #0.5;
+my $THRESH_POP_NC_LAST_JP = 1.0; #0.5;
+my $THRESH_POP_NC_LAST_WW = 5.0; #0.5;
 my $mainkey = $config::MAIN_KEY;
 
 my $DOWN_LOAD = 1;
@@ -97,8 +98,8 @@ my $y2y1rate = 2.5;
 my $end_target = 0;
 my $CCSE_MAX = 119; # 99;
 
-my $POP_YMAX_NC_WW = 50;		# WW YMAX(positive) * pop100k, positive_death_ern
-my $POP_YMAX_ND_WW = 1.0;		# WW Y2MAX(deaths)  * pop100k, positive_death_ern
+my $POP_YMAX_NC_WW = 120;		# WW YMAX(positive) * pop100k, positive_death_ern
+my $POP_YMAX_ND_WW = 2.0;		# WW Y2MAX(deaths)  * pop100k, positive_death_ern
 my $POP_YMAX_NC_JP = 40;		# JP YMAX(positive) * pop100k, positive_death_ern
 my $POP_YMAX_NC_JP_SMALL = 2;		# JP YMAX(positive) * pop100k, positive_death_ern
 my $POP_YMAX_ND_JP = 0.2;		# JP Y2MAX(deaths)  * pop100k, positive_death_ern
@@ -415,6 +416,12 @@ if($all || $GKIND eq "all"){
 		for(my $i = 0; $i <= $#glist; $i++){		# execute child proc (@glist);
 			my $gp = $glist[$i];
 
+			my $ws = 5;
+			while($child_procs >= 2){
+				dp::dp "######## Wait Child proc $child_procs wait $ws sec\n";
+				sleep $ws;
+			}
+
 			dp::dp "EXECUTE: " . join(": ", $gp->{id}, $gp->{gkind}, $gp->{delay}) . "\n";
 			$pid = &forkc($gp->{id}, $gp->{gkind});		# set id to golist and GKIND 
 			last if(! $pid);
@@ -429,6 +436,7 @@ if($all || $GKIND eq "all"){
 			dp::set_dp_id("main");
 			my $kid = 0;
 			for(my $conf = 0; $conf < 500 && $child_procs > 0; $conf++){
+
 				$kid = waitpid(-1, WNOHANG); 
 				dp::dp "WAIT CHILD $conf: $kid $child_procs\n";
 				foreach $pid (keys %$child_list){
@@ -594,7 +602,7 @@ if($golist{pref}){
 		&gen_reginfo("$HTML_PATH/japanpref_ri_", $reg_param, "drate_last");
 		&gen_reginfo("$HTML_PATH/japanpref_ri_", $reg_param, "nc_week_diff", "nd_week_diff");
 		&gen_reginfo("$HTML_PATH/japanpref_ri_", $reg_param, "nd_week_diff", "nc_week_diff");
-		my $reg_param_th = {graph_html => ($reg_param->{graph_html}), thresh => $THRESH_POP_NC_LAST, thresh_item => "nc_pop_last"};
+		my $reg_param_th = {graph_html => ($reg_param->{graph_html}), thresh => $THRESH_POP_NC_LAST_JP, thresh_item => "nc_pop_last"};
 		&gen_reginfo("$HTML_PATH/japanpref_ri_th_", $reg_param_th, "nc_week_diff", "nd_week_diff");
 	}
 
@@ -882,7 +890,7 @@ sub	ccse
 		&gen_reginfo("$HTML_PATH/$outf", $reg_param, "drate_last");
 		&gen_reginfo("$HTML_PATH/$outf", $reg_param, "nc_week_diff");
 		&gen_reginfo("$HTML_PATH/$outf", $reg_param, "nd_week_diff");
-		my $reg_param_th = {graph_html => ($reg_param->{graph_html}), thresh => $THRESH_POP_NC_LAST, thresh_item => "nc_pop_last"};
+		my $reg_param_th = {graph_html => ($reg_param->{graph_html}), thresh => $THRESH_POP_NC_LAST_WW, thresh_item => "nc_pop_last"};
 		&gen_reginfo("$HTML_PATH/$outf" . "th_", $reg_param_th, "nc_week_diff", "nd_week_diff");
 
 
@@ -958,7 +966,7 @@ sub	ccse_jp_term
 	my $m15 = 35;
 	foreach my $date("2020-01-23,$m3", "2020-04-01,$m3", "2020-07-01,m3", "2020-10-01,64", "2020-12-01,$m15", 
 			"2021-01-01,$m15", "2021-02-01,$m15", "2021-03-01,$m15", "2021-04-01,$m15", "2021-05-01,$m15",
-			"2021-06-01,$m15", "2021-07-01,$m15", "2021-08-01,$m15", "2021-09-01,$m15", "2021-10-01,$m15", "2021-11-01,2021-11-25"){
+			"2021-06-01,$m15", "2021-07-01,$m15", "2021-08-01,$m15", "2021-09-01,$m15", "2021-10-01,$m15", "2021-11-01,2021-11-30"){
 		my ($start_date, $end_date) = split(/,/, $date);
 		push(@$gp_list, csv2graph->csv2graph_list_gpmix(
 			{gdp => $defccse::CCSE_GRAPH, dsc => "World Wild $start_date", start_date => $start_date, end_date => $end_date,
@@ -1100,6 +1108,8 @@ if($golist{mhlw}) {
 	# positive,  reqcare, deaths, severe
 	my %cdp_raw = ();
 	my @cdps = ();
+	my $i = 0;
+if(1){
 	foreach my $item (keys %defmhlw::MHLW_DEFS){
 		#dp::dp "[$item]\n";
 		$cdp_raw{$item} = csv2graph->new($defmhlw::MHLW_DEFS{$item}); 						# Load Johns Hopkings University CCSE
@@ -1107,10 +1117,12 @@ if($golist{mhlw}) {
 		#$cdp_rla{$item} = $cdp_raw{$item}->calc_rlavr();
 		push(@cdps, $cdp_raw{$item});
 		#$cdp_raw{$item}->dump();
+		#exit; #if($i++ > 1);
 	}
 	my $cdp = csv2graph->new($defmhlw::MHLW_TAG);
 	$cdp = $cdp->marge_csv(@cdps);
-	#$cdp->dump({search_key => "Tokyo", items => 10});
+	$cdp->dump({search_key => "Tokyo", items => 10});
+	exit;
 	my $cdp_rlavr = $cdp->calc_rlavr();
 
 	#
@@ -1138,7 +1150,6 @@ if($golist{mhlw}) {
 		my $v = sprintf("%.3f", $p * 100 / $t);
 		$csv_pct->[$i] = $v;
 	}
-
 	#
 	#	Japan all data
 	#
@@ -1149,16 +1160,16 @@ if($golist{mhlw}) {
 			ylabel => "pcr_tested/positive", y2label => "positive rate(%)",
 			term_y_size => $TERM_Y_SIZE,
 			graph_items => [
-				{cdp => $cdp,  item => {"Prefecture-t" => "ALL",  "item-t" => "Tested"}, static => "rlavr", graph_def => $box_fill},
-				{cdp => $cdp,  item => {"Prefecture-p" => "ALL", "item-p" => "Positive"}, static => "rlavr", graph_def => $box_fill_solid},
-				{cdp => $cdp,  item => {"percent" => "percent"}, static => "", graph_def => $line_thick, axis => "y2"},
+				{cdp => $cdp,  item => {"item" => "ALL",  "item-t" => "Tested"}, static => "rlavr", graph_def => $box_fill},
+				{cdp => $cdp,  item => {"item" => "ALL", "item-p" => "Positive"}, static => "rlavr", graph_def => $box_fill_solid},
+				{cdp => $cdp,  item => {"item"}, static => "", graph_def => $line_thick, axis => "y2"},
 				{cdp => $cdp,  item => {"Prefecture-t" => "ALL", "item-t" => "Tested"}, static => "", graph_def => $line_thin_dot},
 				{cdp => $cdp,  item => {"Prefecture-p" => "ALL", "item-p" => "Positive"}, static => "", graph_def => $line_thin_dot},
 			],
 		}
 		));
 	}
-
+if(0){
 	my $pref = "ALL";
 	foreach my $start_date (0, $RECENT, $RECENT_MONTH){
 		push(@$gp_list, csv2graph->csv2graph_list_gpmix(
@@ -1174,7 +1185,9 @@ if($golist{mhlw}) {
 		}
 		));
 	}
+}
 
+}
 
 	#
 	#	NHK - Tokyo
@@ -1276,7 +1289,7 @@ if($golist{mhlw}) {
 			html_file => "$HTML_PATH/mhlw.html",
 			png_path => $PNG_PATH // "png_path",
 			png_rel_path => $PNG_REL_PATH // "png_rel_path",
-			data_source => $cdp->{src_info},
+			data_source => $cdp_tko->{src_info},
 		}
 	);
 }
@@ -2141,7 +2154,7 @@ sub	positive_death_ern
 	#$death_region->dump();
 	$kind = $kind // "no-kind";
 	$end_date = $end_date // "";
-	dp::dp "End date: [$end_date]\n";
+	#dp::dp "End date: [$end_date]\n";
 	$p = {start_date => $start_date} if(!($p // ""));
 	my $pop_ymax_nc = $p->{pop_ymax_nc} // "";
 	my $pop_ymax_nd = $p->{pop_ymax_nd} // "";
@@ -2174,7 +2187,7 @@ sub	positive_death_ern
 	if($pop_ymax_nc){
 		dp::ABORT "POP: pop_ymax_nd, not defined\n" if(!$pop_ymax_nd);
 
-		dp::dp ">>>> ", join(", ", $ymax, $pop_ymax_nc, $pop_100k, $pop_ymax_nc * $pop_100k) . "\n";
+		#dp::dp ">>>> ", join(", ", $ymax, $pop_ymax_nc, $pop_100k, $pop_ymax_nc * $pop_100k) . "\n";
 		$ymax = csvlib::calc_max2($pop_100k * $pop_ymax_nc);
 		$y2max = $pop_100k * $pop_ymax_nd;
 	}
@@ -2343,19 +2356,9 @@ sub	positive_death_ern
 	}
 	#dp::dp "===== " .join(",", $region, $nc_last, $nc_last_week,  $nc_last / $nc_last_week) . "\n";
 	#dp::dp "===== " .join(",", $region, $nd_last, $nd_last_week,  $nd_last / $nd_last_week) . "\n";
-	if($nc_last_week <= 0){
-		$nc_last_week = $nc_last / 999;
-		#dp::dp "====++ " .join(",", $region, $nc_last, $nc_last_week,  $nc_last / $nc_last_week) . "\n";
-	}
-	if($nd_last_week <= 0){
-		$nd_last = 1 if($nd_last == 0);
-		$nd_last_week = $nd_last / 999 ;
+	my $nc_week_diff = ($nc_last_week > 0) ? ($nc_last / $nc_last_week) : 0; 
+	my $nd_week_diff = ($nd_last_week > 0) ? ($nd_last / $nd_last_week) : 0;
 
-		#dp::dp "====++ " .join(",", $region, $nd_last, $nd_last_week,  $nd_last / $nd_last_week) . "\n";
-	}
-
-	my $nc_week_diff = $nc_last / $nc_last_week;
-	my $nd_week_diff = $nd_last / $nd_last_week;
 	my $y2label = ($pop_ymax_nc) ? "deaths" : "deaths (max=$y2y1rate% of rlavr confermed)";
 	dp::dp "src_info: " . $conf_region->{src_info} . "\n";
 	push(@list, $conf_region->csv2graph_list_gpmix(
@@ -2385,15 +2388,15 @@ sub	positive_death_ern
 		my $_dlst_pop = $_nd_last / $pop_100k;
 		my $_drate_last = 100 * $_nd_last / &zd($_nc_last);
 
-		if($_nc_last_week <= 0){
-			$_nc_last_week = (($_nc_last == 0) ? 1 : $_nc_last) / 999;
-		}
-		if($_nd_last_week <= 0){
-			$_nd_last = 1 if($_nd_last == 0);
-			$_nd_last_week = $_nd_last / 999 ;
-		}
-		my $_nc_week_diff = $_nc_last / $_nc_last_week;
-		my $_nd_week_diff = $_nd_last / $_nd_last_week;
+#		if($_nc_last_week <= 0){
+#			$_nc_last_week = (($_nc_last == 0) ? 1 : $_nc_last) / 999;
+#		}
+#		if($_nd_last_week <= 0){
+#			$_nd_last = 1 if($_nd_last == 0);
+#			$_nd_last_week = $_nd_last / 999 ;
+#		}
+		my $_nc_week_diff = ($_nc_last_week > 0) ? ($_nc_last / $_nc_last_week) : 0;
+		my $_nd_week_diff = ($_nd_last_week > 0) ? ($_nd_last / $_nd_last_week) : 0;
 
 		$REG_INFO_LIST[$w] = {} if(! defined $REG_INFO_LIST[$w]);
 		#dp::dp "### $w $start_date [$reg] $_nc_last, $_nd_last\n";
