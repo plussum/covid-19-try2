@@ -1166,7 +1166,7 @@ if(1){
 		my $v = sprintf("%.3f", $p * 100 / $t);
 		$csv_pct->[$i] = $v;
 	}
-	$cdp->dump({search_key => "tested", lines => 10});
+	$cdp->dump({search_key => "percent", lines => 10});
 
 	#
 	#	Japan all data
@@ -1179,11 +1179,10 @@ if(1){
 			term_y_size => $TERM_Y_SIZE,
 			graph_items => [
 				{cdp => $cdp,  item => {"tested-t" => "tested-t"}, static => "rlavr", graph_def => $box_fill},
-
 				{cdp => $cdp,  item => {"pref-p" => "ALL-p"}, static => "rlavr", graph_def => $box_fill_solid},
-			#	{cdp => $cdp,  item => {"item"}, static => "", graph_def => $line_thick, axis => "y2"},
-			#	{cdp => $cdp,  item => {"pref-t" => "ALL", "item-t" => "Tested"}, static => "", graph_def => $line_thin_dot},
-			#	{cdp => $cdp,  item => {"pref-p" => "ALL", "item-p" => "Positive"}, static => "", graph_def => $line_thin_dot},
+				{cdp => $cdp,  item => {"percent" => "percent"}, static => "", graph_def => $line_thick, axis => "y2"},
+				{cdp => $cdp,  item => {"tested-t" => "tested-t",}, static => "", graph_def => $line_thin_dot},
+				{cdp => $cdp,  item => {"pref-p" => "ALL-p"}, static => "", graph_def => $line_thin_dot},
 
 			#	{cdp => $cdp,  item => {"item" => "ALL",  "pref-t" => "Tested"}, static => "rlavr", graph_def => $box_fill},
 			#	{cdp => $cdp,  item => {"item" => "ALL", "item-p" => "Positive"}, static => "rlavr", graph_def => $box_fill_solid},
@@ -1330,9 +1329,11 @@ if($golist{"mhlw-pref"}){ 	# mhlw-pref
 	# positive,  reqcare, deaths, severe
 	my %cdp_raw = ();
 	my @cdps = ();
-	foreach my $item (keys %defmhlw::MHLW_DEFS){
-		#dp::dp "[$item]\n";
-		$cdp_raw{$item} = csv2graph->new($defmhlw::MHLW_DEFS{$item}); 			# Load MHLW
+	foreach my $p (@defmhlw::MHLW_DEFS){
+		my $item = $p->{tag};
+		dp::dp "CDP: " . join(",", $p->{tag}, $item) . "\n";
+
+		$cdp_raw{$item} = csv2graph->new($p); 			# Load MHLW
 		$cdp_raw{$item}->load_csv({download => $DOWNLOAD, item => $item});
 		#$cdp_rla{$item} = $cdp_raw{$item}->calc_rlavr();
 		push(@cdps, $cdp_raw{$item});
@@ -1346,7 +1347,7 @@ if($golist{"mhlw-pref"}){ 	# mhlw-pref
 	#
 	#	Prefectures from MHLW
 	#
-	my $target_keys = [$cdp_r->select_keys({"item-h" => "Inpatient"}, 0)];	# select data for target_keys
+	my $target_keys = [$cdp_r->select_keys({"kind-h" => "Inpatient"}, 0)];	# select data for target_keys
 	my $sorted_keys = [$cdp->sort_csv($cdp_r->{csv_data}, $target_keys, $RECENT, 0)];
 	my $target_region = $sorted_keys;
 	#@$target_region = ("Tokyo", "Osaka", "Okinawa", "Hyogo");
@@ -1357,12 +1358,16 @@ if($golist{"mhlw-pref"}){ 	# mhlw-pref
 	my $gp_list_a = [];
 	foreach my $pref (@$target_region[0..$end]){
 		$pref =~ s/#.*$//;
-		next if($pref eq "ALL");
+		$pref =~ s/-.*$//;
+		next if($pref =~ /^ALL/);
 
 		my $nc = 350;
 		my $ns = 3;
 		#dp::dp "SYNOMYM: $config::SYNONYM{$pref} \n";
-		my $population = $POP{$pref} // $POP{$config::SYNONYM{$pref}}// dp::ABORT "no POP data [$pref]\n";
+		my $prefw = $pref;
+		$prefw =~ s/-.*$//;
+		$prefw = "Japan" if($prefw eq "ALL");
+		my $population = $POP{$prefw} // $POP{$config::SYNONYM{$prefw}}// dp::ABORT "no POP data [$prefw]\n";
 		#dp::dp "[" . $config::SYNONYM{$pref} // "UNDEF:$pref" . "]\n";
 		my $pop_100k = $population / 100000;
 		my $ymax = $nc * $pop_100k;
@@ -1374,55 +1379,63 @@ if($golist{"mhlw-pref"}){ 	# mhlw-pref
 		my $add_plot = &gen_pop_scale({pop_100k => $pop_100k, pop_max => ($y2max / $pop_100k), init_dlt => 1,
 								lc => "navy", title_tag => 'Severe %.1f/100K', axis => "x1y2"});
 
-		my $cdp_svr = $cdp->reduce_cdp_target({"Prefecture-s" => "$pref", "item-s" => "Severe"});
+		my $cdp_svr = $cdp->reduce_cdp_target({"pref-s" => "$pref-s"});
 		my $sv_max = $cdp_svr->max_rlavr({start_date => 0});
 		#dp::dp "Servere MAX: $sv_max";
 		$sv_max = csvlib::calc_max2($sv_max);			# try to set reasonable max 
 		my $add_plot_a = &gen_pop_scale({pop_100k => $pop_100k, pop_max => ($sv_max / $pop_100k), init_dlt => 1,
 								lc => "navy", title_tag => 'Severe %.1f/100K', axis => "x1y2"});
 		foreach my $start_date (0, $RECENT){
+			my $ymaxw = ($start_date == 0) ? $ymax : $ymax / 10;
+			my $y2maxw = ($start_date == 0) ? $y2max : $y2max / 10;
 			my @gpd =  csv2graph->csv2graph_list_gpmix(
 			{gdp => $defmhlw::MHLW_GRAPH, dsc => "$pref hospitalized,severe and deaths", sub_dsc => "[nc:$nc,ns:$ns] $pop_disp*10K", start_date => $start_date, 
-				ymin => 0, y2min => 0, ymax => $ymax, y2max => $y2max,
+				ymin => 0, y2min => 0, ymax => $ymaxw, y2max => $y2maxw,
 				ylabel => "hospitalzed/servere", 
 				additional_plot => $add_plot,
 				graph_items => [
-					{cdp => $cdp,   item => {"Prefecture-s" => "$pref", "item-s" => "Severe"}, static => "", graph_def => $box_fill, axis => "y2"},
-					#{cdp => $cdp, item => {"Prefecture-p" => "$pref", "item-p" => "Positive"}, static => "rlavr", graph_def => $line_thick,},
-					{cdp => $cdp_r, item => {"Prefecture-p" => "$pref", "item-p" => "Positive"}, static => "", graph_def => $line_thick,},
-					{cdp => $cdp,   item => {"Prefecture-h" => "$pref", "item-h" => "Inpatient"}, static => "", graph_def => $line_thick,},
-					#{cdp => $cdp, item => {"Prefecture-d" => "$pref", "item-d" => "Deaths"}, static => "rlavr", graph_def => $box_fill_solid, axis => "y2"},
-					{cdp => $cdp_r, item => {"Prefecture-d" => "$pref", "item-d" => "Deaths"}, static => "", graph_def => $box_fill_solid, axis => "y2"},
-					{cdp => $cdp,   item => {"Prefecture-d" => "$pref", "item-d" => "Deaths"}, static => "", graph_def => $line_thin_dot, axis => "y2"},
+					{cdp => $cdp,   item => {"pref-s" => "$pref-s"}, static => "", graph_def => $box_fill, axis => "y2"},
+					{cdp => $cdp_r, item => {"pref-p" => "$pref-p"}, static => "", graph_def => $line_thick,},
+					{cdp => $cdp,   item => {"pref-h" => "$pref-h", "kind-h" => "Inpatient"}, static => "", graph_def => $line_thick,},
+					{cdp => $cdp_r, item => {"pref-d" => "$pref-d"}, static => "", graph_def => $box_fill_solid, axis => "y2"},
+					{cdp => $cdp,   item => {"pref-d" => "$pref-d"}, static => "", graph_def => $line_thin_dot, axis => "y2"},
+
+					#{cdp => $cdp,   item => {"pref-s" => "$pref-s", "item-s" => "Severe"}, static => "", graph_def => $box_fill, axis => "y2"},
+					#{cdp => $cdp_r, item => {"pref-p" => "$pref-p", "item-p" => "Positive"}, static => "", graph_def => $line_thick,},
+					#{cdp => $cdp,   item => {"Prefecture-h" => "$pref", "item-h" => "Inpatient"}, static => "", graph_def => $line_thick,},
+					#{cdp => $cdp_r, item => {"Prefecture-d" => "$pref", "item-d" => "Deaths"}, static => "", graph_def => $box_fill_solid, axis => "y2"},
+					#{cdp => $cdp,   item => {"Prefecture-d" => "$pref", "item-d" => "Deaths"}, static => "", graph_def => $line_thin_dot, axis => "y2"},
+
 				],
 			}
 			);
 			push(@$gp_list, @gpd);
 			# &set_list($PREF_LIST, $gpd, $pref, "hospitalaized", "raw", $start_date);
-
+if(0){
 			@gpd = csv2graph->csv2graph_list_gpmix(
 			{gdp => $defmhlw::MHLW_GRAPH, dsc => "$pref hospitalized,severe and deaths severe", sub_dsc => "$pop_disp*10K", start_date => $start_date, 
 				ymin => 0, y2min => 0, y2max => $sv_max,
 				ylabel => "hospitalzed/servere", 
 				additional_plot => $add_plot_a,
 				graph_items => [
-					{cdp => $cdp,   item => {"Prefecture-s" => "$pref", "item-s" => "Severe"}, static => "", graph_def => $box_fill, axis => "y2"},
+					{cdp => $cdp,   item => {"pref-s" => "$pref-s",}, static => "", graph_def => $box_fill, axis => "y2"},
 					#{cdp => $cdp, item => {"Prefecture-p" => "$pref", "item-p" => "Positive"}, static => "rlavr", graph_def => $line_thick,},
-					{cdp => $cdp_r, item => {"Prefecture-p" => "$pref", "item-p" => "Positive"}, static => "", graph_def => $line_thick,},
-					{cdp => $cdp,   item => {"Prefecture-h" => "$pref", "item-h" => "Inpatient"}, static => "", graph_def => $line_thick,},
+					{cdp => $cdp_r, item => {"pref-p" => "$pref-p", }, static => "", graph_def => $line_thick,},
+					{cdp => $cdp,   item => {"pref-h" => "$pref-h", "kind-h" => "Inpatient"}, static => "", graph_def => $line_thick,},
 					#{cdp => $cdp, item => {"Prefecture-d" => "$pref", "item-d" => "Deaths"}, static => "rlavr", graph_def => $box_fill_solid, axis => "y2"},
-					{cdp => $cdp_r, item => {"Prefecture-d" => "$pref", "item-d" => "Deaths"}, static => "", graph_def => $box_fill_solid, axis => "y2"},
-					{cdp => $cdp,   item => {"Prefecture-d" => "$pref", "item-d" => "Deaths"}, static => "", graph_def => $line_thin_dot, axis => "y2"},
+					{cdp => $cdp_r, item => {"pref-d" => "$pref-d",}, static => "", graph_def => $box_fill_solid, axis => "y2"},
+					{cdp => $cdp,   item => {"pref-d" => "$pref-d",}, static => "", graph_def => $line_thin_dot, axis => "y2"},
 				],
 			}
 			);
 			push(@$gp_list, @gpd);
 			# &set_list($PREF_LIST, $gpd, $pref, "hospitalaized", "pop", $start_date);
 		}
+}
 	}
 
 	csv2graph->gen_html_by_gp_list($gp_list, {						# Generate HTML file with graphs
-			row => 4,
+			row => 2,
 			html_tilte => "COVID-19 related data visualizer ",
 			src_url => "src_url",
 			html_file => "$HTML_PATH/mhlw_pref.html",

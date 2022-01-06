@@ -114,6 +114,7 @@ my @defs = (
 				item_names => ["pref"],
 				default_item_name => "pref",
 				subs => "",
+				cumrative => 1,
 	},
 
 );

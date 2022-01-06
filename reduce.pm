@@ -50,9 +50,9 @@ sub	reduce_cdp_target
 	$target_colp = $target_colp // "";
 
 	my @target_keys = ();
-	#dp::dp "reduce_cdp_target: $target_colp " . csvlib::join_array(",", $target_colp) . "\n";
+	dp::dp "reduce_cdp_target: $target_colp " . csvlib::join_array(",", $target_colp) . "\n";
 	@target_keys = $self->select_keys($target_colp);
-	#dp::dp "result of select(", $#target_keys, ") " . join(",", @target_keys) . "\n";
+	dp::dp "result of select(", $#target_keys, ") " . join(",", @target_keys) . "\n";
 	if($#target_keys < 0){
 		my $tgps = ($target_colp) ? csvlib::join_array(",", $target_colp) : "null";
 		dp::ABORT "No data " . $tgps . "##" . join(",", @target_keys). "\n";
