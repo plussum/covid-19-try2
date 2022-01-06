@@ -359,7 +359,7 @@ sub	add_key_items
 		#my $new_key = join($self->{dlm}, $key_name, $label);	# change master key seems messsy...
 	}
 
-	#dp::dp join(",", @$key_names) . "\n";
+	dp::dp join(",", @$key_names) . "\n";
 	my $item_name_list = $self->{item_name_list};
 	my $item_order = scalar(@$item_name_list);
 	push(@$item_name_list, @$key_names);		# set item_name 
@@ -367,7 +367,7 @@ sub	add_key_items
 		dp::dp "[$kn]\n";
 		$self->{item_name_hash}->{$kn} = $item_order++;
 	}
-	#dp::dp "add key : " . csvlib::join_array(",", @$item_name_list) . "\n";
+	dp::dp "add key : " . csvlib::join_array(",", @$item_name_list) . "\n";
 
 	return 1;
 }

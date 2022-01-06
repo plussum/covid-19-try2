@@ -1110,19 +1110,33 @@ if($golist{mhlw}) {
 	my @cdps = ();
 	my $i = 0;
 if(1){
-	foreach my $item (keys %defmhlw::MHLW_DEFS){
-		#dp::dp "[$item]\n";
-		$cdp_raw{$item} = csv2graph->new($defmhlw::MHLW_DEFS{$item}); 						# Load Johns Hopkings University CCSE
-		$cdp_raw{$item}->load_csv({download => $DOWNLOAD, item => $item});
+	my %date_info = (start_max => "0000-00-00", start_min => "9999-99-99",
+					 end_max => "0000-00-00", end_min => "9999-99-99");
+	foreach my $p (@defmhlw::MHLW_DEFS){
+		my $item = $p->{tag};
+		dp::dp "CDP: " . join(",", $p->{tag}, $item) . "\n";
+
+		my $cdp = csv2graph->new($p);
+		$cdp_raw{$item} = $cdp;
+
+		$cdp->load_csv({download => $DOWNLOAD, item => $item});
 		#$cdp_rla{$item} = $cdp_raw{$item}->calc_rlavr();
 		push(@cdps, $cdp_raw{$item});
-		#$cdp_raw{$item}->dump();
+		#$cdp->dump();
 		#exit; #if($i++ > 1);
+
+		my $dt = $cdp->{dates};
+		my $sd = $cdp->{date_list}->[0];
+		my $ed = $cdp->{date_list}->[$dt];
+		$date_info{start_max} = $sd if($sd gt $date_info{start_max});
+		$date_info{start_min} = $sd if($sd lt $date_info{start_min});
+		$date_info{end_max} = $sd if($ed gt $date_info{end_max});
+		$date_info{end_min} = $sd if($sd lt $date_info{end_min});
 	}
+
 	my $cdp = csv2graph->new($defmhlw::MHLW_TAG);
 	$cdp = $cdp->marge_csv(@cdps);
-	$cdp->dump({search_key => "Tokyo", items => 10});
-	exit;
+	#$cdp->dump({search_key => "Tokyo", items => 10});
 	my $cdp_rlavr = $cdp->calc_rlavr();
 
 	#
@@ -1134,14 +1148,16 @@ if(1){
 	for(my $i = 0; $i < $item_sz; $i++){
 		push(@dm_key, "NaN");
 	}
+
 	$cdp->add_key_items([$config::MAIN_KEY, $result_name]);		# "item_name"
-	my $csv_positive = $cdp_rlavr->{csv_data}->{"ALL#Positive"};
-	my $csv_tested = $cdp_rlavr->{csv_data}->{"Prefecture#Tested#ALL"};
+	my $csv_positive = $cdp_rlavr->{csv_data}->{"ALL-p"};
+	my $csv_tested = $cdp_rlavr->{csv_data}->{"tested-t"};
 	my $master_key = join($cdp->{key_dlm}, $result_name);				# set key_name
 	$cdp->add_record($master_key, [@dm_key, $result_name, $result_name],[$result_name]);		# add record without data 
+
 	my $csv_pct = $cdp->{csv_data}->{$master_key};
 
-	my $dates = $cdp_raw{positive}->{dates};
+	my $dates = $cdp_rlavr->{dates};
 	#dp::dp "positive: (" . scalar(@$csv_positive) . ")" . join(",",  @$csv_positive) . "\n";
 	#dp::dp "tested  : (" . scalar(@$csv_tested)   . ")" . join(",",  @$csv_tested) . "\n";
 	for(my $i = 0; $i <= $dates; $i++){
@@ -1150,6 +1166,8 @@ if(1){
 		my $v = sprintf("%.3f", $p * 100 / $t);
 		$csv_pct->[$i] = $v;
 	}
+	$cdp->dump({search_key => "tested", lines => 10});
+
 	#
 	#	Japan all data
 	#
@@ -1160,11 +1178,18 @@ if(1){
 			ylabel => "pcr_tested/positive", y2label => "positive rate(%)",
 			term_y_size => $TERM_Y_SIZE,
 			graph_items => [
-				{cdp => $cdp,  item => {"item" => "ALL",  "item-t" => "Tested"}, static => "rlavr", graph_def => $box_fill},
-				{cdp => $cdp,  item => {"item" => "ALL", "item-p" => "Positive"}, static => "rlavr", graph_def => $box_fill_solid},
-				{cdp => $cdp,  item => {"item"}, static => "", graph_def => $line_thick, axis => "y2"},
-				{cdp => $cdp,  item => {"Prefecture-t" => "ALL", "item-t" => "Tested"}, static => "", graph_def => $line_thin_dot},
-				{cdp => $cdp,  item => {"Prefecture-p" => "ALL", "item-p" => "Positive"}, static => "", graph_def => $line_thin_dot},
+				{cdp => $cdp,  item => {"tested-t" => "tested-t"}, static => "rlavr", graph_def => $box_fill},
+
+				{cdp => $cdp,  item => {"pref-p" => "ALL-p"}, static => "rlavr", graph_def => $box_fill_solid},
+			#	{cdp => $cdp,  item => {"item"}, static => "", graph_def => $line_thick, axis => "y2"},
+			#	{cdp => $cdp,  item => {"pref-t" => "ALL", "item-t" => "Tested"}, static => "", graph_def => $line_thin_dot},
+			#	{cdp => $cdp,  item => {"pref-p" => "ALL", "item-p" => "Positive"}, static => "", graph_def => $line_thin_dot},
+
+			#	{cdp => $cdp,  item => {"item" => "ALL",  "pref-t" => "Tested"}, static => "rlavr", graph_def => $box_fill},
+			#	{cdp => $cdp,  item => {"item" => "ALL", "item-p" => "Positive"}, static => "rlavr", graph_def => $box_fill_solid},
+			#	{cdp => $cdp,  item => {"item"}, static => "", graph_def => $line_thick, axis => "y2"},
+			#	{cdp => $cdp,  item => {"Prefecture-t" => "ALL", "item-t" => "Tested"}, static => "", graph_def => $line_thin_dot},
+			#	{cdp => $cdp,  item => {"Prefecture-p" => "ALL", "item-p" => "Positive"}, static => "", graph_def => $line_thin_dot},
 			],
 		}
 		));

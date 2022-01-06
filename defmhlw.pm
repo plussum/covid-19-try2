@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 #
-#
+#		https://www.mhlw.go.jp/stf/covid-19/open-data.html
 #
 package defmhlw;
 use Exporter;
@@ -26,62 +26,95 @@ my $MLW_DL_FLAG_FILE = "$CSV_PATH/mhlw_flag";
 
 ####################################################################
 #
-#	https://github.com/kaz-ogiwara/covid19
-#
-# year,month,date,prefectureNameJ,prefectureNameE,testedPositive,peopleTested,hospitalized,serious,discharged,deaths,effectiveReproductionNumber
-# 	2020,2,8,東京,Tokyo,3,,,,,,
 #
 #my $TKO_PATH = "$WIN_PATH/tokyokeizai";
 #my $BASE_DIR = "$TKO_PATH/covid19/data";
 #our $transaction = "$BASE_DIR/prefectures.csv";
-my %defs = (
-	positive =>	{mid => "p",
+sub sub_hosp
+{
+    my ($l) = @_;
+	$l =~ s/Date,/pref#DLM#kind,/;
+    $l =~ s/\((\w+)\) ([\w ]+) */$1#DLM#$2/g;
+	$l =~ s/Discharged from hospital or released from treatment/Discharged/g;
+	$l =~ s/Requiring inpatient care/Inpatient/g;
+	$l =~ s/To be confirmed/ToBeConfirmed/g;
+	#dp::dp $l . "\n";
+    return $l;
+}
+sub	sub_tested
+{
+    my ($l) = @_;
+	$l =~ s/PCR 検査実施件数\(単日\)/tested/;
+	dp::dp ">>>>>" . $l . "\n";
+	return $l;
+}
+
+
+my @defs = (
+	{	tag => "tested", mid => "t",
+				src_file => "$CSV_PATH/mhlw_tested.csv", 
+				src_url => "https://www.mhlw.go.jp/content/pcr_tested_daily.csv",
+				data_start => 1, 
+				direct => "vertical",		# vertical or holizontal(Default)
+				keys => ["tested"],		# Japan, total_vaccinations_per_hundred,
+				data_start => 1,
+				item_name_line => 0,
+				data_start_line => 1,
+				item_name_replace => ["tested"],
+				alias => {"tested" => 1},
+				default_item_name => "tested",
+				subs => \&sub_tested,
+				#load_col => [1],		# columns for load B -> 0, C->1 (skip col 0:date)
+	},
+	{	tag => "hospi",  	mid => "h",
+				src_file => "$CSV_PATH/mhlw_hospitalaized.csv", 
+				src_url => "https://covid19.mhlw.go.jp/public/opendata/requiring_inpatient_care_etc_daily.csv",
+				direct => "vertical_matrix",		# vertical or holizontal(Default)
+				data_start => 2, 
+				#kind_names => ["inpatient", "dischaged", "tobe_confirmed"],
+				keys => ["pref", "kind"],
+				#item_names => ["Date", "Prefecture", "Inpatient", "Discharged", "ToBeConfirmed"] ,
+				item_names => ["pref", "kind"],
+				subs => \&sub_hosp,
+				default_item_name => "",
+	},
+
+	{ tag => "positive", mid => "p",
 				src_file => "$CSV_PATH/mhlw_newcases.csv", 
 				src_url => "https://covid19.mhlw.go.jp/public/opendata/newly_confirmed_cases_daily.csv",
-				data_start => 2, 
+				direct => "vertical_matrix",		# vertical or holizontal(Default)
+				data_start => 1, 
 				#keys => ["Prefecture"],
 				#item_names => ["Date", "Prefecture", "Positive"] },
 				keys => ["pref"],
 				#item_names => ["Date", "Prefecture", "Inpatient", "Discharged", "ToBeConfirmed"] ,
-				},
+				default_item_name => "pref",
+				subs => "",
+	},
 
-	hosp => {	mid => "h",
-				src_file => "$CSV_PATH/mhlw_hospitalaized.csv", 
-				src_url => "https://covid19.mhlw.go.jp/public/opendata/requiring_inpatient_care_etc_daily.csv",
-				data_start => 2, 
-				keys => ["pref"],
-				#item_names => ["Date", "Prefecture", "Inpatient", "Discharged", "ToBeConfirmed"] ,
-				item_names => ["pref"],
-				},
-
-	severe => {	mid => "s",
+	{ tag => "severe", 	mid => "s",
 				src_file => "$CSV_PATH/mhlw_severe.csv", 
 				src_url => "https://covid19.mhlw.go.jp/public/opendata/severe_cases_daily.csv",
-				data_start => 2, 
+				direct => "vertical_matrix",		# vertical or holizontal(Default)
+				data_start => 1, 
 				keys => ["pref"],
 				#item_names => ["Date", "Prefecture", "Severe"]},
-				item_names => ["pref"]
-				},
+				item_names => ["pref"],
+				default_item_name => "pref",
+				subs => "",
+	},
 
-	deaths => {	mid => "d",
+	{ tag => "deaths", 	mid => "d",
 				src_file => "$CSV_PATH/mhlw_deaths.csv", 
 				src_url => "https://covid19.mhlw.go.jp/public/opendata/deaths_cumulative_daily.csv", 
-				data_start => 2, 
+				direct => "vertical_matrix",		# vertical or holizontal(Default)
+				data_start => 1, 
 				keys => ["pref"],
 				#item_names => ["Date", "Prefecture", "Deaths"], cumrative => "init0",},
-				item_names => ["pref"]
-				},
-	tested => {	mid => "t",
-				src_file => "$CSV_PATH/mhlw_tested.csv", 
-				src_url => "https://www.mhlw.go.jp/content/pcr_tested_daily.csv",
-				data_start => 1, 
-				#add_keys => ["Prefecture=ALL"],
-				#keys => ["item"],
-				#item_names => ["Date", "Tested"]},
-				keys => ["pref"],
-				item_names => ["pref"]
-				#item_names => ["Date", "Prefecture", "Inpatient", "Discharged", "ToBeConfirmed"] ,
-				},
+				item_names => ["pref"],
+				default_item_name => "pref",
+				subs => "",
+	},
 
 );
 my @defs_none = (
@@ -116,14 +149,17 @@ our $MHLW_TAG =
 	load_col => "",			# [   ]
 };
 
-our %MHLW_DEFS = ();
-foreach my $k(keys %defs){
+our @MHLW_DEFS = ();
+my %MHLW_HASH = ();
+for(my $i = 0; $i <= $#defs; $i++){
+	my $p = $defs[$i];
 	my $def = {%$MHLW_TAG};
-	my $p = $defs{$k};
 	foreach my $k (keys %$p){
 		$def->{$k} = $p->{$k};
 	}
-	$MHLW_DEFS{$k} = $def;
+	$MHLW_DEFS[$i] = $def;
+	my $tag = $p->{tag};
+	$MHLW_HASH{$tag} = $MHLW_DEFS[$i];
 }
 
 our $MHLW_GRAPH = {
@@ -153,13 +189,16 @@ sub	download
 	my ($p) = @_;
 
 	my $item = $p->{item};
-	dp::ABORT "download [$item]" if(! defined $MHLW_DEFS{$item});
+	dp::dp "[[[$item]]\n";
+	dp::ABORT "download [$item]" if(! defined $MHLW_HASH{$item});
 
 	my $download = $self->check_download();
 	$download = 1 if($p->{download} > 1);
 
 	# severe => {src_file => "$CSV_PATH/mhlw_severe.csv", src_url => "https://covid19.mhlw.go.jp/public/opendata/severe_cases_daily.csv"},
-	my $def = $MHLW_DEFS{$item};
+	my $def = $MHLW_HASH{$item};
+	dp::dp ">>> [$def]\n";
+
 	my $csvf_raw = $def->{src_file} . ".raw";
 	my $csvf = $def->{src_file};
 	my $cmd = "wget " . $def->{src_url} . " -O $csvf_raw";

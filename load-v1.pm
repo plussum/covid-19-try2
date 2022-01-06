@@ -19,7 +19,6 @@ use config;
 use csvlib;
 use dump;
 use util;
-use mtxtf;
 
 # set csvlib
 sub	ja {return csvlib::join_array(@_);}
@@ -195,12 +194,6 @@ sub	load_csv_holizontal
 
 		my $line = $_;
 		my @items = (split(/$src_dlm/, $line));
-		if($self->{mid}//""){
-			my $mid = $self->{mid};
-			$items[0] .= "-$mid";
-			#for(my $i = 0; $i < $data_start; $i++){
-			#}
-		}
 		#my $master_key = select::gen_record_key($key_dlm, \@key_order, ["masterkey", @items]);
 		my $master_key = select::gen_record_key($key_dlm, \@key_order, ["", @items[0..($data_start-1)]]);		# 2021.07.08 .... vaccine
 		#dp::dp "MASTER_KEY: [" .$master_key . "] " . join(",", @key_order) . "  : " .join(",", @items[0..($data_start-1)]) . "\n";
@@ -217,23 +210,136 @@ sub	load_csv_holizontal
 	}
 	close(FD);
 	#dp::dp "CSV_HOLIZONTASL: " . join(",", @{$self->{item_name_list}}) . "\n";
-	return 0;
+	return 1;
 }
-
 
 sub	load_csv_vertical_matrix
 {
 	my $self = shift;
 	my ($src_file) = @_;
 
-	my $subs = $self->{subs}//"";	
+	my $data_start = $self->{data_start};
 	my $src_dlm = $self->{src_dlm};
+	my $date_list = $self->{date_list};
+	my $csv_data = $self->{csv_data};	# Data of record ->{$key}->[]
+	my $key_items = $self->{key_items};	# keys of record ->{$key}->[]
+	my @keys = @{$self->{keys}};			# Item No for gen HASH Key
+	my $timefmt = $self->{timefmt};
+	my $item_name_hash = $self->{item_name_hash};
+	my @kind_names = ("");
+	@kind_names = @{$self->{kind_names}} if($self->{kind_names}//"");
+	my $kind_number = $#kind_names;
+	my $kind_regex = $self->{kind_regex}//"";
+	my $mid = $self->{mid}//"";
 
+	#	item_name_hash
+	my @keynames = (@keys);
+	for(my $i = 0; $i <= $#keynames; $i++){
+		my $kn = $keynames[$i];
+		$item_name_hash->{$kn} = $i;
+		dp::dp "hash:  $kn: $i\n";
+	}
+
+	#
+	#	Load CSV DATA
+	#
+	dp::dp "vertical_matrix: source_file: $src_file\n";
 	system("nkf -w80 $src_file >$src_file.utf8");			# -w8 (with BOM) contain code ,,,so lead some trouble
-	mtxtf::mtxtf({src_file => "$src_file.utf8", dst_file => "$src_file.dst", subs => $subs, 
-				default_item_name => ($self->{default_item_name}//""), src_dlm => $src_dlm, dst_dlm => $src_dlm});
+	open(FD, "$src_file.utf8") || die "Cannot open $src_file.utf8";
+	binmode(FD, ":utf8");
 
-	return &load_csv_holizontal($self, "$src_file.dst");
+	my $data = [];
+
+	#
+	#	first line, items this case , Tokyo, ibaraki, ,,,
+	#
+	my $line = <FD>;
+	$line =~ s/[\r\n]+$//;
+	my @key_items = split(/$src_dlm/, $line);
+	shift(@key_items);
+	for(my $i = 0; $i <= $#key_items; $i++){
+		$data->[$i] = [];
+	}
+
+	#
+	#	data
+	#	2020/5/9,267,23,0,0,0,0,0,,,,,,
+	#
+	#	date_list->[$dt] = [2020/05/09, 2020/05/10,,,,]
+	#					 day1, day2, day3 ,,,,
+	#	data->[$pref] = [0, 1, 2, 3,,,,]
+	#
+	#
+	#
+	#	date,(pref1)item1, (pref1)item2, (pref1)item3, (pref2)item1, (pref2)item2.....
+	#
+	#	pref, item
+	#	data->[$pref+key] = [0,1,2,3,,,,]
+	#
+	#
+	my $dt = 0;
+	while(<FD>){
+		s/[\r\n]+$//;
+		#my $line = decode('utf-8', $_);
+        if(/"/){
+            s/"([^",]+), *([^",]+), *([^",]+)"/$1;$2;$3/g;  # ,"aa,bb,cc", -> aa-bb-cc
+            s/"([^",]+), *([^"]+)"/$1-$2/g; # ,"aa,bb", -> aa-bb
+            #dp::dp "[$_]\n" if(/Korea/);
+        }
+		my @w = split(/$src_dlm/, $_);
+		my $d = shift(@w);
+		$date_list->[$dt] = util::timefmt($timefmt, $d);
+		for(my $col = 0; $col <= $#w; $col++){
+			$data->[$col]->[$dt] = $w[$col];
+			#push(@{$data->[$col]}, $w[$col]);
+			#dp::dp join(",", $dt, $col, $w[$col], $data->[$col]->[$dt]) . "\n";
+		}
+		$dt++;
+	}
+	close(FD);
+
+	#for(my $col = 0; $col < 3; $col++){
+	#	dp::dp join(",", $key_items[$col], @{$data->[$col]}) . "\n";
+	#}
+	#exit;
+
+	my @key_order = $self->gen_key_order($self->{keys});		# keys to gen record key
+	dp::dp "keys: " . join(",", @{$self->{keys}}) . "\n";
+	dp::dp "key order: " . join(",", @key_order) . "\n";
+	my $load_order = $self->{load_order};
+	my $key_dlm = $self->{key_dlm}; 
+	$self->add_key_items([$config::MAIN_KEY, @keynames]);
+	$self->set_alias($self->{alias});		#
+	for(my $i = 0; $i <= $#key_items; ){
+		for(my $k = 0; $k <= $#kind_names; $k++, $i++){
+			my @items = ($key_items[$i]);
+			if($kind_regex){
+				$key_items[$i] =~ /\((\w+)\) ([\w ]+)/;
+				#@items = ($1//"", $2//"");
+				@items = ($1//"", $kind_names[$k]);
+			}
+			my @items_mky = @items;
+			$items_mky[0] .= "-$mid" if($mid);
+			#dp::dp "items: " . join(", ", $key_items[$i], @items) . "\n";
+			#my $master_key = select::gen_record_key($key_dlm, \@key_order, [$item]);		# 2021.07.08 .... vaccine
+			my $master_key = select::gen_record_key($key_dlm, \@key_order, [@items_mky]);		# 2021.07.08 .... vaccine
+			$self->add_record($master_key, 
+					[$master_key, @items], [@{$data->[$i]}]);		# add record without data
+			#$self->add_record($master_key, 
+			#		[$master_key, @items[0..($data_start-1)]], [@items[$data_start..$#items]]);		# add record without data
+			#dp::dp join(",", "[$master_key]", @{$data->[$i]}[0..19]) . "\n";
+		}
+	}
+	#dp::dp "[" . join(",", @w[0..5]) . "]\n";
+
+	$self->{dates} = $dt -1;
+
+	#dp::dp join(",", "# ", "[" . ($dt-1) . "]", @$date_list) . "\n";
+	#dp::dp "keys : ", join(",", @keys). "\n";
+
+
+	#dp::dp "CSV_HOLIZONTASL: " . join(",", @{$self->{item_name_list}}) . "\n";
+	return 0;
 }
 
 #
@@ -254,15 +360,180 @@ sub	load_csv_vertical
 	my $self = shift;
 	my ($src_file) = @_;
 
-	my $subs = $self->{subs}//"";	
+	my $remove_head = 1;
+	my $data_start = $self->{data_start};
 	my $src_dlm = $self->{src_dlm};
+	my $date_list = $self->{date_list};
+	my $csv_data = $self->{csv_data};
+	my $key_items = $self->{key_items};
+	my @keys = @{$self->{keys}};
+	my $timefmt = $self->{timefmt};
+	my $item_name_line = $self->{item_name_line} // 0;
+	my $data_start_line = $self->{data_start_line} // 1;
+	my $load_col = $self->{load_col} // "";
+	my $load_order = $self->{load_order};
+	my $date_col = $self->{date_col}//0;
+	my $key_dlm = $self->{key_dlm}; 
+	my $item_name_replace = $self->{item_name_replace}//"";
+	my $mid = $self->{mid}//"";
 
-	system("nkf -w80 $src_file >$src_file.utf8");			# -w8 (with BOM) contain code ,,,so lead some trouble
-	mtxtf::mtxtf({src_file => "$src_file.utf8", dst_file => "$src_file.dst", subs => $subs, 
-				default_item_name => ($self->{default_item_name}//""), src_dlm => $src_dlm, dst_dlm => $src_dlm});
+	dp::dp "item_name_hash: " . $self->{item_name_hash} . "\n";;
 
-	dp::dp ">>> $src_file.dst\n";
-	return &load_csv_holizontal($self, "$src_file.dst");
+	#
+	#	set main key (item name) 
+	#	vertical csv had only main key (1 key)
+	#
+	##my $key_name = $self->{key_name} // "";			# set key name as "key" or $self->{key_name}
+	##$key_name = $config::MAIN_KEY if(! $key_name);
+	#$self->add_key_items([$config::MAIN_KEY]);
+	#@{$self->{item_name_list}} = ($key_name);		# set item_name 
+	#$self->{item_name_hash}->{$key_name} = 0;
+
+##### my @key_order = $self->gen_key_order($self->{keys});		# keys to gen record key
+
+	#
+	#	Load CSV DATA
+	#
+	dp::dp "LOAD:$src_file\n";
+	system("nkf -w80 $src_file >$src_file.utf8");
+	open(FD, "$src_file.utf8" ) || die "Cannot open $src_file.utf8";
+	binmode(FD, ":utf8");
+	#binmode(FD, ":encording(cp932)");
+
+	#
+	#	load item names
+	#
+	my $ln = 0;
+	my $line = "";
+	for($ln = 0; $ln <= $item_name_line; $ln++){
+		$line = <FD>;
+	}
+	$line =~ s/[\r\n]+$//;
+	#$line = decode('utf-8', $line);
+
+	#dp::dp "$line\n";
+
+	if($line =~ /"/){
+		$line =~ s/"([^",]+), *([^",]+), *([^",]+)"/$1;$2;$3/g;  # ,"aa,bb,cc", -> aa-bb-cc
+		$line =~ s/"([^",]+), *([^"]+)"/$1-$2/g; # ,"aa,bb", -> aa-bb
+		#dp::dp "[[[[[[[$_]]]]]]]]]]\n";
+	}
+
+	dp::dp "$line\n";
+	my @item_names = split(/$src_dlm/, $line);
+	if($#item_names < 1){
+		dp::WARNING "may be wrong delimitter [$src_dlm]\n\n";
+	}
+	shift(@item_names);
+
+	if($item_name_replace){
+		for(my $i = 0; $i <= $#item_names; $i++){
+			$item_names[$i] = $item_name_replace->[$i] if($item_name_replace->[$i]//"");
+		}
+	}
+	my $mky = $config::MAIN_KEY;
+	#$mky .= "-$mid" if($mid);
+	$self->add_key_items([$mky, @item_names]);
+	$self->set_alias($self->{alias});		#
+
+	################### 
+	my @load_flag = ();
+	if($load_col){
+		for(my $i = 0; $i <= $#item_names; $i++){
+			$load_flag[$i] = "";
+		}
+		foreach my $i (@$load_col){
+			$load_flag[$i] = 1;
+		}
+	}
+	else {
+		for(my $i = 0; $i <= $#item_names; $i++){
+			$load_flag[$i] = 1;
+		}
+	}
+
+	for(my $cl = 0; $cl <= $#item_names; $cl++){
+		dp::dp "cl:  " . join(",", $cl, $load_flag[$cl], $#item_names, $#load_flag) . ";\n";
+		next if(! $load_flag[$cl]);
+
+		my $k = $item_names[$cl];
+		#$k =~ s/^[0-9]+:// if($remove_head);			# 
+		if(defined $key_items->{$k}){					# comvert same item name to unique
+			my $kk = "";
+			for(my $i = 1; $i < 10; $i++){
+				$kk = sprintf("$k%02d", $i);
+				last if(!defined $key_items->{$kk});
+			}
+			if(! $kk){
+				dp::WARNING "something wrong,,, [$k] " . join(",", @item_names) . "\n";
+				$kk = $k;
+			}
+			$k = $kk;
+			$item_names[$cl] = $kk;
+		}
+		dp::dp ">>>> $cl: $k\n";
+		my $mk = $item_names[$cl];
+		$mk .= "-$mid" if($mid);
+		$self->add_record($k, [$mk], []);		# add record without data
+	}
+
+	my @key_order = $self->gen_key_order($self->{keys});		# keys to gen record key
+
+	#
+	#	Skip non data row
+	#
+	for($ln++; $ln < $data_start_line; $ln++){		# skip lines until data_start_line
+		$line = <FD>;
+	}
+
+	#
+	#	Load dated data
+	#
+	my $added_key = select::added_key($self);
+
+	$ln = 0;
+	while(<FD>){
+		s/[\r\n]+$//;
+		my $line = decode('utf-8', $_);
+		my (@items) = split(/$src_dlm/, $line);
+		my $date = $items[$date_col];
+		shift(@items);
+	
+		#dp::dp "$date, [$src_dlm]" . join(",", @items) ."\n";
+		$date_list->[$ln] = util::timefmt($timefmt, $date);
+		#dp::dp "date:$ln $date " . $date_list->[$ln] . " ($timefmt) $self->{title}\n";
+		#my @w = ($date);	
+		my @items_mky = @items;
+		$items_mky[0] .= "-$mid" if($mid);
+		#my $k = select::gen_record_key($key_dlm, \@key_order, ["", @items_mky]);		# 2021.07.08 .... vaccine
+		my $master_key = select::gen_record_key($key_dlm, \@key_order, [@items_mky]);		# 2021.07.08 .... vaccine
+		$self->add_record($master_key, 
+					[$master_key, @items], [@{$data->[$i]}]);		# add record without data
+##### STOP ...
+
+
+		for(my $i = 0; $i <= $#items; $i++){
+			next if(! $load_flag[$i]);
+
+			my $k = $item_names[$i] . $added_key;
+
+			$csv_data->{$k}->[$ln]= $items[$i];
+			#push(@w, "$ln:{". $k . "}:$items[$i]");
+		}
+		#dp::dp join(",", @w) . "\n";
+		$ln++;
+	}
+	close(FD);
+
+#	foreach my $k (keys %$csv_data){
+#		dp::dp "$k: \n" . join(",", @{$csv_data->{$k}}). "\n";
+#	}
+	$self->{dates} = $ln - 1;
+	$FIRST_DATE = $date_list->[0];
+	$LAST_DATE = $date_list->[$ln-1];
+	$self->dump({ok => 1, lines => 5});
+	exit;
+	return 0;
 }
 
 #

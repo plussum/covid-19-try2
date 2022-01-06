@@ -108,7 +108,7 @@ sub	gen_key_order
 		}
 		push(@keys, $itn);
 	}
-	dp::dp join(",", @keys) . "\n" if($VERBOSE);
+	dp::dp join(",", @keys) . "\n" ;#if($VERBOSE);
 	return (@keys);
 }
 

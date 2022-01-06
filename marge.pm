@@ -161,9 +161,10 @@ sub	marge_csv
 
         my @w = @{$src_cdp->{keys}};
         push(@w, "item") if($#w < 0);
-        #dp::dp "######## " . csvlib::join_array(@w). "\n";
+        dp::dp "######## " . join(", ", $#w,  $src_cdp->{keys}, @w, "#", csvlib::join_array(@w) ) .  "\n";
         foreach my $k (@w){
-            push(@{$marge->{keys}}, $k .= "-$id"); #sprintf("$k-%02d", $cdn+1) ;
+			dp::dp "### [$k]\n";
+            push(@{$marge->{keys}}, $k . "-$id"); #sprintf("$k-%02d", $cdn+1) ;
         }
 
 		push(@{$marge->{load_order}}, @{$src_cdp->{load_order}});
