@@ -1109,7 +1109,7 @@ if($golist{mhlw}) {
 	my %cdp_raw = ();
 	my @cdps = ();
 	my $i = 0;
-if(1){
+
 	my %date_info = (start_max => "0000-00-00", start_min => "9999-99-99",
 					 end_max => "0000-00-00", end_min => "9999-99-99");
 	foreach my $p (@defmhlw::MHLW_DEFS){
@@ -1122,7 +1122,7 @@ if(1){
 		$cdp->load_csv({download => $DOWNLOAD, item => $item});
 		#$cdp_rla{$item} = $cdp_raw{$item}->calc_rlavr();
 		push(@cdps, $cdp_raw{$item});
-		#$cdp->dump();
+		$cdp->dump();
 		#exit; #if($i++ > 1);
 
 		my $dt = $cdp->{dates};
@@ -1193,7 +1193,7 @@ if(1){
 		}
 		));
 	}
-if(0){
+if(1){
 	my $pref = "ALL";
 	foreach my $start_date (0, $RECENT, $RECENT_MONTH){
 		push(@$gp_list, csv2graph->csv2graph_list_gpmix(
@@ -1201,17 +1201,21 @@ if(0){
 			ymin => 0, y2min => 0,
 			ylabel => "hospitalzed/servere", 
 			graph_items => [
-				{cdp => $cdp,  item => {"Prefecture-s" => "$pref", "item-s" => "Severe"}, static => "", graph_def => $box_fill, axis => "y2"},
-				{cdp => $cdp,  item => {"Prefecture-h" => "$pref", "item-h" => "Inpatient"}, static => "", graph_def => $line_thick,},
-				{cdp => $cdp,  item => {"Prefecture-d" => "$pref", "item-d" => "Deaths"}, static => "rlavr", graph_def => $box_fill_solid, axis => "y2"},
-				{cdp => $cdp,  item => {"Prefecture-d" => "$pref", "item-d" => "Deaths"}, static => "", graph_def => $line_thin_dot, axis => "y2"},
+				{cdp => $cdp,  item => {"pref-s" => "$pref-s"}, static => "", graph_def => $box_fill, axis => "y2"},
+				{cdp => $cdp,  item => {"pref-h" => "$pref-h", "kind-h" => "Inpatient"}, static => "", graph_def => $line_thick,},
+				{cdp => $cdp,  item => {"pref-d" => "$pref-d"}, static => "rlavr", graph_def => $box_fill_solid, axis => "y2"},
+				{cdp => $cdp,  item => {"pref-d" => "$pref-d"}, static => "", graph_def => $line_thin_dot, axis => "y2"},
+
+				#{cdp => $cdp,  item => {"pref-s" => "$pref-s", "item-s" => "Severe"}, static => "", graph_def => $box_fill, axis => "y2"},
+				#{cdp => $cdp,  item => {"pref-h" => "$pref-h", "item-h" => "Inpatient"}, static => "", graph_def => $line_thick,},
+				#{cdp => $cdp,  item => {"pref-d" => "$pref-d", "item-d" => "Deaths"}, static => "rlavr", graph_def => $box_fill_solid, axis => "y2"},
+				#{cdp => $cdp,  item => {"pref-d" => "$pref-d", "item-d" => "Deaths"}, static => "", graph_def => $line_thin_dot, axis => "y2"},
 			],
 		}
 		));
 	}
 }
 
-}
 
 	#
 	#	NHK - Tokyo
