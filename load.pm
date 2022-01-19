@@ -62,6 +62,9 @@ sub	load_csv
 	#
 	#
 	dp::dp "LOAD CSV  [$self->{src_info}][$self->{id}]\n";
+	if(csvlib::file_size($src_file) < (1024 * 1)){
+		dp::ABORT "$src_file: file_size " . csvlib::file_size($src_file) . "\n";
+	}
 	my $rc = 0;
 	my $direct = $self->{direct} // "";
 	if($direct =~ /json/i){

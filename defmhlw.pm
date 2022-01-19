@@ -51,7 +51,7 @@ sub	sub_tested
 
 
 my @defs = (
-	{	tag => "tested", mid => "t",
+	{	tag => "tested", mid => "tested",
 				src_file => "$CSV_PATH/mhlw_tested.csv", 
 				src_url => "https://www.mhlw.go.jp/content/pcr_tested_daily.csv",
 				data_start => 1, 
@@ -79,7 +79,7 @@ my @defs = (
 				default_item_name => "",
 	},
 
-	{ tag => "positive", mid => "p",
+	{ tag => "positive", mid => "positive",
 				src_file => "$CSV_PATH/mhlw_newcases.csv", 
 				src_url => "https://covid19.mhlw.go.jp/public/opendata/newly_confirmed_cases_daily.csv",
 				direct => "vertical_matrix",		# vertical or holizontal(Default)
@@ -92,7 +92,7 @@ my @defs = (
 				subs => "",
 	},
 
-	{ tag => "severe", 	mid => "s",
+	{ tag => "severe", 	mid => "severe",
 				src_file => "$CSV_PATH/mhlw_severe.csv", 
 				src_url => "https://covid19.mhlw.go.jp/public/opendata/severe_cases_daily.csv",
 				direct => "vertical_matrix",		# vertical or holizontal(Default)
@@ -104,7 +104,7 @@ my @defs = (
 				subs => "",
 	},
 
-	{ tag => "deaths", 	mid => "d",
+	{ tag => "deaths", 	mid => "deaths",
 				src_file => "$CSV_PATH/mhlw_deaths.csv", 
 				src_url => "https://covid19.mhlw.go.jp/public/opendata/deaths_cumulative_daily.csv", 
 				direct => "vertical_matrix",		# vertical or holizontal(Default)
@@ -204,7 +204,13 @@ sub	download
 	my $csvf = $def->{src_file};
 	my $cmd = "wget " . $def->{src_url} . " -O $csvf_raw";
 	&do($cmd) if($download || !(-f $csvf));
-	&do("nkf -w80 $csvf_raw > $csvf");
+	my $file_size = csvlib::file_size($csvf_raw);
+	if($file_size > 1024){
+		&do("nkf -w80 $csvf_raw > $csvf");
+	}
+	else {
+		dp::WARNING "file_size: $file_size, $cmd\n";
+	}
 	dp::dp "download done\n";
 }
 

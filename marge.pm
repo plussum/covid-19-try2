@@ -83,7 +83,7 @@ sub	marge_csv
 			$dt = $src_cdp->{date_list}->[$dn];
 		}
 		$date_end = $dt if($dt le $date_end );
-		dp::dp "date_start[" . $src_cdp->{date_list}->[0], "] date_end[$dt] $date_end [$src_cdp->{id}] $dates\n";
+		#dp::dp "date_start[" . $src_cdp->{date_list}->[0], "] date_end[$dt] $date_end [$src_cdp->{id}] $dates\n";
 	}
 	my $dates = csvlib::date2ut($date_end, "-") - csvlib::date2ut($date_start, "-");
 	$dates /= 60 * 60 * 24;
@@ -161,9 +161,9 @@ sub	marge_csv
 
         my @w = @{$src_cdp->{keys}};
         push(@w, "item") if($#w < 0);
-        dp::dp "######## " . join(", ", $#w,  $src_cdp->{keys}, @w, "#", csvlib::join_array(@w) ) .  "\n";
+        #dp::dp "######## " . join(", ", $#w,  $src_cdp->{keys}, @w, "#", csvlib::join_array(@w) ) .  "\n";
         foreach my $k (@w){
-			dp::dp "### [$k]\n";
+			#dp::dp "### [$k]\n";
             push(@{$marge->{keys}}, $k . "-$id"); #sprintf("$k-%02d", $cdn+1) ;
         }
 

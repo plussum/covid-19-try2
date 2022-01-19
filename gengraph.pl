@@ -1112,6 +1112,7 @@ if($golist{mhlw}) {
 
 	my %date_info = (start_max => "0000-00-00", start_min => "9999-99-99",
 					 end_max => "0000-00-00", end_min => "9999-99-99");
+	my %mids = ();
 	foreach my $p (@defmhlw::MHLW_DEFS){
 		my $item = $p->{tag};
 		dp::dp "CDP: " . join(",", $p->{tag}, $item) . "\n";
@@ -1150,8 +1151,8 @@ if($golist{mhlw}) {
 	}
 
 	$cdp->add_key_items([$config::MAIN_KEY, $result_name]);		# "item_name"
-	my $csv_positive = $cdp_rlavr->{csv_data}->{"ALL-p"};
-	my $csv_tested = $cdp_rlavr->{csv_data}->{"tested-t"};
+	my $csv_positive = $cdp_rlavr->{csv_data}->{"ALL-positive"};
+	my $csv_tested = $cdp_rlavr->{csv_data}->{"tested-tested"};
 	my $master_key = join($cdp->{key_dlm}, $result_name);				# set key_name
 	$cdp->add_record($master_key, [@dm_key, $result_name, $result_name],[$result_name]);		# add record without data 
 
@@ -1178,11 +1179,11 @@ if($golist{mhlw}) {
 			ylabel => "pcr_tested/positive", y2label => "positive rate(%)",
 			term_y_size => $TERM_Y_SIZE,
 			graph_items => [
-				{cdp => $cdp,  item => {"tested-t" => "tested-t"}, static => "rlavr", graph_def => $box_fill},
-				{cdp => $cdp,  item => {"pref-p" => "ALL-p"}, static => "rlavr", graph_def => $box_fill_solid},
+				{cdp => $cdp,  item => {"tested-tested" => "tested-tested"}, static => "rlavr", graph_def => $box_fill},
+				{cdp => $cdp,  item => {"pref-positive" => "ALL-positive"}, static => "rlavr", graph_def => $box_fill_solid},
 				{cdp => $cdp,  item => {"percent" => "percent"}, static => "", graph_def => $line_thick, axis => "y2"},
-				{cdp => $cdp,  item => {"tested-t" => "tested-t",}, static => "", graph_def => $line_thin_dot},
-				{cdp => $cdp,  item => {"pref-p" => "ALL-p"}, static => "", graph_def => $line_thin_dot},
+				{cdp => $cdp,  item => {"tested-tested" => "tested-tested",}, static => "", graph_def => $line_thin_dot},
+				{cdp => $cdp,  item => {"pref-positive" => "ALL-positive"}, static => "", graph_def => $line_thin_dot},
 
 			#	{cdp => $cdp,  item => {"item" => "ALL",  "pref-t" => "Tested"}, static => "rlavr", graph_def => $box_fill},
 			#	{cdp => $cdp,  item => {"item" => "ALL", "item-p" => "Positive"}, static => "rlavr", graph_def => $box_fill_solid},
@@ -1201,10 +1202,10 @@ if(1){
 			ymin => 0, y2min => 0,
 			ylabel => "hospitalzed/servere", 
 			graph_items => [
-				{cdp => $cdp,  item => {"pref-s" => "$pref-s"}, static => "", graph_def => $box_fill, axis => "y2"},
+				{cdp => $cdp,  item => {"pref-severe" => "$pref-severe"}, static => "", graph_def => $box_fill, axis => "y2"},
 				{cdp => $cdp,  item => {"pref-h" => "$pref-h", "kind-h" => "Inpatient"}, static => "", graph_def => $line_thick,},
-				{cdp => $cdp,  item => {"pref-d" => "$pref-d"}, static => "rlavr", graph_def => $box_fill_solid, axis => "y2"},
-				{cdp => $cdp,  item => {"pref-d" => "$pref-d"}, static => "", graph_def => $line_thin_dot, axis => "y2"},
+				{cdp => $cdp,  item => {"pref-deaths" => "$pref-deaths"}, static => "rlavr", graph_def => $box_fill_solid, axis => "y2"},
+				{cdp => $cdp,  item => {"pref-deaths" => "$pref-deaths"}, static => "", graph_def => $line_thin_dot, axis => "y2"},
 
 				#{cdp => $cdp,  item => {"pref-s" => "$pref-s", "item-s" => "Severe"}, static => "", graph_def => $box_fill, axis => "y2"},
 				#{cdp => $cdp,  item => {"pref-h" => "$pref-h", "item-h" => "Inpatient"}, static => "", graph_def => $line_thick,},
@@ -1365,8 +1366,9 @@ if($golist{"mhlw-pref"}){ 	# mhlw-pref
 		$pref =~ s/-.*$//;
 		next if($pref =~ /^ALL/);
 
-		my $nc = 350;
-		my $ns = 3;
+		my $nc = 500; #350;
+		my $ns = 10; # 3;
+		my $nm = 1 / 5;
 		#dp::dp "SYNOMYM: $config::SYNONYM{$pref} \n";
 		my $prefw = $pref;
 		$prefw =~ s/-.*$//;
@@ -1383,26 +1385,26 @@ if($golist{"mhlw-pref"}){ 	# mhlw-pref
 		my $add_plot = &gen_pop_scale({pop_100k => $pop_100k, pop_max => ($y2max / $pop_100k), init_dlt => 1,
 								lc => "navy", title_tag => 'Severe %.1f/100K', axis => "x1y2"});
 
-		my $cdp_svr = $cdp->reduce_cdp_target({"pref-s" => "$pref-s"});
+		my $cdp_svr = $cdp->reduce_cdp_target({"pref-severe" => "$pref-severe"});
 		my $sv_max = $cdp_svr->max_rlavr({start_date => 0});
 		#dp::dp "Servere MAX: $sv_max";
 		$sv_max = csvlib::calc_max2($sv_max);			# try to set reasonable max 
 		my $add_plot_a = &gen_pop_scale({pop_100k => $pop_100k, pop_max => ($sv_max / $pop_100k), init_dlt => 1,
 								lc => "navy", title_tag => 'Severe %.1f/100K', axis => "x1y2"});
 		foreach my $start_date (0, $RECENT){
-			my $ymaxw = ($start_date == 0) ? $ymax : $ymax / 10;
-			my $y2maxw = ($start_date == 0) ? $y2max : $y2max / 10;
+			my $ymaxw = ($start_date == 0) ? $ymax : $ymax * $nm;
+			my $y2maxw = ($start_date == 0) ? $y2max : $y2max * $nm;
 			my @gpd =  csv2graph->csv2graph_list_gpmix(
 			{gdp => $defmhlw::MHLW_GRAPH, dsc => "$pref hospitalized,severe and deaths", sub_dsc => "[nc:$nc,ns:$ns] $pop_disp*10K", start_date => $start_date, 
 				ymin => 0, y2min => 0, ymax => $ymaxw, y2max => $y2maxw,
 				ylabel => "hospitalzed/servere", 
 				additional_plot => $add_plot,
 				graph_items => [
-					{cdp => $cdp,   item => {"pref-s" => "$pref-s"}, static => "", graph_def => $box_fill, axis => "y2"},
-					{cdp => $cdp_r, item => {"pref-p" => "$pref-p"}, static => "", graph_def => $line_thick,},
+					{cdp => $cdp,   item => {"pref-severe" => "$pref-severe"}, static => "", graph_def => $box_fill, axis => "y2"},
+					{cdp => $cdp_r, item => {"pref-positive" => "$pref-positive"}, static => "", graph_def => $line_thick,},
 					{cdp => $cdp,   item => {"pref-h" => "$pref-h", "kind-h" => "Inpatient"}, static => "", graph_def => $line_thick,},
-					{cdp => $cdp_r, item => {"pref-d" => "$pref-d"}, static => "", graph_def => $box_fill_solid, axis => "y2"},
-					{cdp => $cdp,   item => {"pref-d" => "$pref-d"}, static => "", graph_def => $line_thin_dot, axis => "y2"},
+					{cdp => $cdp_r, item => {"pref-deaths" => "$pref-deaths"}, static => "", graph_def => $box_fill_solid, axis => "y2"},
+					{cdp => $cdp,   item => {"pref-deaths" => "$pref-deaths"}, static => "", graph_def => $line_thin_dot, axis => "y2"},
 
 					#{cdp => $cdp,   item => {"pref-s" => "$pref-s", "item-s" => "Severe"}, static => "", graph_def => $box_fill, axis => "y2"},
 					#{cdp => $cdp_r, item => {"pref-p" => "$pref-p", "item-p" => "Positive"}, static => "", graph_def => $line_thick,},
@@ -1422,13 +1424,13 @@ if(0){
 				ylabel => "hospitalzed/servere", 
 				additional_plot => $add_plot_a,
 				graph_items => [
-					{cdp => $cdp,   item => {"pref-s" => "$pref-s",}, static => "", graph_def => $box_fill, axis => "y2"},
+					{cdp => $cdp,   item => {"pref-severe" => "$pref-severe",}, static => "", graph_def => $box_fill, axis => "y2"},
 					#{cdp => $cdp, item => {"Prefecture-p" => "$pref", "item-p" => "Positive"}, static => "rlavr", graph_def => $line_thick,},
-					{cdp => $cdp_r, item => {"pref-p" => "$pref-p", }, static => "", graph_def => $line_thick,},
+					{cdp => $cdp_r, item => {"pref-positive" => "$pref-positive", }, static => "", graph_def => $line_thick,},
 					{cdp => $cdp,   item => {"pref-h" => "$pref-h", "kind-h" => "Inpatient"}, static => "", graph_def => $line_thick,},
 					#{cdp => $cdp, item => {"Prefecture-d" => "$pref", "item-d" => "Deaths"}, static => "rlavr", graph_def => $box_fill_solid, axis => "y2"},
-					{cdp => $cdp_r, item => {"pref-d" => "$pref-d",}, static => "", graph_def => $box_fill_solid, axis => "y2"},
-					{cdp => $cdp,   item => {"pref-d" => "$pref-d",}, static => "", graph_def => $line_thin_dot, axis => "y2"},
+					{cdp => $cdp_r, item => {"pref-deaths" => "$pref-deaths",}, static => "", graph_def => $box_fill_solid, axis => "y2"},
+					{cdp => $cdp,   item => {"pref-deaths" => "$pref-deaths",}, static => "", graph_def => $line_thin_dot, axis => "y2"},
 				],
 			}
 			);
