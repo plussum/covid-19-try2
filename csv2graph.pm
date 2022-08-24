@@ -364,10 +364,10 @@ sub	add_key_items
 	my $item_order = scalar(@$item_name_list);
 	push(@$item_name_list, @$key_names);		# set item_name 
 	foreach my $kn (@$key_names){
-		dp::dp "[$kn]\n";
+		#dp::dp "[$kn]\n";
 		$self->{item_name_hash}->{$kn} = $item_order++;
 	}
-	dp::dp "add key : " . csvlib::join_array(",", @$item_name_list) . "\n";
+	#dp::dp "add key : " . csvlib::join_array(",", @$item_name_list) . "\n";
 
 	return 1;
 }
@@ -649,7 +649,9 @@ sub gen_html_by_gp_list
 		#
 		print HTML "<span class=\"c\">$now</span><br>\n";
 		print HTML "<a href=\"$alt_graph#$tag" . "0\">" if($alt_graph);
+		print HTML '<a href="' . $png_rel_path . "/" . $gp->{plot_png} . '" target="_blank">' . "\n";
 		print HTML '<img src="' . $png_rel_path . "/" . $gp->{plot_png} . '">' . "\n";
+		print HTML '</a>' . "\n";
 		print HTML "</a>\n" if($alt_graph);
 		print HTML "<br>\n";
 		#dp::dp "$gp->{plot_png} \n";
@@ -1353,9 +1355,11 @@ sub	sort_csv
 	my $self = shift;
 	my ($csvp, $target_keysp, $dt_start, $dt_end) = @_;
 	
-	#dp::dp "($dt_start, $dt_end)\n";
-	#csvlib::disp_caller(0..3);
-	#dp::dp "$csvp\n";
+	if($dt_start =~ /^\d+-\d+-\d/){
+		dp::dp "($dt_start, $dt_end)\n";
+		csvlib::disp_caller(0..3);
+		dp::dp "$csvp\n";
+	}
 
 	$dt_start = ($dt_start//"") ? $dt_start : 0;
 	$dt_end = ($dt_end//"") ? $dt_end : &csv_size($csvp);		# 2021.03.15
@@ -1445,7 +1449,7 @@ sub	graph
 	#dp::dp "START_DATE: $start_date END_DATE: $end_date\n";
 
 	my $src_info = $self->{src_info} // "";
-	dp::dp "src_info : $src_info\n";
+	#dp::dp "src_info : $src_info\n";
 	if($src_info){
 		$src_info = "[$src_info]";
 	}
@@ -1615,19 +1619,42 @@ _EOD_
 		#				$csvf, $i + 1, $i, $label[$i], ($pn < 7) ? 2 : 1);
 
 		my $pl = "";
-		if($graph_def){
-			#dp::dp "[$graph_def]\n";
-			if($graph_def =~ /notitle/){
-				$pl = sprintf("CSV_FILE using 1:%d $axis with $graph_def ", $i + 1);
+		my $dtw = $dot;
+		my $width = 2;
+		my $gd = $graph_def;
+		my $lw = 2;
+		if($i > 8){				# 2022.05.09 !$dot
+			$dtw = " dt(5,5)";
+			$width = 1;
+			if($gd =~ / dt */){
+				$gd =~ s/dt *\([\d, ]+\)/$dtw/;
 			}
 			else {
-				$pl = sprintf("CSV_FILE using 1:%d $axis with $graph_def title '%s' ", $i + 1, $key);
+				$gd .= " $dtw";
 			}
-			#dp::dp "[$graph_def][$pl]\n";
+			if($gd =~ / linewidth */){
+				$gd =~ s/linewidth +\d+/linewidth $width/;
+			}
+			else {
+				$lw = 1;
+			}
+			#dp::dp "$i [$graph_def][$gd][$width][$dtw]\n";
+		}
+		if($graph_def){
+			#dp::dp "[$graph_def]\n";
+
+			if($graph_def =~ /notitle/){
+				$pl = sprintf("CSV_FILE using 1:%d $axis with $gd ", $i + 1);
+			}
+			else {
+				$pl = sprintf("CSV_FILE using 1:%d $axis with $gd title '%s' ", $i + 1, $key);
+			}
+			#dp::dp "$i [$gd][$pl]\n";
 		}
 		else {
 			if($graph =~ /line/){
-				$graph .= sprintf(" linewidth %d $dot ", ($pn < 7) ? 2 : 1);
+				$graph .= " linewidth $width $dot ";
+				#dp::dp "$i [$graph_def]\n";
 			}
 			elsif($graph =~ /box/){
 				#dp::dp "BOX\n";
@@ -1685,7 +1712,7 @@ _EOD_
 	$s_date = 7 if($s_date == 0);
 	#dp::dp "DATE: " . $DATES[$date] . "  " . "$date -> $s_date -> " . ($date - $s_date) . "\n";
 
-	dp::dp "START_DATE: " . join(", ", $gp_mix->{dt_start}, $gp_mix->{dt_end}, $s_date) . "\n"; 
+	#dp::dp "START_DATE: " . join(", ", $gp_mix->{dt_start}, $gp_mix->{dt_end}, $s_date) . "\n"; 
 	for(my $dn = $gp_mix->{dt_end} - $s_date; $dn > $gp_mix->{dt_start}; $dn -= $RELATIVE_DATE){
 		my $mark_date = $date_list->[$dn] // "";
 		next if($mark_date le $start_date || $mark_date ge $end_date);

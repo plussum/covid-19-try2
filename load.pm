@@ -198,8 +198,8 @@ sub	load_csv_holizontal
 
 		my $line = $_;
 		my @items = (split(/$src_dlm/, $line));
-		if($self->{mid}//""){
-			my $mid = $self->{mid};
+		my $mid = $self->{mid}//"";
+		if($mid) {
 			$items[0] .= "-$mid";
 			#for(my $i = 0; $i < $data_start; $i++){
 			#}

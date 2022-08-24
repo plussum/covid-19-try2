@@ -44,14 +44,16 @@ sub sub_hosp
 sub	sub_tested
 {
     my ($l) = @_;
-	$l =~ s/PCR 検査実施件数\(単日\)/tested/;
+	#$l =~ s/PCR 検査実施件数\(単日\)/tested/;
+	$l =~ s/,PCR .*$/,tested/;
+	      ##PCR 検査実施人数\(単日\)
 	dp::dp ">>>>>" . $l . "\n";
 	return $l;
 }
 
 
 my @defs = (
-	{	tag => "tested", mid => "tested",
+	{	tag => "tested", mid => "t",
 				src_file => "$CSV_PATH/mhlw_tested.csv", 
 				src_url => "https://www.mhlw.go.jp/content/pcr_tested_daily.csv",
 				data_start => 1, 
@@ -209,7 +211,7 @@ sub	download
 		&do("nkf -w80 $csvf_raw > $csvf");
 	}
 	else {
-		dp::WARNING "file_size: $file_size, $cmd\n";
+		dp::WARNING "file_size: $file_size($download), $cmd\n";
 	}
 	dp::dp "download done\n";
 }

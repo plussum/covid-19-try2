@@ -29,7 +29,7 @@ sub	mtxtf
 	my $din = $p->{default_item_name}//"item";
 	my $subs = $p->{subs}//"";
 
-	dp::dp "ITEM NAME: $din\n";
+	#dp::dp "ITEM NAME: $din\n";
 	my @DATA = ();
 	my $col = 0;
 	open(SRC, $SRC_FILE) || die "cannot open $SRC_FILE\n";
@@ -48,7 +48,7 @@ sub	mtxtf
 	}
 	close(SRC);
 		
-	dp::dp join(", ", $col, $#DATA) . "\n";
+	#dp::dp join(", ", $col, $#DATA) . "\n";
 	open(DST, "> $DST_FILE") || die "cannto create $DST_FILE\n";
 	for(my $c = 0; $c <= $col; $c++){
 		my @w = ();

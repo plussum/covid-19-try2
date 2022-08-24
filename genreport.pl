@@ -282,7 +282,7 @@ sub	out_image
 	foreach my $item (@$table){
 		print HTML "<td>\n";
 		$item =~ s#.png##;
-		my $html = "<img src=\"../$item.png\">\n";
+		my $html = "<a href=\"../$item.png\" target=\"_blank\"><img src=\"../$item.png\"></a>\n";
 		my $csvf = "$item" . "-plot.csv.txt";
 		my $plotf = "$item" . "-plot.txt";
 		print "ERROR: $WIN_PATH/$csvf\n" if(! -e "$WIN_PATH/$csvf");

@@ -74,7 +74,7 @@ my $THRESH_POP_NC_LAST_WW = 5.0; #0.5;
 my $mainkey = $config::MAIN_KEY;
 
 my $DOWN_LOAD = 1;
-my $RECENT = -62;		# recent = 2month
+my $RECENT = "2022-01-01"; #-210; #-93; # -62;		# recent = 2month
 my $RECENT_MONTH = -21;
 
 my $TERM_Y_SIZE = 400;
@@ -98,11 +98,11 @@ my $y2y1rate = 2.5;
 my $end_target = 0;
 my $CCSE_MAX = 119; # 99;
 
-my $POP_YMAX_NC_WW = 120;		# WW YMAX(positive) * pop100k, positive_death_ern
-my $POP_YMAX_ND_WW = 2.0;		# WW Y2MAX(deaths)  * pop100k, positive_death_ern
-my $POP_YMAX_NC_JP = 40;		# JP YMAX(positive) * pop100k, positive_death_ern
-my $POP_YMAX_NC_JP_SMALL = 2;		# JP YMAX(positive) * pop100k, positive_death_ern
-my $POP_YMAX_ND_JP = 0.2;		# JP Y2MAX(deaths)  * pop100k, positive_death_ern
+my $POP_YMAX_NC_WW = 200; #150;# 800; #120;		# WW YMAX(positive) * pop100k, positive_death_ern
+my $POP_YMAX_ND_WW = 0.4; #2.0;		# WW Y2MAX(deaths)  * pop100k, positive_death_ern
+my $POP_YMAX_NC_JP = 250;#150; #150;#60; #40;		# JP YMAX(positive) * pop100k, positive_death_ern
+my $POP_YMAX_NC_JP_SHORT = 250;#150;#60; #2;		# JP YMAX(positive) * pop100k, positive_death_ern
+my $POP_YMAX_ND_JP = 0.4; #0.2;		# JP Y2MAX(deaths)  * pop100k, positive_death_ern
 
 #
 #	for APPLE Mobility Trends
@@ -1152,7 +1152,7 @@ if($golist{mhlw}) {
 
 	$cdp->add_key_items([$config::MAIN_KEY, $result_name]);		# "item_name"
 	my $csv_positive = $cdp_rlavr->{csv_data}->{"ALL-positive"};
-	my $csv_tested = $cdp_rlavr->{csv_data}->{"tested-tested"};
+	my $csv_tested = $cdp_rlavr->{csv_data}->{"tested-h"};
 	my $master_key = join($cdp->{key_dlm}, $result_name);				# set key_name
 	$cdp->add_record($master_key, [@dm_key, $result_name, $result_name],[$result_name]);		# add record without data 
 
@@ -1167,7 +1167,7 @@ if($golist{mhlw}) {
 		my $v = sprintf("%.3f", $p * 100 / $t);
 		$csv_pct->[$i] = $v;
 	}
-	$cdp->dump({search_key => "percent", lines => 10});
+	#$cdp->dump({search_key => "percent", lines => 10});
 
 	#
 	#	Japan all data
@@ -1179,10 +1179,10 @@ if($golist{mhlw}) {
 			ylabel => "pcr_tested/positive", y2label => "positive rate(%)",
 			term_y_size => $TERM_Y_SIZE,
 			graph_items => [
-				{cdp => $cdp,  item => {"tested-tested" => "tested-tested"}, static => "rlavr", graph_def => $box_fill},
+				{cdp => $cdp,  item => {"tested-t" => "tested-t"}, static => "rlavr", graph_def => $box_fill},
 				{cdp => $cdp,  item => {"pref-positive" => "ALL-positive"}, static => "rlavr", graph_def => $box_fill_solid},
 				{cdp => $cdp,  item => {"percent" => "percent"}, static => "", graph_def => $line_thick, axis => "y2"},
-				{cdp => $cdp,  item => {"tested-tested" => "tested-tested",}, static => "", graph_def => $line_thin_dot},
+				{cdp => $cdp,  item => {"tested-t" => "tested-t",}, static => "", graph_def => $line_thin_dot},
 				{cdp => $cdp,  item => {"pref-positive" => "ALL-positive"}, static => "", graph_def => $line_thin_dot},
 
 			#	{cdp => $cdp,  item => {"item" => "ALL",  "pref-t" => "Tested"}, static => "rlavr", graph_def => $box_fill},
@@ -1240,11 +1240,11 @@ if(1){
 	$cdp_tko->calc_record({result => "#positive_percent", op => ["positive_rate", "*=100"]});
 
 	foreach my $start_date (0, $RECENT, $RECENT_MONTH){
-		my $box = ($start_date >= 0) ? $box_fill : $box_fill_solid;
+		my $box = (!($start_date =~ /[-+]?\W+$/) ||  $start_date >= 0) ? $box_fill : $box_fill_solid;
 		push(@$gp_list, csv2graph->csv2graph_list_gpmix(
 		{gdp => $deftkocsv::TKOCSV_GRAPH, dsc => "Tokyo open Data tested", start_date => $start_date, 
-			ylabel => "confermed", y2label => "positive rate(%)",
-			ymin => 0, y2min => 0, y2max => 35,
+			ylabel => "positive/tested", y2label => "positive rate(%)",
+			ymin => 0, y2min => 0, y2max => 60,
 			graph_items => [
 				{cdp => $rlavr_tko,  item => {"item" => "total_tested",}, static => "", graph_def => $box_fill},
 				{cdp => $rlavr_tko,  item => {"item" => "total_positive",}, static => "", graph_def => $box_fill_solid},
@@ -1262,16 +1262,17 @@ if(1){
 	#	"pcr_positive", "antigen_positive", "pcr_negative", "antigen_negative", "inspected", "positive_rate",
 	#			"positive_number", "hospitalized", "mid-modelate", "severe", "residential", "home","adjusting", "deaths", "discharged",
 	foreach my $start_date (0, $RECENT){
-		my $box = ($start_date >= 0) ? $box_fill : $box_fill_solid;
+		my $box = (!($start_date =~ /[-+]?\W+$/) || ($start_date >= 0)) ? $box_fill : $box_fill_solid;
 		push(@$gp_list, csv2graph->csv2graph_list_gpmix(
 		{gdp => $deftkocsv::TKOCSV_GRAPH, dsc => "TKOCSV open Data hospitalized", start_date => $start_date, 
 			ylabel => "confermed", y2label => "positive rate(%)",
 			ymin => 0, y2min => 0,
 			graph_items => [
-				{cdp => $cdp_tko  ,  item => {"item" => "severe",}, static => "", graph_def => $box_fill, axis => "y2",},
+				#{cdp => $cdp_tko  ,  item => {"item" => "severe",}, static => "", graph_def => $box_fill, axis => "y2",},
 				{cdp => $cdp_tko  ,  item => {"item" => "hospitalized",}, static => "", graph_def => $line_thick},
 				{cdp => $cdp_tko  ,  item => {"item" => "deaths",}, static => "rlavr", graph_def => $box_fill_solid, axis => "y2"},
 				{cdp => $cdp_tko  ,  item => {"item" => "deaths",}, static => "", graph_def => $line_thin_dot, axis => "y2"},
+				{cdp => $cdp_tko  ,  item => {"item" => "severe",}, static => "", graph_def => $line_thick, axis => "y2",},
 				#{cdp => $cdp  ,  item => {"item" => "mid-modelate",}, static => "", graph_def => $line_thick},
 			],
 		}));
@@ -1283,7 +1284,7 @@ if(1){
 	foreach my $start_date (0, $RECENT, $RECENT_MONTH){
 		push(@$gp_list, csv2graph->csv2graph_list_gpmix(
 		{gdp => $deftkocsv::TKOCSV_GRAPH, dsc => "TKOCSV open Data hospitalized residential home", start_date => $start_date, 
-			ylabel => "confermed", 
+			ylabel => "all data(no y2)", 
 			ymin => 0, y2min => 0,
 			graph_items => [
 				{cdp => $cdp_tko  ,  item => {"item" => "hospitalized",}, static => "", graph_def => $line_thick},
@@ -1329,6 +1330,7 @@ if(1){
 # if($golist{"mhlw"} || $golist{"mhlw-pref"}) 	# mhlw-pref
 if($golist{"mhlw-pref"}){ 	# mhlw-pref
 	dp::set_dp_id("mhlw-pref");
+	dp::dp "-" x 40 . "\n";
 	
 	@$gp_list = ();
 	# positive,  reqcare, deaths, severe
@@ -1366,9 +1368,9 @@ if($golist{"mhlw-pref"}){ 	# mhlw-pref
 		$pref =~ s/-.*$//;
 		next if($pref =~ /^ALL/);
 
-		my $nc = 500; #350;
-		my $ns = 10; # 3;
-		my $nm = 1 / 5;
+		my $nc = 1000; #500; #350;
+		my $ns = 5; # 3;
+		my $nm = 1.5;# 1; # 1 / 5;
 		#dp::dp "SYNOMYM: $config::SYNONYM{$pref} \n";
 		my $prefw = $pref;
 		$prefw =~ s/-.*$//;
@@ -1392,8 +1394,9 @@ if($golist{"mhlw-pref"}){ 	# mhlw-pref
 		my $add_plot_a = &gen_pop_scale({pop_100k => $pop_100k, pop_max => ($sv_max / $pop_100k), init_dlt => 1,
 								lc => "navy", title_tag => 'Severe %.1f/100K', axis => "x1y2"});
 		foreach my $start_date (0, $RECENT){
-			my $ymaxw = ($start_date == 0) ? $ymax : $ymax * $nm;
-			my $y2maxw = ($start_date == 0) ? $y2max : $y2max * $nm;
+			my $ymaxw = ($start_date eq "0") ? $ymax : ($ymax * $nm);
+			my $y2maxw = ($start_date eq "0") ? $y2max : ($y2max * $nm);
+			dp::dp "--- ymax: $ymaxw, $y2maxw\n";
 			my @gpd =  csv2graph->csv2graph_list_gpmix(
 			{gdp => $defmhlw::MHLW_GRAPH, dsc => "$pref hospitalized,severe and deaths", sub_dsc => "[nc:$nc,ns:$ns] $pop_disp*10K", start_date => $start_date, 
 				ymin => 0, y2min => 0, ymax => $ymaxw, y2max => $y2maxw,
@@ -2181,7 +2184,7 @@ sub	japan_positive_death_ern
 	my $p = "";
 
 	if($pop){
-		my $pop_ymax_nc = ($start_date > $RECENT) ? $POP_YMAX_NC_JP : $POP_YMAX_NC_JP_SMALL;  
+		my $pop_ymax_nc = ($start_date > $RECENT) ? $POP_YMAX_NC_JP : $POP_YMAX_NC_JP_SHORT;  
 		dp::dp "POP_YMAX [$start_date:$RECENT] $pop_ymax_nc\n";
 		$p = {pop_ymax_nc => $pop_ymax_nc, pop_ymax_nd => $POP_YMAX_ND_JP, start_date => $start_date};
 	}
