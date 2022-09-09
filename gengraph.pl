@@ -75,7 +75,8 @@ my $mainkey = $config::MAIN_KEY;
 
 my $DOWN_LOAD = 1;
 my $RECENT = "2022-01-01"; #-210; #-93; # -62;		# recent = 2month
-my $RECENT_MONTH = -21;
+my $RECENT_MONTH = -42;
+my @RECENTS = ($RECENT, $RECENT_MONTH);
 
 my $TERM_Y_SIZE = 400;
 
@@ -554,7 +555,7 @@ if($golist{pref}){
 	foreach my $pref (@$sorted_keys[0..$endt]){
 		$pref =~ s/[\#\-].*$//;
 		dp::dp "$GKIND: $pref\n";
-		foreach my $start_date (0, $RECENT){ # , $RECENT)
+		foreach my $start_date (0, $RECENT, $RECENT_MONTH){ # , $RECENT)
 			if(!$GKIND || $GKIND eq "raw"){		# 0 -> 1 2021.06.28
 				my @gpd = &japan_positive_death_ern($jp_cdp, $pref, $start_date, 1, "raw") ;
 				push(@$pd_list, @gpd);
@@ -574,7 +575,7 @@ if($golist{pref}){
 		foreach my $pref (@$sorted_keys[0..$endt]){
 			$pref =~ s/[\#\-].*$//;
 			dp::dp "pop: $pref\n";
-			foreach my $start_date (0, $RECENT){ # , $RECENT)
+			foreach my $start_date (0, $RECENT, $RECENT_MONTH){ # , $RECENT)
 				my @gpd = &japan_positive_death_ern($jp_cdp, $pref, $start_date, 1, "pop");
 				push(@$pd_pop_list, @gpd);
 				#&set_list($PREF_LIST, $pref, "pref", "pop", "rlavr", $start_date, $gpd);
@@ -582,7 +583,7 @@ if($golist{pref}){
 		}
 
 		csv2graph->gen_html_by_gp_list($pd_pop_list, {						# Generate HTML file with graphs
-				row => 2,
+				row => 3,
 				no_lank_label => 1,
 				html_tilte => "POP Positve/Deaths COVID-19 Japan prefecture ",
 				src_url => "src_url",
@@ -608,7 +609,7 @@ if($golist{pref}){
 
 	if(!$GKIND || $GKIND eq "raw"){
 		csv2graph->gen_html_by_gp_list($pd_list, {						# Generate HTML file with graphs
-				row => 2,
+				row => 3,
 				no_lank_label => 1,
 				html_tilte => "Positve/Deaths COVID-19 Japan prefecture ",
 				src_url => "src_url",
@@ -623,7 +624,7 @@ if($golist{pref}){
 
 	if(!$GKIND || $GKIND eq "rlavr"){
 		csv2graph->gen_html_by_gp_list($pd_rlavr_list, {						# Generate HTML file with graphs
-				row => 2,
+				row => 3,
 				no_lank_label => 1,
 				html_tilte => "POP Positve/Deaths COVID-19 Japan prefecture ",
 				src_url => "src_url",
@@ -794,7 +795,7 @@ sub	ccse
 				{"Province/State" => "null", "Country/Region" => "WorldWide"},
 	);
 
-	foreach my $start_date (0, $RECENT){
+	foreach my $start_date (0, $RECENT, $RECENT_MONTH){
 		push(@$gp_list, csv2graph->csv2graph_list_gpmix(
 		{gdp => $defccse::CCSE_GRAPH, dsc => "World Wilde positive and deaths", start_date => $start_date, 
 			ymin => 0, y2min => 0,
@@ -807,7 +808,7 @@ sub	ccse
 		));
 	}
 	csv2graph->gen_html_by_gp_list($gp_list, {						# Generate HTML file with graphs
-			row => 2,
+			row => 3,		
 			no_lank_label => 1,
 			html_tilte => "COVID-19 related data visualizer ",
 			src_url => "src_url",
@@ -845,7 +846,7 @@ sub	ccse
 	foreach my $region (@$target_region[0..$endt]){
 		$region =~ s/--.*//;
 		dp::dp "rlavr: $region\n";
-		foreach my $start_date(0, $RECENT){
+		foreach my $start_date(0, $RECENT, $RECENT_MONTH){
 			push(@$ccse_gp_list, &ccse_positive_death_ern($ccse_country, $death_country, $region, $start_date, 1, "raw")) if(!$GKIND || $GKIND eq "raw");	
 			push(@$ccse_rlavr_gp_list, &ccse_positive_death_ern($ccse_country, $death_country, $region, $start_date, 0, "rlavr")) if(!$GKIND || $GKIND eq "rlavr");
 		}
@@ -863,12 +864,12 @@ sub	ccse
 		foreach my $region (@$target_region[0..$endt]){
 			$region =~ s/--.*//;
 			dp::dp "pop: $region\n";
-			foreach my $start_date(0, $RECENT){
+			foreach my $start_date(0, $RECENT, $RECENT_MONTH){
 				push(@$ccse_pop_gp_list, &ccse_positive_death_ern($ccse_country, $death_country, $region, $start_date, 1, "pop"));
 			}
 		}
 		csv2graph->gen_html_by_gp_list($ccse_pop_gp_list, {						# Generate HTML file with graphs
-				row => 2,
+				row => 3,
 				no_lank_label => 1,
 				html_tilte => "COVID-19 related data visualizer ",
 				src_url => "src_url",
@@ -898,7 +899,7 @@ sub	ccse
 
 	if(!$GKIND || $GKIND eq "raw"){
 		csv2graph->gen_html_by_gp_list($ccse_gp_list, {						# Generate HTML file with graphs
-				row => 2,
+				row => 3,
 				no_lank_label => 1,
 				html_tilte => "COVID-19 related data visualizer ",
 				src_url => "src_url",
@@ -913,7 +914,7 @@ sub	ccse
 
 	if(!$GKIND || $GKIND eq "rlavr"){
 		csv2graph->gen_html_by_gp_list($ccse_rlavr_gp_list, {						# Generate HTML file with graphs
-				row => 2,
+				row => 3,
 				no_lank_label => 1,
 				html_tilte => "COVID-19 related data visualizer nc-nd ",
 				src_url => "src_url",
@@ -2184,7 +2185,7 @@ sub	japan_positive_death_ern
 	my $p = "";
 
 	if($pop){
-		my $pop_ymax_nc = ($start_date > $RECENT) ? $POP_YMAX_NC_JP : $POP_YMAX_NC_JP_SHORT;  
+		my $pop_ymax_nc = ((!$start_date =~ /\D/) && $start_date > $RECENT) ? $POP_YMAX_NC_JP : $POP_YMAX_NC_JP_SHORT;  
 		dp::dp "POP_YMAX [$start_date:$RECENT] $pop_ymax_nc\n";
 		$p = {pop_ymax_nc => $pop_ymax_nc, pop_ymax_nd => $POP_YMAX_ND_JP, start_date => $start_date};
 	}
@@ -2218,6 +2219,7 @@ sub	positive_death_ern
 		dp::ABORT "$key undefined \n";
 		return "";
 	}
+	dp::dp "KEY[$key]\n";
 
 	my $pop_key = $key; # $region;
 	$pop_key =~ s/$conf_post_fix//;
@@ -2249,11 +2251,17 @@ sub	positive_death_ern
 
 	#$rlavr->dump();
 
-	my $csv_region = $csvp->{$key};
+	#
+	#	Adjust ERN
+	#
+	my $csv_region = $csvp->{$key};						# Adjust ERN value for fitting y2max
 	my $size = scalar(@$csv_region);
 	for(my $i = 0; $i < $size; $i++){
-		$csv_region->[$i] = $csv_region->[$i] * $y2max / 3;
-		#printf("%.2f ", $csv_pref->[$i]);
+		my $v = $csv_region->[$i];
+		$csv_region->[$i] = sprintf("%.3f", $v * $y2max / 3);
+		if($key =~ "東京都"){
+			printf("$key %.2f -> %.2f %.2f\n", $v, $csv_region->[$i], $y2max / 3);
+		}
 	}
 	$ern->rename_key($key, "$region-ern");
 
@@ -2264,7 +2272,7 @@ sub	positive_death_ern
 	for(my $i = 0; $i < 3; $i += 0.2){
 		next if($i == 0);
 
-		my $ern = sprintf("%.3f", $y2max * $i / 3);
+		my $ern_line = sprintf("%.3f", $i * $y2max / 3);
 		my $dt = "lc 'royalblue' dt (3,7)";
 		my $f = int($i * 100) % 100;
 		$f = sprintf("%.2f", $i);
@@ -2276,7 +2284,7 @@ sub	positive_death_ern
 			$dt = ($i == 1) ? "lc 'red' dt (6,4)" : "lc 'red' dt (3,7)";
 			$title = "title 'ern=$i.0'";
 		}
-		push(@adp, "$ern axis x1y2 with lines $title lw 1 $dt");
+		push(@adp, "$ern_line axis x1y2 with lines $title lw 1 $dt");
 	}
 	my $add_plot = join(",\\\n", @adp);
 

@@ -1362,10 +1362,17 @@ sub	sort_csv
 	}
 
 	$dt_start = ($dt_start//"") ? $dt_start : 0;
-	$dt_end = ($dt_end//"") ? $dt_end : &csv_size($csvp);		# 2021.03.15
+	if($dt_start =~ /\D/){
+		#dp::dp "DATA_START(SORT) $dt_start -> ". csvlib::search_listn($dt_start, @{$self->{date_list}}) . "\n";
+		$dt_start = csvlib::search_listn($dt_start, @{$self->{date_list}});
+	}
 	if($dt_start < 0){											# 2021.03.15
 		$dt_start = &csv_size($csvp) + $dt_start;						# 2021.03.15
 	}															# 2021.03.15
+	if($dt_end =~ /\D/){
+		$dt_end = csvlib::search_listn($dt_end, @{$self->{date_list}});
+	}
+	$dt_end = ($dt_end//"") ? $dt_end : &csv_size($csvp);		# 2021.03.15
 	if($dt_end <= 0){											# 2021.03.15
 		$dt_end = &csv_size($csvp) + $dt_end;					# 2021.03.15
 	}															# 2021.03.15

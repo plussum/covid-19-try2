@@ -631,7 +631,7 @@ sub	load_transaction
 		my $alias_auto = {};
 		for(my $i = 0; $i <= $#items; $i++){
 			my $item_org = $items[$i];
-			my $item_rew = $items_rew->[$i];
+			my $item_rew = $items_rew->[$i]//"";
 			$alias_auto->{$item_org} = $i + 1;
 			$alias_auto->{$item_rew} = $i + 1;
 			#dp::dp "[$item_org][$item_rew]\n";
