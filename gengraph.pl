@@ -128,7 +128,7 @@ my $cntry = "Country/Region";
 my $positive = "testedPositive";
 my $deaths = "deaths";
 
-my @ALL_PARAMS = qw/mhlw-pref ccse pref tkocsv ccse-tgt mhlw mhlw-pref nhk usa pref-ern ccse-ern/; # jpvac owidvac 
+my @ALL_PARAMS = qw/mhlw-pref ccse pref tkocsv ccse-tgt mhlw mhlw-pref nhk usa pref-ern ccse-ern ccse-order/; # jpvac owidvac 
 
 #my @ALL_PARAMS = qw/ccse-tgt nhk/;
 my $GKIND = "";		# for pref, and ccse
@@ -180,6 +180,10 @@ my @TARGET_REGION = (
 		"Australia", "New Zealand","Singapore",
 );
 
+my	@TARGET_EU = ( "Russia", "United Kingdom", "Ukraine", "Spain", "Romania", "Hungary", "Bulgaria", "Belgium", "Netherlands", 
+					"Greece", "France", "Italy", "Austria", "Montenegroi", "Germany", "Luxembourg", "Slovenia", "Iceland",	"Switzerland", 	
+					"Malta", "Latvia", 	"Portugal", "Serbia", "Finland");
+
 my @TARGET_PREF = ("Tokyo", "Kanagawa", "Chiba", "Saitama", "Kyoto", "Osaka");
 
 my @cdp_list = ($defamt::AMT_DEF, $defccse::CCSE_DEF, $MARGE_CSV_DEF, 
@@ -189,7 +193,7 @@ my @cdp_list = ($defamt::AMT_DEF, $defccse::CCSE_DEF, $MARGE_CSV_DEF,
 
 my $cmd_list = {"amt-jp" => 1, "amt-jp-pref" => 1, "tkow-ern" => 1, try => 1, "pref-ern" => 1, 
 				pref => 1, mhlw => 1, docomo => 1, upload => 1, "ccse-tgt" => 1, "mhlw-pref" => 1,
-				usa => 1, ccse_jp_term => 1, "ccse-ern" => 1};
+				usa => 1, ccse_jp_term => 1, "ccse-ern" => 1, "ccse-order" => 1};
 my @REG_INFO_LIST = ();
 
 #
@@ -1585,7 +1589,7 @@ if($golist{"pref-ern"}){
 		$pref =~ s/#.*$//;
 		foreach my $start_date ($first_date, $RECENT_ERN){
 			push(@$gp_list, csv2graph->csv2graph_list_gpmix(
-			{gdp => $defnhk::DEF_GRAPH, dsc => "NHK open Data $pref $item " , start_date => $start_date, 
+			{gdp => $defnhk::DEF_GRAPH, dsc => "NHK open Data $pref ern " , start_date => $start_date, 
 				ylabel => $label,
 				ymin => 0, ymax => 3,
 				graph_tag => "ERN  $label",
@@ -1618,11 +1622,13 @@ if($golist{"ccse-ern"}){
 
 	my $cdp_w = csv2graph->new($defccse::CCSE_CONF_DEF); 						# Load Johns Hopkings University CCSE
 	$cdp_w->load_csv($defccse::CCSE_CONF_DEF);
-	#my $cdp = $cdp_w->dup();
-	$cdp->calc_items("sum", 
-				{"Province/State" => "", "Country/Region" => ""},				
-				{"Province/State" => "null", "Country/Region" => "WorldWide"},
-	);
+	my $cdp = $cdp_w->dup();
+	foreach my $country ("Canada", "China", "Australia"){
+		$cdp->calc_items("sum", 
+					{"Province/State" => "", "Country/Region" => $country},		
+					{"Province/State" => "null", "Country/Region" => "="}	
+		);
+	}
 	#$ww_cdp->dump({search_key => "WorldWide"});
 	my $item = "testedPositive";
 
@@ -1648,7 +1654,7 @@ if($golist{"ccse-ern"}){
 		dp::dp "[$region]\n";
 		foreach my $start_date ($first_date, $RECENT_ERN){
 			push(@$gp_list, csv2graph->csv2graph_list_gpmix(
-			{gdp => $defccse::CCSE_GRAPH, dsc => "John hopkings ccse $region $item " , start_date => $start_date, 
+			{gdp => $defccse::CCSE_GRAPH, dsc => "John hopkings ccse $region ern " , start_date => $start_date, 
 				ylabel => $label,
 				ymin => 0, ymax => 3,
 				graph_tag => "ERN  $label",
@@ -1672,6 +1678,96 @@ if($golist{"ccse-ern"}){
 	);
 }
 
+
+if($golist{"ccse-order"}){
+	dp::set_dp_id("ccse-ern");
+	@$gp_list = ();
+	my $pos = "positive";
+	my $deth = "deaths";
+	my $cdp = {$pos => {}, $deth => {}};
+
+	$cdp->{$pos}->{org} = csv2graph->new($defccse::CCSE_CONF_DEF); 						# Load Johns Hopkings University CCSE
+	$cdp->{$pos}->{org}->load_csv($defccse::CCSE_CONF_DEF);
+	$cdp->{$deth}->{org} = csv2graph->new($defccse::CCSE_DEATHS_DEF); 						# Load Johns Hopkings University CCSE
+	$cdp->{$deth}->{org}->load_csv($defccse::CCSE_DEATHS_DEF);
+	foreach my $name ($pos, $deth){
+		foreach my $country ("Canada", "China", "Australia"){
+			$cdp->{$name}->{org}->calc_items("sum", 
+						{"Province/State" => "", "Country/Region" => $country},		
+						{"Province/State" => "null", "Country/Region" => "="}	
+			);
+		}
+		#$cdp->{$name}->{org}->calc_items("sum", 
+		#			{"Province/State" => "", "Country/Region" => ""},				
+		#			{"Province/State" => "null", "Country/Region" => "WorldWide"},
+		#);
+		$cdp->{$name}->{rlavr} = $cdp->{$name}->{org}->calc_rlavr();
+		my $target_keys = [$cdp->{$name}->{rlavr}->select_keys("", 0)];	# select data for target_keys
+		$cdp->{$name}->{sorted} = [$cdp->{$name}->{org}->sort_csv($cdp->{$name}->{org}->{csv_data}, $target_keys, $RECENT, 0)];
+	}
+	dp::dp "##############\n";
+
+	my $first_date = "2020-03-12";
+	my $lank = 1;
+	my $lank_width = 10;
+	my $end = $lank_width; # scalar(@{$cdp->{$pos}->{sorted}});
+	foreach my $kind ($pos, $deth){
+		for(my $l = $lank; $l < $end; $l += $lank_width){
+			my $le = $l + $lank_width - 1;
+			dp::dp "[$l - $le]\n";
+			foreach my $start_date ($first_date, $RECENT_ERN){
+				push(@$gp_list, csv2graph->csv2graph_list_gpmix(
+				{gdp => $defccse::CCSE_GRAPH, dsc => "John hopkings ccse $kind [$l - $le] " , start_date => $start_date, 
+					ylabel => $kind,
+					#ymin => 0, ymax => 3,
+					graph_tag => "CCSE  $kind",
+					label_sub_from => '#.*', label_sub_to => '',	# change label "1:Israel#people_vaccinated_per_hundred" -> "1:Israel"
+					lank => [$l,$le],
+					graph_items => [
+						{cdp => $cdp->{$kind}->{rlavr}, item => {}, static => "", graph_def => $line_thick},
+					],
+				}));
+			}
+		}
+
+		#foreach my $target () { # @TARGET_EU
+		#	foreach my $start_date ($first_date, $RECENT_ERN){
+		#		push(@$gp_list, csv2graph->csv2graph_list_gpmix(
+		#		{gdp => $defccse::CCSE_GRAPH, dsc => "John hopkings ccse [$l - $le] " , start_date => $start_date, 
+		#			ylabel => $label,
+		#			#ymin => 0, ymax => 3,
+		#			graph_tag => "CCSE  EU $label",
+		#			label_sub_from => '#.*', label_sub_to => '',	# change label "1:Israel#people_vaccinated_per_hundred" -> "1:Israel"
+		#			lank => [1, 10],
+		#			graph_items => [
+		#				{cdp => $cdp->{$kind}->{rlavr}, item => {}, static => "", graph_def => $line_thick},
+		#			],
+		#		}));
+		#	}
+		#}
+	}
+	dp::dp "##############\n";
+
+	csv2graph->gen_html_by_gp_list($gp_list, {						# Generate HTML file with graphs
+			row => 2,
+			html_tilte => "COVID-19 related data visualizer HNK ",
+			src_url => "src_url",
+			html_file => "$HTML_PATH/ccse_order.html",
+			png_path => $PNG_PATH // "png_path",
+			png_rel_path => $PNG_REL_PATH // "png_rel_path",
+			data_source => $cdp->{src_info},
+		}
+	);
+}
+
+sub	ccse_region
+{
+	my ($ccse_reg) = @_;
+	$ccse_reg = "Taiwan*" if($ccse_reg eq "Taiwan");
+	$ccse_reg = "Korea-South" if($ccse_reg eq "South Korea" || $ccse_reg eq "Korea");
+	$ccse_reg = "US" if($ccse_reg eq "United States");
+	return $ccse_reg;
+}
 
 #
 #	"date":"2021-07-06","prefecture":"47","gender":"U","age":"UNK","medical_worker":false,"status":2,"count":5

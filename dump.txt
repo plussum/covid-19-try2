@@ -1,0 +1,41 @@
+##### VALUE ######
+id      ccse_conf
+src_info        Johns Hopkins CSSE
+main_url        https://covid19.apple.com/mobility
+src_url https://github.com/beoutbreakprepared/nCoV2019
+csv_file
+src_dlm ,
+timefmt %m/%d/%y
+data_start      4
+down_load       CODE(0xc75250)
+dates   698
+##### ARRAY ######
+date_list(698)  [#0:2020-01-22,#1:2020-01-23,#2:2020-01-24,#3:2020-01-25,#4:2020-01-26,#5:2020-01-27] 698 [2021-12-20]
+keys(2) [#0:Country/Region,#1:Province/State,#2:=conf]
+load_order(279) [#0:Afghanistan--conf,#1:Albania--conf,#2:Algeria--conf,#3:Andorra--conf,#4:Angola--conf,#5:Antigua and Barbuda--conf] 279 [Zimbabwe--conf]
+item_name_list(4)       [#0:mainkey,#1:Province/State,#2:Country/Region,#3:Lat,#4:Long]
+defined_item_name_list(-1)      []
+marge_item_pos(-1)      []
+order_list(-1)  []
+##### HASH ######
+order(0)        {}
+item_name_hash(7)       {region=>2,Lat=>3,subr=>1,Long=>4,Province/State=>1}
+alias(2)        {subr=>1,region=>2}
+##### key_items ######
+------ [5] Dump keyitems data (HASH(0x15701c0)) search_key[] --------
+        mainkey,Province/State,Country/Region,Lat,Long
+[0] Uganda--conf[0]: Uganda--conf,,Uganda,1.373333,32.290275
+[1] Niger--conf[0]: Niger--conf,,Niger,17.607789,8.081666
+[2] Angola--conf[0]: Angola--conf,,Angola,-11.2027,17.8739
+[3] China-Hubei-conf[0]: China-Hubei-conf,Hubei,China,30.9756,112.2707
+[4] Burma--conf[0]: Burma--conf,,Burma,21.9162,95.956
+[5] Iraq--conf[0]: Iraq--conf,,Iraq,33.223191,43.679291
+##### csv_data ######
+------ [5] Dump csv data (HASH(0x1570508)) []--------
+[0] Afghanistan--conf, [0], 0, 0, 0, 0, 0, 0
+[1] Albania--conf, [0], 0, 0, 0, 0, 0, 0
+[2] Algeria--conf, [0], 0, 0, 0, 0, 0, 0
+[3] Andorra--conf, [0], 0, 0, 0, 0, 0, 0
+[4] Angola--conf, [0], 0, 0, 0, 0, 0, 0
+########################################
+
