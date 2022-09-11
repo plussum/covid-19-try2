@@ -76,6 +76,7 @@ my $mainkey = $config::MAIN_KEY;
 my $DOWN_LOAD = 1;
 my $RECENT = "2022-01-01"; #-210; #-93; # -62;		# recent = 2month
 my $RECENT_MONTH = -42;
+my $RECENT_ERN = -7 * 30;
 my @RECENTS = ($RECENT, $RECENT_MONTH);
 
 my $TERM_Y_SIZE = 400;
@@ -127,7 +128,8 @@ my $cntry = "Country/Region";
 my $positive = "testedPositive";
 my $deaths = "deaths";
 
-my @ALL_PARAMS = qw/mhlw-pref ccse pref tkocsv jpvac owidvac ccse-tgt mhlw mhlw-pref nhk usa/;
+my @ALL_PARAMS = qw/mhlw-pref ccse pref tkocsv ccse-tgt mhlw mhlw-pref nhk usa pref-ern ccse-ern/; # jpvac owidvac 
+
 #my @ALL_PARAMS = qw/ccse-tgt nhk/;
 my $GKIND = "";		# for pref, and ccse
 my $DELAY_AT_ALL = 1;
@@ -187,7 +189,7 @@ my @cdp_list = ($defamt::AMT_DEF, $defccse::CCSE_DEF, $MARGE_CSV_DEF,
 
 my $cmd_list = {"amt-jp" => 1, "amt-jp-pref" => 1, "tkow-ern" => 1, try => 1, "pref-ern" => 1, 
 				pref => 1, mhlw => 1, docomo => 1, upload => 1, "ccse-tgt" => 1, "mhlw-pref" => 1,
-				usa => 1, ccse_jp_term => 1};
+				usa => 1, ccse_jp_term => 1, "ccse-ern" => 1};
 my @REG_INFO_LIST = ();
 
 #
@@ -1216,6 +1218,7 @@ if(1){
 		}
 		));
 	}
+
 }
 
 
@@ -1402,7 +1405,7 @@ if($golist{"mhlw-pref"}){ 	# mhlw-pref
 			{gdp => $defmhlw::MHLW_GRAPH, dsc => "$pref hospitalized,severe and deaths", sub_dsc => "[nc:$nc,ns:$ns] $pop_disp*10K", start_date => $start_date, 
 				ymin => 0, y2min => 0, ymax => $ymaxw, y2max => $y2maxw,
 				ylabel => "hospitalzed/servere", 
-				additional_plot => $add_plot,
+				dditional_plot => $add_plot,
 				graph_items => [
 					{cdp => $cdp,   item => {"pref-severe" => "$pref-severe"}, static => "", graph_def => $box_fill, axis => "y2"},
 					{cdp => $cdp_r, item => {"pref-positive" => "$pref-positive"}, static => "", graph_def => $line_thick,},
@@ -1552,6 +1555,123 @@ if($golist{nhk}){
 		}
 	);
 }
+
+#
+#	Prefecture ERN
+#
+if($golist{"pref-ern"}){
+	dp::set_dp_id("pref-ern");
+	@$gp_list = ();
+
+	my $item = "testedPositive";
+	my $cdp = csv2graph->new($defnhk::CDP); 						# Load Johns Hopkings University CCSE
+	$cdp->load_csv({download => $DOWNLOAD});
+	my $target_keys = [$cdp->select_keys({item => $item}, 0)];	# select data for target_keys
+	my $sorted_keys = [$cdp->sort_csv($cdp->{csv_data}, $target_keys, $RECENT, 0)];
+
+	my $ern_cdp_w = $cdp->reduce_cdp_target({item => "testedPositive"});
+	my $ern_cdp = $ern_cdp_w->calc_ern();
+	#$ern_cdp->rename_key($key, "$region-ern");
+	#$ern_cdp->dump({lines => 20});
+	#exit;
+
+	my $first_date = "2020-03-12";
+	my $end = scalar(@$sorted_keys) -1;
+
+	my $additional_plot = $additional_plot_item{ern}; 
+	$additional_plot =~ s/y2/y1/;
+	my $label = "ern";
+	foreach my $pref (@$sorted_keys[0..$end]) { # "東京都")		data is mainkey ex.東京#testedPositive--conf-rlavr
+		$pref =~ s/#.*$//;
+		foreach my $start_date ($first_date, $RECENT_ERN){
+			push(@$gp_list, csv2graph->csv2graph_list_gpmix(
+			{gdp => $defnhk::DEF_GRAPH, dsc => "NHK open Data $pref $item " , start_date => $start_date, 
+				ylabel => $label,
+				ymin => 0, ymax => 3,
+				graph_tag => "ERN  $label",
+				label_sub_from => '#.*', label_sub_to => '',	# change label "1:Israel#people_vaccinated_per_hundred" -> "1:Israel"
+				additional_plot => $additional_plot, 
+				graph_items => [
+					{cdp => $ern_cdp, item => {"item" => $item,prefectureNameJ => $pref}, static => "", graph_def => $line_thick},
+				],
+			}));
+		}
+	}
+	csv2graph->gen_html_by_gp_list($gp_list, {						# Generate HTML file with graphs
+			row => 2,
+			html_tilte => "COVID-19 related data visualizer HNK ",
+			src_url => "src_url",
+			html_file => "$HTML_PATH/pref_ern.html",
+			png_path => $PNG_PATH // "png_path",
+			png_rel_path => $PNG_REL_PATH // "png_rel_path",
+			data_source => $cdp->{src_info},
+		}
+	);
+}
+
+#
+#	CCSE ERN
+#
+if($golist{"ccse-ern"}){
+	dp::set_dp_id("ccse-ern");
+	@$gp_list = ();
+
+	my $cdp_w = csv2graph->new($defccse::CCSE_CONF_DEF); 						# Load Johns Hopkings University CCSE
+	$cdp_w->load_csv($defccse::CCSE_CONF_DEF);
+	#my $cdp = $cdp_w->dup();
+	$cdp->calc_items("sum", 
+				{"Province/State" => "", "Country/Region" => ""},				
+				{"Province/State" => "null", "Country/Region" => "WorldWide"},
+	);
+	#$ww_cdp->dump({search_key => "WorldWide"});
+	my $item = "testedPositive";
+
+	my $target_keys = [$cdp->select_keys("", 0)];	# select data for target_keys
+	my $sorted_keys = [$cdp->sort_csv($cdp->{csv_data}, $target_keys, $RECENT, 0)];
+	my $ern_cdp = $cdp->calc_ern();
+	$ern_cdp->dump();
+
+	my $first_date = "2020-03-12";
+	my $end = 10; # scalar(@$sorted_keys);
+
+	my $additional_plot = $additional_plot_item{ern}; 
+	$additional_plot =~ s/y2/y1/;
+	my $label = "ern";
+	my $jp = "Japan";
+	foreach my $region ($jp, @$sorted_keys[0..$end]) { #
+		#dp::dp "[$region]\n";
+		$region =~ s/-.*$//;
+		my $ccse_reg = $region;
+		$ccse_reg = "Taiwan*" if($region eq "Taiwan");
+		$ccse_reg = "Korea-South" if($region eq "South Korea" || $region eq "Korea");
+		$ccse_reg = "US" if($region eq "United States");
+		dp::dp "[$region]\n";
+		foreach my $start_date ($first_date, $RECENT_ERN){
+			push(@$gp_list, csv2graph->csv2graph_list_gpmix(
+			{gdp => $defccse::CCSE_GRAPH, dsc => "John hopkings ccse $region $item " , start_date => $start_date, 
+				ylabel => $label,
+				ymin => 0, ymax => 3,
+				graph_tag => "ERN  $label",
+				label_sub_from => '#.*', label_sub_to => '',	# change label "1:Israel#people_vaccinated_per_hundred" -> "1:Israel"
+				additional_plot => $additional_plot, 
+				graph_items => [
+					{cdp => $ern_cdp, item => {"Country/Region" => $ccse_reg}, static => "", graph_def => $line_thick},
+				],
+			}));
+		}
+	}
+	csv2graph->gen_html_by_gp_list($gp_list, {						# Generate HTML file with graphs
+			row => 2,
+			html_tilte => "COVID-19 related data visualizer HNK ",
+			src_url => "src_url",
+			html_file => "$HTML_PATH/ccse_ern.html",
+			png_path => $PNG_PATH // "png_path",
+			png_rel_path => $PNG_REL_PATH // "png_rel_path",
+			data_source => $cdp->{src_info},
+		}
+	);
+}
+
 
 #
 #	"date":"2021-07-06","prefecture":"47","gender":"U","age":"UNK","medical_worker":false,"status":2,"count":5
