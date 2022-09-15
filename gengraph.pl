@@ -76,6 +76,7 @@ my $mainkey = $config::MAIN_KEY;
 my $DOWN_LOAD = 1;
 my $RECENT = "2022-01-01"; #-210; #-93; # -62;		# recent = 2month
 my $RECENT_MONTH = -42;
+my $RECENT_2MONTH = -7 * 9;
 my $RECENT_ERN = -7 * 30;
 my @RECENTS = ($RECENT, $RECENT_MONTH);
 
@@ -1690,20 +1691,22 @@ if($golist{"ccse-order"}){
 	$cdp->{$pos}->{org}->load_csv($defccse::CCSE_CONF_DEF);
 	$cdp->{$deth}->{org} = csv2graph->new($defccse::CCSE_DEATHS_DEF); 						# Load Johns Hopkings University CCSE
 	$cdp->{$deth}->{org}->load_csv($defccse::CCSE_DEATHS_DEF);
-	foreach my $name ($pos, $deth){
+	$cdp->{$pos}->{pop}   = $cdp->{$pos}->{org}->calc_pop($cdp->{$pos}->{org});
+	foreach my $kind ($pos, $deth){
 		foreach my $country ("Canada", "China", "Australia"){
-			$cdp->{$name}->{org}->calc_items("sum", 
+			$cdp->{$kind}->{org}->calc_items("sum", 
 						{"Province/State" => "", "Country/Region" => $country},		
 						{"Province/State" => "null", "Country/Region" => "="}	
 			);
 		}
-		#$cdp->{$name}->{org}->calc_items("sum", 
+		#$cdp->{$kind}->{org}->calc_items("sum", 
 		#			{"Province/State" => "", "Country/Region" => ""},				
 		#			{"Province/State" => "null", "Country/Region" => "WorldWide"},
 		#);
-		$cdp->{$name}->{rlavr} = $cdp->{$name}->{org}->calc_rlavr();
-		my $target_keys = [$cdp->{$name}->{rlavr}->select_keys("", 0)];	# select data for target_keys
-		$cdp->{$name}->{sorted} = [$cdp->{$name}->{org}->sort_csv($cdp->{$name}->{org}->{csv_data}, $target_keys, $RECENT, 0)];
+		$cdp->{$kind}->{rlavr} = $cdp->{$kind}->{org}->calc_rlavr();
+		my $target_keys = [$cdp->{$kind}->{rlavr}->select_keys("", 0)];	# select data for target_keys
+		$cdp->{$kind}->{sorted} = [$cdp->{$kind}->{org}->sort_csv($cdp->{$kind}->{org}->{csv_data}, $target_keys, $RECENT, 0)];
+		$cdp->{$kind}->{pop}   = $cdp->{$kind}->{rlavr}->calc_pop($cdp->{$kind}->{rlavr});
 	}
 	dp::dp "##############\n";
 
@@ -1715,39 +1718,66 @@ if($golist{"ccse-order"}){
 		for(my $l = $lank; $l < $end; $l += $lank_width){
 			my $le = $l + $lank_width - 1;
 			dp::dp "[$l - $le]\n";
-			foreach my $start_date ($first_date, $RECENT_ERN){
-				push(@$gp_list, csv2graph->csv2graph_list_gpmix(
-				{gdp => $defccse::CCSE_GRAPH, dsc => "John hopkings ccse $kind [$l - $le] " , start_date => $start_date, 
-					ylabel => $kind,
-					#ymin => 0, ymax => 3,
-					graph_tag => "CCSE  $kind",
-					label_sub_from => '#.*', label_sub_to => '',	# change label "1:Israel#people_vaccinated_per_hundred" -> "1:Israel"
-					lank => [$l,$le],
-					graph_items => [
-						{cdp => $cdp->{$kind}->{rlavr}, item => {}, static => "", graph_def => $line_thick},
+			foreach my $kk ("rlavr", "pop"){
+				foreach my $start_date ($first_date, $RECENT_2MONTH){
+					push(@$gp_list, csv2graph->csv2graph_list_gpmix(
+					{gdp => $defccse::CCSE_GRAPH, dsc => "John hopkings ccse $kind $kk [$l - $le] " , 
+						start_date => $start_date, 
+						ylabel => $kind,
+						#ymin => 0, ymax => 3,
+						graph_tag => "CCSE  $kind",
+						label_sub_from => '#.*', label_sub_to => '',# change label "1:Israel#people_vaccinated_per_hundred" -> "1:Israel"
+						lank => [$l,$le],
+						graph_items => [
+							{cdp => $cdp->{$kind}->{$kk}, item => {}, static => "", graph_def => $line_thick},
 					],
-				}));
+					}));
+				}
 			}
 		}
 
-		#foreach my $target () { # @TARGET_EU
-		#	foreach my $start_date ($first_date, $RECENT_ERN){
-		#		push(@$gp_list, csv2graph->csv2graph_list_gpmix(
-		#		{gdp => $defccse::CCSE_GRAPH, dsc => "John hopkings ccse [$l - $le] " , start_date => $start_date, 
-		#			ylabel => $label,
-		#			#ymin => 0, ymax => 3,
-		#			graph_tag => "CCSE  EU $label",
-		#			label_sub_from => '#.*', label_sub_to => '',	# change label "1:Israel#people_vaccinated_per_hundred" -> "1:Israel"
-		#			lank => [1, 10],
-		#			graph_items => [
-		#				{cdp => $cdp->{$kind}->{rlavr}, item => {}, static => "", graph_def => $line_thick},
-		#			],
-		#		}));
-		#	}
-		#}
 	}
-	dp::dp "##############\n";
+	#dp::dp "##############\n";
 
+	foreach my $kind ($pos, $deth){
+		foreach my $kk ("rlavr", "pop"){
+			dp::dp "$kind $kk\n";
+			$lank = 0;
+			my $target_cdp = $cdp->{$kind}->{$kk};
+			my $target_list = [];
+			foreach my $region (@{$cdp->{$kind}->{sorted}}){
+				last if($lank > $lank_width);
+
+				$region =~ s/-.*$//;
+				foreach my $r (@TARGET_EU){
+					if($r eq $region){
+						#dp::dp ">> $lank [$r][$region]\n";
+						push(@$target_list, 
+							{cdp => $target_cdp, item => {"Province/State" => "null", "Country/Region" => $region}, 
+								static => "", graph_def => $line_thick}
+						);
+						$lank++;
+						last;
+					}
+				}
+			}
+
+			#dp::dp "target_size: " . scalar(@$target_list) . "\n";
+			foreach my $start_date ($first_date, $RECENT_2MONTH){
+				push(@$gp_list, csv2graph->csv2graph_list_gpmix(
+				{gdp => $defccse::CCSE_GRAPH, dsc => "John hopkings ccse EU $kind $kk [1 - $lank_width] " , 
+					start_date => $start_date, 
+					ylabel => $kind,
+					#ymin => 0, ymax => 3,
+					graph_tag => "CCSE  $kind",
+					label_sub_from => '#.*', label_sub_to => '',# change label "1:Israel#people_vaccinated_per_hundred" -> "1:Israel"
+					#lank => [$l,$le],
+					graph_items => $target_list,
+				}));
+			}
+			dp::dp "##############\n";
+		}
+	}
 	csv2graph->gen_html_by_gp_list($gp_list, {						# Generate HTML file with graphs
 			row => 2,
 			html_tilte => "COVID-19 related data visualizer HNK ",
