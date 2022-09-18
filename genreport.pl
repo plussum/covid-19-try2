@@ -99,7 +99,7 @@ foreach my $p (@INDEX_DATA){
 	my $file = $p->{file};
 	my $header = $p->{header};
 	
-	#dp::dp "$name,$line,$col,$header [$file]\n";
+	dp::dp "$name,$line,$col,$header [$file]\n";
 	$file = "$WIN_PATH/$file";
 	if(! -e $file){
 		dp::dp "cannto find file $file\n";
@@ -132,7 +132,7 @@ foreach my $p (@INDEX_DATA){
 		$w[$#w] =~ s/[\r\n]+$//;
 		my $v = $w[$col] // "-99999";
 		$TABLE_DATA{$name}->{$header}->[$i] = sprintf("%.2f", $v);
-		#dp::dp "HIST: $header $name $i $col " . join(", ", @w, " # ", $v) . "\n" ;
+		dp::dp "HIST: $header $name $i $col " . join(", ", @w, " # ", $v) . "\n" ;
 	}
 }
 

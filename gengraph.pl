@@ -79,7 +79,7 @@ my $RECENT_MONTH = -42;
 my $RECENT_2MONTH = -7 * 9;
 my $RECENT_ERN = -7 * 30;
 my @RECENTS = ($RECENT, $RECENT_MONTH);
-
+my $CCSE_MAX_REGION = 30;
 my $TERM_Y_SIZE = 400;
 
 #my 	$line_thick = $csv2graph::line_thick;
@@ -846,10 +846,10 @@ sub	ccse
 	my $target_keys = [$ccse_rlavr->select_keys("", 0)];	# select data for target_keys
 	my $sorted_keys = [$ccse_rlavr->sort_csv($ccse_rlavr->{csv_data}, $target_keys, $RECENT, 0)];
 	my $target_region = ($param ne "ccse-tgt") ? $sorted_keys  : \@TARGET_REGION;
-	my $endt = ($end_target <= 0) ? (scalar(@$target_region) -1) : ($end_target - 1);
+	my $endt = ($end_target <= 0) ? (min(scalar(@$target_region) -1, $CCSE_MAX_REGION)) : ($end_target - 1);
 	$endt = $CCSE_MAX if($endt > $CCSE_MAX);
 	#my $endt = ($end_target <= 0) ? $#TARGET_REGION : $end_target;
-	#dp::dp "####### " . $endt . "\n";
+	dp::dp "####### " . $endt . "\n";
 	foreach my $region (@$target_region[0..$endt]){
 		$region =~ s/--.*//;
 		dp::dp "rlavr: $region\n";
@@ -1738,7 +1738,9 @@ if($golist{"ccse-order"}){
 
 	}
 	#dp::dp "##############\n";
-
+	#
+	#	Europe
+	#
 	foreach my $kind ($pos, $deth){
 		foreach my $kk ("rlavr", "pop"){
 			dp::dp "$kind $kk\n";
@@ -2455,6 +2457,8 @@ sub	positive_death_ern
 	# dp::dp "[$pop_ymax_nc,$pop_ymax_nd]\n";
 
 	my $nc_max = $conf_region->max_rlavr($p);
+	dp::dp ">>>> $nc_max\n";
+	$nc_max = 1 if($nc_max <= 0);
 	my $nc_max_week = $conf_region->max_rlavr($p);
 
 	my $rlavr = $conf_region->calc_rlavr();
@@ -2648,6 +2652,7 @@ sub	positive_death_ern
 	my @list = ();
 	my $dmax_pop = $d_max / $pop_100k;
 	my $dlst_pop = $nd_last / $pop_100k;
+	dp::dp ">>> $d_max/$nc_max\n";
 	my $drate_max = 100 * $d_max / $nc_max;
 	my $drate_last = 100 * $nd_last / $nc_last;
 	my $pop_dsc = sprintf("pp[%.1f,%.1f] dp[%.2f,%.2f](max,lst) pop:%d",
