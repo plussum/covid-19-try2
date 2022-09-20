@@ -52,6 +52,7 @@ use deftkocsv;
 use defjpvac;
 use defowid;
 use defnhk;
+use tkopdf;
 
 binmode(STDOUT, ":utf8");
 binmode(STDERR, ":utf8");
@@ -129,7 +130,7 @@ my $cntry = "Country/Region";
 my $positive = "testedPositive";
 my $deaths = "deaths";
 
-my @ALL_PARAMS = qw/mhlw-pref ccse pref tkocsv ccse-tgt mhlw mhlw-pref nhk usa pref-ern ccse-ern ccse-order/; # jpvac owidvac 
+my @ALL_PARAMS = qw/mhlw-pref ccse pref tko-age ccse-tgt mhlw mhlw-pref nhk usa pref-ern ccse-ern ccse-order/; # jpvac owidvac 
 
 #my @ALL_PARAMS = qw/ccse-tgt nhk/;
 my $GKIND = "";		# for pref, and ccse
@@ -194,7 +195,7 @@ my @cdp_list = ($defamt::AMT_DEF, $defccse::CCSE_DEF, $MARGE_CSV_DEF,
 
 my $cmd_list = {"amt-jp" => 1, "amt-jp-pref" => 1, "tkow-ern" => 1, try => 1, "pref-ern" => 1, 
 				pref => 1, mhlw => 1, docomo => 1, upload => 1, "ccse-tgt" => 1, "mhlw-pref" => 1,
-				usa => 1, ccse_jp_term => 1, "ccse-ern" => 1, "ccse-order" => 1};
+				usa => 1, ccse_jp_term => 1, "ccse-ern" => 1, "ccse-order" => 1, "tko-age" => 1};
 my @REG_INFO_LIST = ();
 
 #
@@ -1562,6 +1563,78 @@ if($golist{nhk}){
 }
 
 #
+#	tokyo age
+#
+if($golist{"tko-age"}){
+	dp::set_dp_id("tko-age");
+	my $BASE_DIR = "$config::WIN_PATH/tokyo-ku";
+	@$gp_list = ();
+	foreach my $m (1..9){
+		dp::dp "------- $m \n";
+		my $url = sprintf("https://www.metro.tokyo.lg.jp/tosei/hodohappyo/press/2022/%02d/index.html", $m);
+		my $indexf = sprintf("$BASE_DIR/2022%02dindex.html", $m);
+		tkopdf::download({url => $url, indexf => $indexf});
+		tkopdf::getpdfdata($indexf);
+	}
+	tkopdf::pdf2csv();
+	exit;
+
+	tkopdf::download();
+	tkopdf::getpdfdata();
+	exit;
+
+if(0){
+	my $cdp = csv2graph->new($defnhk::CDP); 						# Load Johns Hopkings University CCSE
+	$cdp->load_csv({download => $DOWNLOAD});
+	my $pop_raw_cdp = $cdp->calc_pop();
+	my $rlavr_cdp = $cdp->calc_rlavr();
+	my $pop_cdp = $rlavr_cdp->calc_pop();
+
+	my $cdp_list = [{kind => "", rlavr => $rlavr_cdp, raw => $cdp},
+					{kind => "POP", rlavr => $pop_cdp,  raw => $pop_raw_cdp},
+					];
+
+	my $lank_width = 10;
+	my $lank = 1;
+	my $lank_max = 10;
+	my $first_date = "2020-03-12";
+	foreach my $item ("testedPositive", "deaths"){
+		my $label = ($item eq "testedPositive") ? "positive" : "deaths";
+		foreach my $tgcdp (@$cdp_list){
+			my $kind = $tgcdp->{kind};
+			
+			for($lank = 1; $lank < $lank_max; $lank += $lank_width){
+				dp::dp "kind:$kind label:$label lank:$lank + $lank_width\n";
+				my $le = $lank + $lank_width - 1;
+				foreach my $start_date ($first_date, -31){
+					push(@$gp_list, csv2graph->csv2graph_list_gpmix(
+					{gdp => $defnhk::DEF_GRAPH, dsc => "NHK open Data $item [$lank-$le] $kind rlavr" , start_date => $start_date, 
+						ylabel => $label, y2label => $label,
+						ymin => 0, y2min => 0,
+						lank => [$lank,$le],
+						graph_tag => "Japan $kind $label [$lank - " . ($lank + $lank_width -1) . "]",
+						label_sub_from => '#.*', label_sub_to => '',	# change label "1:Israel#people_vaccinated_per_hundred" -> "1:Israel"
+						graph_items => [
+							{cdp => $tgcdp->{rlavr}, item => {"item" => $item,}, static => "", graph_def => $line_thick},
+						],
+					}));
+				}
+			}
+		}
+	}
+	csv2graph->gen_html_by_gp_list($gp_list, {						# Generate HTML file with graphs
+			row => 4,
+			html_tilte => "COVID-19 related data visualizer HNK ",
+			src_url => "src_url",
+			html_file => "$HTML_PATH/nhk_jp.html",
+			png_path => $PNG_PATH // "png_path",
+			png_rel_path => $PNG_REL_PATH // "png_rel_path",
+			data_source => $cdp->{src_info},
+		}
+	);
+}
+}
+#
 #	Prefecture ERN
 #
 if($golist{"pref-ern"}){
@@ -1715,6 +1788,26 @@ if($golist{"ccse-order"}){
 	my $lank_width = 10;
 	my $end = $lank_width; # scalar(@{$cdp->{$pos}->{sorted}});
 	foreach my $kind ($pos, $deth){
+			foreach my $kk ("rlavr", "pop"){
+				foreach my $start_date ($first_date, $RECENT_2MONTH){
+					push(@$gp_list, csv2graph->csv2graph_list_gpmix(
+					{gdp => $defccse::CCSE_GRAPH, dsc => "John hopkings ccse Japan $kind $kk  " , 
+						start_date => $start_date, 
+						ylabel => $kind,
+						#ymin => 0, ymax => 3,
+						graph_tag => "CCSE  $kind",
+						label_sub_from => '#.*', label_sub_to => '',# change label "1:Israel#people_vaccinated_per_hundred" -> "1:Israel"
+						graph_items => [
+							{cdp => $cdp->{$kind}->{$kk}, item => {"Province/State" => "null", "Country/Region" => "Japan"}, static => "", graph_def => $line_thick},
+					],
+					}));
+				}
+			}
+	}
+
+	$lank = 1;
+	$end = $lank_width; # scalar(@{$cdp->{$pos}->{sorted}});
+	foreach my $kind ($pos, $deth){
 		for(my $l = $lank; $l < $end; $l += $lank_width){
 			my $le = $l + $lank_width - 1;
 			dp::dp "[$l - $le]\n";
@@ -1737,6 +1830,7 @@ if($golist{"ccse-order"}){
 		}
 
 	}
+
 	#dp::dp "##############\n";
 	#
 	#	Europe
