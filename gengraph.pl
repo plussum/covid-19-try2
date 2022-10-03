@@ -556,13 +556,20 @@ if($golist{pref}){
 	my $jp_cdp = csv2graph->new($defnhk::CDP); 						# Load Johns Hopkings University CCSE
 	$jp_cdp->load_csv({download => $DOWNLOAD});
 
-	my $jp_rlavr = $jp_cdp->calc_rlavr($jp_cdp);
+	my $jp_pcdp = &mhlw_cdp("positive");
+	dp::ABORT "no data at MHLW_DEFS(positive)\n" if(!$jp_pcdp);
+	my $jp_prlavr = $jp_pcdp->calc_rlavr($jp_pcdp);
+
+	my $jp_dcdp = &mhlw_cdp("deaths");
+	dp::ABORT "no data at MHLW_DEFS(death)\n" if(!$jp_dcdp);
+	my $jp_drlavr = $jp_dcdp->calc_rlavr($jp_dcdp);
 
 	#
 	#	Generate HTML FILE
 	#
-	my $target_keys = [$jp_rlavr->select_keys({item => $positive}, 0)];	# select data for target_keys
-	my $sorted_keys = [$jp_rlavr->sort_csv($jp_rlavr->{csv_data}, $target_keys, $RECENT, 0)];
+	my $target_keys = [$jp_prlavr->select_keys("")];	# select data for target_keys
+	my $sorted_keys = [$jp_prlavr->sort_csv($jp_prlavr->{csv_data}, $target_keys, $RECENT, 0)];
+	shift(@$sorted_keys);		# remove ALL 
 	my $endt = ($end_target <= 0) ? (scalar(@$sorted_keys) -1) : ($end_target - 1);
 	dp::dp "endt : [$endt]\n";
 	foreach my $pref (@$sorted_keys[0..$endt]){
@@ -570,12 +577,12 @@ if($golist{pref}){
 		dp::dp "$GKIND: $pref\n";
 		foreach my $start_date (0, $RECENT, $RECENT_MONTH){ # , $RECENT)
 			if(!$GKIND || $GKIND eq "raw"){		# 0 -> 1 2021.06.28
-				my @gpd = &japan_positive_death_ern($jp_cdp, $pref, $start_date, 1, "raw") ;
+				my @gpd = &japan_positive_death_ern($jp_pcdp, $jp_dcdp, $pref, $start_date, 1, "raw") ;
 				push(@$pd_list, @gpd);
 				#&set_list($PREF_LIST, $gpd, $pref, "pref", "raw", "raw", $start_date, $gpd);
 			}
 			if(!$GKIND || $GKIND eq "rlavr"){		# 0 -> 1 2021.06.28
-				my @gpd = &japan_positive_death_ern($jp_cdp, $pref, $start_date, 0, "rlavr") if(!$GKIND || $GKIND eq "rlavr");		# 0 -> 1 2021.06.28
+				my @gpd = &japan_positive_death_ern($jp_pcdp, $jp_dcdp, $pref, $start_date, 0, "rlavr") if(!$GKIND || $GKIND eq "rlavr");		# 0 -> 1 2021.06.28
 				push(@$pd_rlavr_list, @gpd);
 				#&set_list($PREF_LIST, $gpd, $pref, "pref", "raw", "rlavr", $start_date, $gpd);
 			}
@@ -583,13 +590,14 @@ if($golist{pref}){
 	}
 
 	if(!$GKIND || $GKIND eq "pop"){
-		my $jp_pop_rlavr   = $jp_rlavr->calc_pop($jp_rlavr);
-		$sorted_keys = [$jp_pop_rlavr->sort_csv($jp_pop_rlavr->{csv_data}, $target_keys, $RECENT, 0)];
+		my $jp_ppop_rlavr   = $jp_prlavr->calc_pop($jp_prlavr);
+		my $jp_dpop_rlavr   = $jp_drlavr->calc_pop($jp_drlavr);
+		$sorted_keys = [$jp_ppop_rlavr->sort_csv($jp_ppop_rlavr->{csv_data}, $target_keys, $RECENT, 0)];
 		foreach my $pref (@$sorted_keys[0..$endt]){
 			$pref =~ s/[\#\-].*$//;
 			dp::dp "pop: $pref\n";
 			foreach my $start_date (0, $RECENT, $RECENT_MONTH){ # , $RECENT)
-				my @gpd = &japan_positive_death_ern($jp_cdp, $pref, $start_date, 1, "pop");
+				my @gpd = &japan_positive_death_ern($jp_pcdp, $jp_dcdp, $pref, $start_date, 1, "pop");
 				push(@$pd_pop_list, @gpd);
 				#&set_list($PREF_LIST, $pref, "pref", "pop", "rlavr", $start_date, $gpd);
 			}
@@ -1407,7 +1415,7 @@ if($golist{"mhlw-pref"}){ 	# mhlw-pref
 	$end = $end_target if($end_target > 0 && $end > $end_target);
 
 	my $gp_list_a = [];
-if(0){
+if(1){
 	foreach my $pref (@$target_region[0..$end]){
 		$pref =~ s/#.*$//;
 		$pref =~ s/-.*$//;
@@ -1415,7 +1423,7 @@ if(0){
 
 		my $nc = 1000; #500; #350;
 		my $ns = 5; # 3;
-		my $nm = 1.5;# 1; # 1 / 5;
+		my $nm = 2; #1.5;# 1; # 1 / 5;
 		#dp::dp "SYNOMYM: $config::SYNONYM{$pref} \n";
 		my $prefw = $pref;
 		$prefw =~ s/-.*$//;
@@ -1464,6 +1472,7 @@ if(0){
 			}
 			);
 			push(@$gp_list, @gpd);
+if(0){
 			# &set_list($PREF_LIST, $gpd, $pref, "hospitalaized", "raw", $start_date);
 			@gpd = csv2graph->csv2graph_list_gpmix(
 			{gdp => $defmhlw::MHLW_GRAPH, dsc => "$pref hospitalized,severe and deaths severe", sub_dsc => "$pop_disp*10K", start_date => $start_date, 
@@ -1482,6 +1491,7 @@ if(0){
 			}
 			);
 			push(@$gp_list, @gpd);
+}
 			# &set_list($PREF_LIST, $gpd, $pref, "hospitalaized", "pop", $start_date);
 		}
 	}
@@ -1496,21 +1506,13 @@ if(0){
 		}
 	);
 }
-if(1){			# Nationwide lanking
+if(1) {			# Nationwide lanking
 	foreach my $item ("positive", "deaths"){
-		my $itemp = "";
-		foreach my $p (@defmhlw::MHLW_DEFS){
-			if($p->{tag} eq $item){
-				$itemp = $p;
-				last;
-			}
-		}
-		if(!$itemp){
+		my $cdp = &mhlw_cdp($item);
+		if(!$cdp){
 			dp::dp "no data at MHLW_DEFS($item)\n";
 			next;
 		}
-		my $cdp = csv2graph->new($itemp);
-		$cdp->load_csv({download => $DOWNLOAD, item => $item});
 		$cdp_r = $cdp->calc_rlavr();
 
 		foreach my $kind ("rlavr", "pop"){
@@ -1534,6 +1536,7 @@ if(1){			# Nationwide lanking
 			}
 		}
 	}
+
 	csv2graph->gen_html_by_gp_list($gp_list, {						# Generate HTML file with graphs
 			row => 3,
 			html_tilte => "COVID-19 related data visualizer ",
@@ -1546,16 +1549,21 @@ if(1){			# Nationwide lanking
 	);
 }
 
-#	csv2graph->gen_html_by_gp_list($gp_list_a, {						# Generate HTML file with graphs
-#			row => 2,
-#			html_tilte => "COVID-19 related data visualizer ",
-#			src_url => "src_url",
-#			html_file => "$HTML_PATH/mhlw_pref_a.html",
-#			png_path => $PNG_PATH // "png_path",
-#			png_rel_path => $PNG_REL_PATH // "png_rel_path",
-#			data_source => $cdp->{src_info},
-#		}
-##	);
+
+sub	mhlw_cdp
+{
+	my ($item) = @_;
+
+	my $itemp = "";
+	foreach my $p (@defmhlw::MHLW_DEFS){
+		if($p->{tag} eq $item){
+			my $cdp = csv2graph->new($p);
+			$cdp->load_csv({download => $DOWNLOAD, item => $item});
+			return $cdp;
+		}
+	}
+	return "";
+}
 }
 
 sub	set_list
@@ -2600,13 +2608,17 @@ sub	ccse_positive_death_ern
 
 sub	japan_positive_death_ern
 { 
-	my($jp_cdp, $pref, $start_date, $pop, $kind) = @_;
+	my($jp_pcdp, $jp_dcdp, $pref, $start_date, $pop, $kind) = @_;
 
+	#$jp_pcdp->dump();
+	#$jp_dcdp->dump();
 	#my $jp_pref = $jp_cdp->reduce_cdp_target({item => $positive, prefectureNameJ => $pref});
 	#my $death_pref = $jp_cdp->reduce_cdp_target({item => $deaths, prefectureNameJ => $pref});
 	#dp::dp $jp_cdp->dump();
-	my $jp_pref = $jp_cdp->reduce_cdp_target({item => $positive, prefectureNameJ => $pref});
-	my $death_pref = $jp_cdp->reduce_cdp_target({item => $deaths, prefectureNameJ => $pref});
+	my $jp_pref = $jp_pcdp->reduce_cdp_target({pref => "$pref-positive"});
+	my $death_pref = $jp_dcdp->reduce_cdp_target({pref => "$pref-deaths"});
+	#$jp_pref->dump();
+	#$death_pref->dump();
 	my $p = "";
 
 	if($pop){
@@ -2616,7 +2628,7 @@ sub	japan_positive_death_ern
 	}
 	my $gdp = $defnhk::DEF_GRAPH;
 	
-	return &positive_death_ern($jp_pref, $death_pref, $pref, $start_date, "#testedPositive", "#deaths", $p, $kind, $gdp);
+	return &positive_death_ern($jp_pref, $death_pref, $pref, $start_date, "-positive", "-deaths", $p, $kind, $gdp);
 }
 
 sub	positive_death_ern
