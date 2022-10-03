@@ -587,7 +587,7 @@ sub gen_html_by_gp_list
 	my $graph_no = -1;
 	my $row_flash = 0;
 	foreach my $gp (@$graph_params){
-		dp::dp "gp: $gp\n";
+		#dp::dp "gp: $gp\n";
 		next if(! ($gp//""));
 
 		#
@@ -1733,7 +1733,9 @@ _EOD_
 	#dp::dp "ARROW: $arw\n";
 	$PARAMS =~ s/#ARROW#/$arw/;	
 
-	#dp::dp "$plotf\n";
+	dp::dp "CSV:  $csvf\n";
+	dp::dp "PLOT: $plotf\n";
+	dp::dp "PNG: $pngf\n";
 	open(PLOT, ">$plotf") || die "cannto create $plotf";
 	binmode(PLOT, ":utf8");
 	print PLOT $PARAMS;

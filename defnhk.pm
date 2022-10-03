@@ -34,20 +34,24 @@ our $CDP =
 {
 	id => "nhk",
 	src_info => "Japan COVID-19 data (NHK)",
-	main_url => " https://www3.nhk.or.jp/news/special/coronavirus/data-widget/",
+	#main_url => " https://www3.nhk.or.jp/news/special/coronavirus/data-widget/",
+	#src_url => "https://www3.nhk.or.jp/n-data/opendata/coronavirus/nhk_news_covid19_prefectures_daily_data.csv",
+	main_url => " https://covid19.mhlw.go.jp/public/opendata/",
 	src_file => "$CSV_PATH/nhk_news_covid19_prefectures_daily_data.csv",
-	src_url => 	"https://www3.nhk.or.jp/n-data/opendata/coronavirus/nhk_news_covid19_prefectures_daily_data.csv",
+	src_url => 	"https://covid19.mhlw.go.jp/public/opendata/newly_confirmed_cases_daily.csv",
 	down_load => \&download,
 
-	direct => "transaction",		# vertical or holizontal(Default)
+	#direct => "transaction",		# vertical or holizontal(Default)
+	direct => "vertical",		# vertical or holizontal(Default)
 	cumrative => 0,
 	timefmt => '%Y/%m/%d',			# comverbt to %Y-%m-%d
 	src_dlm => ",",
 	key_dlm => "#",
-	keys => ["prefectureNameJ"],		# PrefectureNameJ, and Column name
-	data_start => 3,
+	#keys => ["prefectureNameJ"],		# PrefectureNameJ, and Column name
+	data_start => 1,
 		#日付,都道府県コード,都道府県名,各地の感染者数_1日ごとの発表数,各地の感染者数_累計,各地の死者数_1日ごとの発表数,各地の死者数_累計
 		# year,month,date,prefectureNameJ,prefectureNameE,testedPositive,peopleTested,hospitalized,serious,discharged,deaths,effectiveReproductionNumber
+	##item_names => ["date", "area_code", "prefectureNameJ","testedPositive", "testedPositive_cum", "deaths", "deaths_cum"],
 	item_names => ["date", "area_code", "prefectureNameJ","testedPositive", "testedPositive_cum", "deaths", "deaths_cum"],
 	#alias => {pref => 2, positive_new => 3, positive_cum => 4 , deaths_new => 5, deaths_cum => 6},
 	alias => {},

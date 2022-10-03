@@ -273,33 +273,35 @@ sub	out_image
 	$link = $link // "";
 	#dp::dp "[$link]\n";
 
-	print HTML "<a href = \"../$link\">" if ($link);
-	print HTML "<h2>" . join("<br>", @$header) . "</h2>\n";
-	print HTML "</a>" if ($link);
-	print HTML "<table>\n";
-	print HTML "<tbody>\n";
-	print HTML "<tr>\n";
-	foreach my $item (@$table){
-		print HTML "<td>\n";
-		$item =~ s#.png##;
-		my $html = "<a href=\"../$item.png\" target=\"_blank\"><img src=\"../$item.png\"></a>\n";
-		my $csvf = "$item" . "-plot.csv.txt";
-		my $plotf = "$item" . "-plot.txt";
-		print "ERROR: $WIN_PATH/$csvf\n" if(! -e "$WIN_PATH/$csvf");
-		print "ERROR: $WIN_PATH/$plotf\n" if(! -e "$WIN_PATH/$plotf");
+	if(scalar(@$table) > 0){
+		print HTML "<a href = \"../$link\">" if ($link);
+		print HTML "<h2>" . join("<br>", @$header) . "</h2>\n";
+		print HTML "</a>" if ($link);
+		print HTML "<table>\n";
+		print HTML "<tbody>\n";
+		print HTML "<tr>\n";
+		foreach my $item (@$table){
+			print HTML "<td>\n";
+			$item =~ s#.png##;
+			my $html = "<a href=\"../$item.png\" target=\"_blank\"><img src=\"../$item.png\"></a>\n";
+			my $csvf = "$item" . "-plot.csv.txt";
+			my $plotf = "$item" . "-plot.txt";
+			print "ERROR: $WIN_PATH/$csvf\n" if(! -e "$WIN_PATH/$csvf");
+			print "ERROR: $WIN_PATH/$plotf\n" if(! -e "$WIN_PATH/$plotf");
 
-		$html .= "<br>\n";
-		$html .= "<a href=\"../$item" . "-plot.csv.txt\">CSV</a>\n";
-		$html .= "<a href=\"../$item" . "-plot.txt\">PLOT</a>\n";
-		$html .= "<br>\n";
-		print HTML $html . "\n";
-		#print $html . "\n";
-		print HTML "</td>\n";
+			$html .= "<br>\n";
+			$html .= "<a href=\"../$item" . "-plot.csv.txt\">CSV</a>\n";
+			$html .= "<a href=\"../$item" . "-plot.txt\">PLOT</a>\n";
+			$html .= "<br>\n";
+			print HTML $html . "\n";
+			#print $html . "\n";
+			print HTML "</td>\n";
 
+		}
+		print HTML "</tr>\n";
+		print HTML "</tbody>\n";
+		print HTML "</table>\n";
 	}
-	print HTML "</tr>\n";
-	print HTML "</tbody>\n";
-	print HTML "</table>\n";
 
 	@$table = ();
 	@$header = ();

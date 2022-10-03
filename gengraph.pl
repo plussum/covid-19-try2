@@ -108,6 +108,8 @@ my $POP_YMAX_NC_JP = 250;#150; #150;#60; #40;		# JP YMAX(positive) * pop100k, po
 my $POP_YMAX_NC_JP_SHORT = 250;#150;#60; #2;		# JP YMAX(positive) * pop100k, positive_death_ern
 my $POP_YMAX_ND_JP = 0.4; #0.2;		# JP Y2MAX(deaths)  * pop100k, positive_death_ern
 
+my $GEN_REPORT = 1;
+
 #
 #	for APPLE Mobility Trends
 #
@@ -270,6 +272,9 @@ if($#ARGV >= 0){
 		elsif(/-DL/){
 			$DOWNLOAD = ($i < $#ARGV && !($ARGV[$i+1] =~ /\D/)) ? $ARGV[++$i] : 1;
 			next;
+		}
+		elsif(/-no_report/){
+			$GEN_REPORT = 0;
 		}
 		elsif($_ eq "try"){
 			$golist{pref} = 1;
@@ -1132,7 +1137,7 @@ if($golist{mhlw}) {
 		$cdp->load_csv({download => $DOWNLOAD, item => $item});
 		#$cdp_rla{$item} = $cdp_raw{$item}->calc_rlavr();
 		push(@cdps, $cdp_raw{$item});
-		$cdp->dump();
+		#$cdp->dump();
 		#exit; #if($i++ > 1);
 
 		my $dt = $cdp->{dates};
@@ -1203,7 +1208,37 @@ if($golist{mhlw}) {
 		}
 		));
 	}
-if(1){
+if(0){			# from NHK,, 全国の県ごとのTOP10を出したい
+	my $pref = "ALL";
+	foreach my $start_date (0, $RECENT, $RECENT_MONTH){
+		my $lank_width = 10;
+		my $lank = 1;
+		my $lank_max = 10;
+		my $first_date = "2020-03-12";
+		foreach my $item ("testedPositive", "deaths"){
+			my $label = ($item eq "testedPositive") ? "positive" : "deaths";
+				my $kind = $cdp->{kind};
+				
+				for($lank = 1; $lank < $lank_max; $lank += $lank_width){
+					dp::dp "kind:$kind label:$label lank:$lank + $lank_width\n";
+					my $le = $lank + $lank_width - 1;
+					push(@$gp_list, csv2graph->csv2graph_list_gpmix(
+					{gdp => $defnhk::DEF_GRAPH, dsc => "mhlw $item [$lank-$le] $kind rlavr" , start_date => $start_date, 
+						ylabel => $label, y2label => $label,
+						ymin => 0, y2min => 0,
+						lank => [$lank,$le],
+						graph_tag => "Japan $kind $label [$lank - " . ($lank + $lank_width -1) . "]",
+						label_sub_from => '#.*', label_sub_to => '',	# change label "1:Israel#people_vaccinated_per_hundred" -> "1:Israel"
+						graph_items => [
+							{cdp => $cdp, item => {"pref-positive" => "$pref-positive"}, static => "", graph_def => $line_thick,},
+						],
+					}));
+				}
+			}
+		}
+}
+
+if(1){		# 0 for test
 	my $pref = "ALL";
 	foreach my $start_date (0, $RECENT, $RECENT_MONTH){
 		push(@$gp_list, csv2graph->csv2graph_list_gpmix(
@@ -1226,7 +1261,6 @@ if(1){
 	}
 
 }
-
 
 	#
 	#	NHK - Tokyo
@@ -1373,6 +1407,7 @@ if($golist{"mhlw-pref"}){ 	# mhlw-pref
 	$end = $end_target if($end_target > 0 && $end > $end_target);
 
 	my $gp_list_a = [];
+if(0){
 	foreach my $pref (@$target_region[0..$end]){
 		$pref =~ s/#.*$//;
 		$pref =~ s/-.*$//;
@@ -1430,7 +1465,6 @@ if($golist{"mhlw-pref"}){ 	# mhlw-pref
 			);
 			push(@$gp_list, @gpd);
 			# &set_list($PREF_LIST, $gpd, $pref, "hospitalaized", "raw", $start_date);
-if(0){
 			@gpd = csv2graph->csv2graph_list_gpmix(
 			{gdp => $defmhlw::MHLW_GRAPH, dsc => "$pref hospitalized,severe and deaths severe", sub_dsc => "$pop_disp*10K", start_date => $start_date, 
 				ymin => 0, y2min => 0, y2max => $sv_max,
@@ -1450,9 +1484,7 @@ if(0){
 			push(@$gp_list, @gpd);
 			# &set_list($PREF_LIST, $gpd, $pref, "hospitalaized", "pop", $start_date);
 		}
-}
 	}
-
 	csv2graph->gen_html_by_gp_list($gp_list, {						# Generate HTML file with graphs
 			row => 2,
 			html_tilte => "COVID-19 related data visualizer ",
@@ -1463,6 +1495,57 @@ if(0){
 			data_source => $cdp->{src_info},
 		}
 	);
+}
+if(1){			# Nationwide lanking
+	foreach my $item ("positive", "deaths"){
+		my $itemp = "";
+		foreach my $p (@defmhlw::MHLW_DEFS){
+			if($p->{tag} eq $item){
+				$itemp = $p;
+				last;
+			}
+		}
+		if(!$itemp){
+			dp::dp "no data at MHLW_DEFS($item)\n";
+			next;
+		}
+		my $cdp = csv2graph->new($itemp);
+		$cdp->load_csv({download => $DOWNLOAD, item => $item});
+		$cdp_r = $cdp->calc_rlavr();
+
+		foreach my $kind ("rlavr", "pop"){
+			my $cdp = $cdp_r;
+			if($kind eq "pop"){
+				$cdp = $cdp_r->calc_pop();
+			}
+			#$cdp->dump();
+			foreach my $start_date (0, $RECENT, -31){ #$RECENT_MONTH
+				my @gpd = csv2graph->csv2graph_list_gpmix(
+				{gdp => $defmhlw::MHLW_GRAPH, dsc => "$item positive lank[1,10]($kind)", sub_dsc => "", start_date => $start_date, 
+					ymin => 0, y2min => 0, #ymax => $ymaxw, y2max => $y2maxw,
+					ylabel => "$item", 
+					lank => [2,11],
+					#dditional_plot => $add_plot,
+					graph_items => [
+						{cdp => $cdp, item => {}, static => "", graph_def => $line_thick,},
+					],
+				});
+				push(@$gp_list, @gpd);
+			}
+		}
+	}
+	csv2graph->gen_html_by_gp_list($gp_list, {						# Generate HTML file with graphs
+			row => 3,
+			html_tilte => "COVID-19 related data visualizer ",
+			src_url => "src_url",
+			html_file => "$HTML_PATH/mhlw_pref_lank.html",
+			png_path => $PNG_PATH // "png_path",
+			png_rel_path => $PNG_REL_PATH // "png_rel_path",
+			data_source => $cdp->{src_info},
+		}
+	);
+}
+
 #	csv2graph->gen_html_by_gp_list($gp_list_a, {						# Generate HTML file with graphs
 #			row => 2,
 #			html_tilte => "COVID-19 related data visualizer ",
@@ -3454,7 +3537,7 @@ if($golist{"tkow-ern"}) {
 #	}
 #);
 
-system("./genreport.pl");
+system("./genreport.pl") if($GEN_REPORT);
 my $times_cmd = "./htmllist.pl";
 #dp::dp "times: $times_cmd\n";
 system($times_cmd);

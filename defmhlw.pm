@@ -153,7 +153,7 @@ our $MHLW_TAG =
 };
 
 our @MHLW_DEFS = ();
-my %MHLW_HASH = ();
+our %MHLW_HASH = ();
 for(my $i = 0; $i <= $#defs; $i++){
 	my $p = $defs[$i];
 	my $def = {%$MHLW_TAG};
@@ -204,7 +204,8 @@ sub	download
 
 	my $csvf_raw = $def->{src_file} . ".raw";
 	my $csvf = $def->{src_file};
-	my $cmd = "wget " . $def->{src_url} . " -O $csvf_raw";
+	#my $cmd = "wget " . $def->{src_url} . " -O $csvf_raw";
+	my $cmd = "curl " . $def->{src_url} . " -o $csvf_raw";
 	&do($cmd) if($download || !(-f $csvf));
 	my $file_size = csvlib::file_size($csvf_raw);
 	if($file_size > 1024){
