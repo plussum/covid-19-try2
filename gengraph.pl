@@ -1732,14 +1732,18 @@ if($golist{"pref-ern"}){
 	dp::set_dp_id("pref-ern");
 	@$gp_list = ();
 
-	my $item = "testedPositive";
-	my $cdp = csv2graph->new($defnhk::CDP); 						# Load Johns Hopkings University CCSE
-	$cdp->load_csv({download => $DOWNLOAD});
-	my $target_keys = [$cdp->select_keys({item => $item}, 0)];	# select data for target_keys
+	#my $item = "testedPositive";
+	#my $cdp = csv2graph->new($defnhk::CDP); 						# Load Johns Hopkings University CCSE
+	#$cdp->load_csv({download => $DOWNLOAD});
+	my $item = "positive";
+	my $cdp = &mhlw_cdp("positive");
+	dp::ABORT "no data at MHLW_DEFS(positive)\n" if(!$cdp);
+	my $target_keys = [$cdp->select_keys("", 0)];	# select data for target_keys
 	my $sorted_keys = [$cdp->sort_csv($cdp->{csv_data}, $target_keys, $RECENT, 0)];
 
-	my $ern_cdp_w = $cdp->reduce_cdp_target({item => "testedPositive"});
-	my $ern_cdp = $ern_cdp_w->calc_ern();
+	#my $ern_cdp_w = $cdp->reduce_cdp_target({item => "testedPositive"});
+	#my $ern_cdp = $ern_cdp_w->calc_ern();
+	my $ern_cdp = $cdp->calc_ern();
 	#$ern_cdp->rename_key($key, "$region-ern");
 	#$ern_cdp->dump({lines => 20});
 	#exit;
@@ -1761,7 +1765,7 @@ if($golist{"pref-ern"}){
 				label_sub_from => '#.*', label_sub_to => '',	# change label "1:Israel#people_vaccinated_per_hundred" -> "1:Israel"
 				additional_plot => $additional_plot, 
 				graph_items => [
-					{cdp => $ern_cdp, item => {"item" => $item,prefectureNameJ => $pref}, static => "", graph_def => $line_thick},
+					{cdp => $ern_cdp, item => {pref => "$pref"}, static => "", graph_def => $line_thick},
 				],
 			}));
 		}
