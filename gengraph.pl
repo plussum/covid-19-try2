@@ -1758,7 +1758,7 @@ if($golist{"pref-ern"}){
 		$pref =~ s/#.*$//;
 		foreach my $start_date ($first_date, $RECENT_ERN){
 			push(@$gp_list, csv2graph->csv2graph_list_gpmix(
-			{gdp => $defnhk::DEF_GRAPH, dsc => "NHK open Data $pref ern " , start_date => $start_date, 
+			{gdp => $defnhk::DEF_GRAPH, dsc => "MHLW open Data $pref ern " , start_date => $start_date, 
 				ylabel => $label,
 				ymin => 0, ymax => 3,
 				graph_tag => "ERN  $label",
